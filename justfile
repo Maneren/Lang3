@@ -4,7 +4,7 @@ export CMAKE_EXPORT_COMPILE_COMMANDS := "1"
 
 # executable to use for `just run`
 
-executable := "divider"
+executable := "lang3"
 
 # Print stdout and stderr on failed tests
 

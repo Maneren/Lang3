@@ -1,6 +1,6 @@
-auto_create_executable(divider
-    PRIVATE_DEPS division
+auto_create_executable(lang3
+    PRIVATE_DEPS parser
     CONSOLE
-    OUTPUT_NAME "divider"
+    OUTPUT_NAME "lang3"
     VERSION 1.0.0
 )

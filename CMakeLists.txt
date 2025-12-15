@@ -12,6 +12,9 @@ set(CMAKE_INSTALL_MESSAGE LAZY)
 include(cmake/ExecutableTemplate.cmake)
 include(cmake/LibraryTemplate.cmake)
 
+find_package(FLEX REQUIRED)
+find_package(BISON REQUIRED)
+
 add_subdirectory(src)
 add_subdirectory(apps)
 
