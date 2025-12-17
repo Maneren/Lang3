@@ -2,7 +2,6 @@
 
 #include "identifier.hpp"
 #include <memory>
-#include <variant>
 
 namespace l3::ast {
 
@@ -33,22 +32,14 @@ public:
   void print(std::output_iterator<char> auto &out, size_t depth) const;
 };
 
-using AnonymousFunction = FunctionBody;
-
-class Function {
-  std::variant<AnonymousFunction, NamedFunction> inner;
+class AnonymousFunction {
+  FunctionBody body;
 
 public:
-  Function() = default;
+  AnonymousFunction() = default;
+  AnonymousFunction(FunctionBody &&body) : body(std::move(body)) {}
 
-  Function(AnonymousFunction &&function) : inner(std::move(function)) {}
-  Function(NamedFunction &&function) : inner(std::move(function)) {}
-
-  void print(std::output_iterator<char> auto &out, size_t depth) const {
-    inner.visit([&out, depth](const auto &node) -> void {
-      node.print(out, depth);
-    });
-  }
+  void print(std::output_iterator<char> auto &out, size_t depth) const;
 };
 
 } // namespace l3::ast

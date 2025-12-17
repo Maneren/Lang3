@@ -1,5 +1,6 @@
 #pragma once
 
+#include "function.hpp"
 #include "identifier.hpp"
 #include "literal.hpp"
 #include "operator.hpp"
@@ -66,9 +67,9 @@ using ExpressionVariant = std::variant<
     UnaryExpression,
     BinaryExpression,
     Variable,
-    FunctionCall
+    FunctionCall,
     // PrefixExpression,
-    // AnonymousFunction,
+    AnonymousFunction
     // Table
     >;
 
@@ -84,7 +85,8 @@ public:
   Expression(Variable &&var) : ExpressionVariant(std::move(var)) {}
   Expression(FunctionCall &&call) : ExpressionVariant(std::move(call)) {}
   // Expression(PrefixExpression &&expression) : inner(std::move(expression)) {}
-  // Expression(AnonymousFunction &&function) : inner(std::move(function)) {}
+  Expression(AnonymousFunction &&function)
+      : ExpressionVariant(std::move(function)) {}
   // Expression(Table &&table) : inner(std::move(table)) {}
 
   void print(std::output_iterator<char> auto &out, size_t depth) const {

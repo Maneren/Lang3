@@ -8,6 +8,14 @@ function add(a, b)
   return a + b
 end
 
+function curry_add(a)
+  let f = function(b)
+    return a + b
+  end
+
+  return f
+end
+
 let c = add(a, b)
 
 c += 1

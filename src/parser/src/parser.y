@@ -58,6 +58,7 @@
       <ast::ExpressionList> ARGUMENTS
       <ast::FunctionCall> FUNCTION_CALL
       <ast::FunctionBody> FUNCTION_BODY
+      <ast::AnonymousFunction> ANONYMOUS_FUNCTION
       <ast::Expression> EXPRESSION
       <ast::ExpressionList> EXPRESSION_LIST
       <ast::Identifier> IDENTIFIER
@@ -132,6 +133,8 @@ NAME_LIST: IDENTIFIER comma NAME_LIST { $3.push_back($1); $$ = $3; }
 FUNCTION_BODY: lparen NAME_LIST rparen BLOCK end
                { $$ = ast::FunctionBody{ std::move($2), std::make_shared<ast::Block>($4) }; }
 
+ANONYMOUS_FUNCTION: function FUNCTION_BODY { $$ = ast::AnonymousFunction(std::move($2)); }
+
 FUNCTION_CALL: IDENTIFIER ARGUMENTS
                { $$ = ast::FunctionCall(std::move($1), std::move($2)); }
 
@@ -140,7 +143,7 @@ ARGUMENTS: lparen EXPRESSION_LIST rparen { $$ = $2; }
 EXPRESSION: UNARY                    { $$ = ast::Expression(std::move($1)); }
           | BINARY                   { $$ = ast::Expression(std::move($1)); }
           // | TABLE                     { $$ = ast::Expression($1); }
-          // | FUNCTION                  { $$ = ast::Expression($1); }
+          | ANONYMOUS_FUNCTION       { $$ = ast::Expression(std::move($1)); }
           | FUNCTION_CALL            { $$ = ast::Expression(std::move($1)); }
           | VAR                      { $$ = ast::Expression(std::move($1)); }
           | LITERAL                  { $$ = ast::Expression(std::move($1)); }

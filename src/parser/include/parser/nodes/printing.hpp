@@ -97,17 +97,24 @@ FunctionCall::print(std::output_iterator<char> auto &out, size_t depth) const {
 
 inline void
 FunctionBody::print(std::output_iterator<char> auto &out, size_t depth) const {
-  detail::format_indented_line(out, depth, "FunctionBody");
+  detail::format_indented_line(out, depth, "Arguments");
   for (const Identifier &parameter : parameters) {
     parameter.print(out, depth + 1);
   }
-  block->print(out, depth + 1);
+  block->print(out, depth);
 }
 
 inline void
 NamedFunction::print(std::output_iterator<char> auto &out, size_t depth) const {
   detail::format_indented_line(out, depth, "NamedFunction");
   name.print(out, depth + 1);
+  body.print(out, depth + 1);
+}
+
+inline void AnonymousFunction::print(
+    std::output_iterator<char> auto &out, size_t depth
+) const {
+  detail::format_indented_line(out, depth, "AnonymousFunction");
   body.print(out, depth + 1);
 }
 
