@@ -39,7 +39,6 @@ class Statement {
       // Assignment,
       Declaration,
       Expression
-      // FunctionCall,
       // IfClause,
       // NamedFunction
       >
@@ -49,6 +48,7 @@ public:
   Statement() = default;
   Statement(Declaration &&declaration) : inner(std::move(declaration)) {}
   Statement(Expression &&expression) : inner(std::move(expression)) {}
+
   void print(std::output_iterator<char> auto &out, size_t depth) const {
     detail::indent(out, depth);
     std::format_to(out, "Statement\n");

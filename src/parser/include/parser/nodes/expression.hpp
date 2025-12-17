@@ -14,9 +14,15 @@ class Expression;
 
 using ExpressionList = std::vector<Expression>;
 
-struct FunctionCall {
+class FunctionCall {
   Identifier name;
   std::vector<Expression> args;
+
+public:
+  FunctionCall() = default;
+  FunctionCall(Identifier &&name, ExpressionList &&args);
+
+  void print(std::output_iterator<char> auto &out, size_t depth) const;
 };
 
 using PrefixExpression =
@@ -51,7 +57,8 @@ class Expression {
       Literal,
       // UnaryExpression,
       BinaryExpression,
-      Var
+      Var,
+      FunctionCall
       // PrefixExpression,
       // AnonymousFunction,
       // Table
@@ -65,6 +72,7 @@ public:
   // Expression(UnaryExpression &&expression) : inner(std::move(expression)) {}
   Expression(BinaryExpression &&expression) : inner(std::move(expression)) {}
   Expression(Var &&var) : inner(std::move(var)) {}
+  Expression(FunctionCall &&call) : inner(std::move(call)) {}
   // Expression(PrefixExpression &&expression) : inner(std::move(expression)) {}
   // Expression(AnonymousFunction &&function) : inner(std::move(function)) {}
   // Expression(Table &&table) : inner(std::move(table)) {}
@@ -88,5 +96,18 @@ inline void BinaryExpression::print(
   std::format_to(out, "{}\n", static_cast<uint8_t>(op));
   rhs->print(out, depth + 1);
 }
+
+inline void
+FunctionCall::print(std::output_iterator<char> auto &out, size_t depth) const {
+  detail::indent(out, depth);
+  std::format_to(out, "FunctionCall\n");
+  name.print(out, depth + 1);
+  for (const auto &arg : args) {
+    arg.print(out, depth + 1);
+  }
+}
+
+inline FunctionCall::FunctionCall(Identifier &&name, ExpressionList &&args)
+    : name(std::move(name)), args(std::move(args)) {}
 
 } // namespace l3::ast

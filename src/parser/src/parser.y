@@ -133,6 +133,7 @@ EXPRESSION:
           // UNARY EXPRESSION
           //   { $$ = ast::Expression(ast::UnaryExpression($1, std::make_shared<ast::Expression>($2))); }
            BINARY { $$ = ast::Expression(std::move($1)); }
+          | FUNCTION_CALL                { $$ = ast::Expression(std::move($1)); }
           | VAR                          { $$ = ast::Expression(std::move($1)); }
           | LITERAL                      { $$ = ast::Expression(std::move($1)); }
 
@@ -150,6 +151,8 @@ STATEMENT:
            // { $$ = ast::Statement(ast::Assignment(std::move($1), std::move($3))); }
            let IDENTIFIER equal EXPRESSION
            { $$ = ast::Statement(ast::Declaration(std::move($2), std::move($4))); }
+         | EXPRESSION
+            { $$ = ast::Statement(std::move($1)); }
 
 LAST_STATEMENT: _return EXPRESSION
                 { $$ = ast::LastStatement(ast::ReturnStatement{ std::move($2) }); }
