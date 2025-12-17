@@ -30,11 +30,11 @@ template <> struct std::formatter<l3::ast::Unary> {
   static constexpr auto format(l3::ast::Unary op, format_context &ctx) {
     switch (op) {
     case l3::ast::Unary::Plus:
-      return std::format_to(ctx.out(), "+");
+      return std::format_to(ctx.out(), "Plus");
     case l3::ast::Unary::Minus:
-      return std::format_to(ctx.out(), "-");
+      return std::format_to(ctx.out(), "Minus");
     case l3::ast::Unary::Not:
-      return std::format_to(ctx.out(), "!");
+      return std::format_to(ctx.out(), "Not");
     }
   }
 };
