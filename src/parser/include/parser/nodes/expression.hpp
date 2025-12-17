@@ -89,11 +89,8 @@ public:
 inline void BinaryExpression::print(
     std::output_iterator<char> auto &out, size_t depth
 ) const {
-  detail::indent(out, depth);
-  std::format_to(out, "BinaryExpression\n");
+  detail::format_indented_line(out, depth, "BinaryExpression {}", op);
   lhs->print(out, depth + 1);
-  detail::indent(out, depth + 1);
-  std::format_to(out, "{}\n", static_cast<uint8_t>(op));
   rhs->print(out, depth + 1);
 }
 
