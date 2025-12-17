@@ -176,6 +176,7 @@ using Statement = std::variant<
 
 struct Block {
   std::vector<Statement> statements;
+  // std::optional<LastStatement> lastStatement;
 };
 
 } // namespace l3::ast

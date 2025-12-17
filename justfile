@@ -1,6 +1,7 @@
 root := justfile_directory()
 builddir := root / "build"
 export CMAKE_EXPORT_COMPILE_COMMANDS := "1"
+export CMAKE_COLOR_DIAGNOSTICS := "ON"
 
 # executable to use for `just run`
 
