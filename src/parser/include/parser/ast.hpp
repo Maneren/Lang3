@@ -1,6 +1,7 @@
 #pragma once
 
 #include "nodes/block.hpp"
+#include "nodes/printing.hpp"
 
 #include <memory>
 #include <optional>

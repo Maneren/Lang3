@@ -1,8 +1,8 @@
 #pragma once
 
-#include "detail.hpp"
 #include "expression.hpp"
-#include "parser/nodes/operator.hpp"
+#include "function.hpp"
+#include "operator.hpp"
 
 namespace l3::ast {
 
@@ -16,11 +16,7 @@ public:
   Assignment(Variable &&var, AssignmentOperator op, Expression &&expr)
       : var(std::move(var)), op(op), expr(std::move(expr)) {}
 
-  void print(std::output_iterator<char> auto &out, size_t depth) const {
-    detail::format_indented_line(out, depth, "Assignment {}", op);
-    var.print(out, depth + 1);
-    expr.print(out, depth + 1);
-  }
+  void print(std::output_iterator<char> auto &out, size_t depth) const;
 };
 
 class Declaration {
@@ -32,21 +28,16 @@ public:
   Declaration(Identifier &&var, Expression &&expr)
       : var(std::move(var)), expr(std::move(expr)) {}
 
-  void print(std::output_iterator<char> auto &out, size_t depth) const {
-    detail::format_indented_line(out, depth, "Declaration");
-    var.print(out, depth + 1);
-    expr.print(out, depth + 1);
-  }
+  void print(std::output_iterator<char> auto &out, size_t depth) const;
 };
 
 class Statement {
   std::variant<
       Assignment,
       Declaration,
-      FunctionCall
+      FunctionCall,
       // IfClause,
-      // NamedFunction
-      >
+      NamedFunction>
       inner;
 
 public:
@@ -54,13 +45,9 @@ public:
   Statement(Assignment &&assignment) : inner(std::move(assignment)) {}
   Statement(Declaration &&declaration) : inner(std::move(declaration)) {}
   Statement(FunctionCall &&call) : inner(std::move(call)) {}
+  Statement(NamedFunction &&function) : inner(std::move(function)) {}
 
-  void print(std::output_iterator<char> auto &out, size_t depth) const {
-    detail::format_indented_line(out, depth, "Statement");
-    inner.visit([&out, depth](const auto &node) -> void {
-      node.print(out, depth + 1);
-    });
-  }
+  void print(std::output_iterator<char> auto &out, size_t depth) const;
 };
 
 class ReturnStatement {
@@ -70,24 +57,15 @@ public:
   ReturnStatement() = default;
   ReturnStatement(Expression &&expression) : expr(std::move(expression)) {}
 
-  void print(std::output_iterator<char> auto &out, size_t depth) const {
-    detail::format_indented_line(out, depth, "Return");
-    if (expr) {
-      expr->print(out, depth + 1);
-    }
-  }
+  void print(std::output_iterator<char> auto &out, size_t depth) const;
 };
 
 struct BreakStatement {
-  void print(std::output_iterator<char> auto &out, size_t depth) const {
-    detail::format_indented_line(out, depth, "Break");
-  }
+  void print(std::output_iterator<char> auto &out, size_t depth) const;
 };
 
 struct ContinueStatement {
-  void print(std::output_iterator<char> auto &out, size_t depth) const {
-    detail::format_indented_line(out, depth, "Continue");
-  }
+  void print(std::output_iterator<char> auto &out, size_t depth) const;
 };
 
 class LastStatement {
@@ -99,12 +77,7 @@ public:
   LastStatement(BreakStatement statement) : inner(statement) {}
   LastStatement(ContinueStatement statement) : inner(statement) {}
 
-  void print(std::output_iterator<char> auto &out, size_t depth) const {
-    detail::format_indented_line(out, depth, "LastStatement");
-    inner.visit([&out, depth](const auto &node) -> void {
-      node.print(out, depth + 1);
-    });
-  }
+  void print(std::output_iterator<char> auto &out, size_t depth) const;
 };
 
 } // namespace l3::ast

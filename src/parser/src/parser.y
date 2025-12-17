@@ -66,6 +66,7 @@
       <ast::AssignmentOperator> ASSIGNMENT_OPERATOR
       <ast::Assignment> ASSIGNMENT
       <ast::Declaration> DECLARATION
+      <ast::NamedFunction> FUNCTION_DEFINITION
       <ast::Statement> STATEMENT
       <ast::LastStatement> LAST_STATEMENT
       <ast::Block> BLOCK
@@ -129,7 +130,7 @@ NAME_LIST: IDENTIFIER comma NAME_LIST { $3.push_back($1); $$ = $3; }
          | %empty             { $$ = ast::NameList{}; }
 
 FUNCTION_BODY: lparen NAME_LIST rparen BLOCK end
-               { $$ = ast::FunctionBody{ $2, std::make_shared<ast::Block>($4) }; }
+               { $$ = ast::FunctionBody{ std::move($2), std::make_shared<ast::Block>($4) }; }
 
 FUNCTION_CALL: IDENTIFIER ARGUMENTS
                { $$ = ast::FunctionCall(std::move($1), std::move($2)); }
@@ -168,9 +169,13 @@ ASSIGNMENT: VAR ASSIGNMENT_OPERATOR EXPRESSION
 DECLARATION: let IDENTIFIER equal EXPRESSION
              { $$ = ast::Declaration(std::move($2), std::move($4)); }
 
-STATEMENT: ASSIGNMENT     { $$ = ast::Statement(std::move($1)); }
-         | DECLARATION    { $$ = ast::Statement(std::move($1)); }
-         | FUNCTION_CALL  { $$ = ast::Statement(std::move($1)); }
+FUNCTION_DEFINITION: function IDENTIFIER FUNCTION_BODY
+                     { $$ = ast::NamedFunction(std::move($2), std::move($3)); }
+
+STATEMENT: ASSIGNMENT           { $$ = ast::Statement(std::move($1)); }
+         | DECLARATION          { $$ = ast::Statement(std::move($1)); }
+         | FUNCTION_CALL        { $$ = ast::Statement(std::move($1)); }
+         | FUNCTION_DEFINITION  { $$ = ast::Statement(std::move($1)); }
 
 LAST_STATEMENT: _return EXPRESSION
                 { $$ = ast::LastStatement(ast::ReturnStatement{ std::move($2) }); }

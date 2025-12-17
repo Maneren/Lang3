@@ -1,6 +1,5 @@
 #pragma once
 
-#include "detail.hpp"
 #include "identifier.hpp"
 #include "literal.hpp"
 #include "operator.hpp"
@@ -14,13 +13,15 @@ class Expression;
 
 using ExpressionList = std::vector<Expression>;
 
+using Arguments = ExpressionList;
+
 class FunctionCall {
   Identifier name;
-  std::vector<Expression> args;
+  Arguments args;
 
 public:
   FunctionCall() = default;
-  FunctionCall(Identifier &&name, ExpressionList &&args);
+  FunctionCall(Identifier &&name, Arguments &&args);
 
   void print(std::output_iterator<char> auto &out, size_t depth) const;
 };
@@ -90,30 +91,6 @@ public:
     visit([&out, depth](const auto &node) -> void { node.print(out, depth); });
   }
 };
-
-inline void UnaryExpression::print(
-    std::output_iterator<char> auto &out, size_t depth
-) const {
-  detail::format_indented_line(out, depth, "UnaryExpression {}", op);
-  expr->print(out, depth + 1);
-}
-
-inline void BinaryExpression::print(
-    std::output_iterator<char> auto &out, size_t depth
-) const {
-  detail::format_indented_line(out, depth, "BinaryExpression {}", op);
-  lhs->print(out, depth + 1);
-  rhs->print(out, depth + 1);
-}
-
-inline void
-FunctionCall::print(std::output_iterator<char> auto &out, size_t depth) const {
-  detail::format_indented_line(out, depth, "FunctionCall");
-  name.print(out, depth + 1);
-  for (const auto &arg : args) {
-    arg.print(out, depth + 1);
-  }
-}
 
 inline FunctionCall::FunctionCall(Identifier &&name, ExpressionList &&args)
     : name(std::move(name)), args(std::move(args)) {}

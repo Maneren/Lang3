@@ -1,15 +1,12 @@
 #pragma once
 
-#include "detail.hpp"
 #include <string>
 #include <variant>
 
 namespace l3::ast {
 
 struct Nil {
-  void print(std::output_iterator<char> auto &out, size_t depth) const {
-    detail::format_indented_line(out, depth, "Nil");
-  }
+  void print(std::output_iterator<char> auto &out, size_t depth) const;
 };
 
 class Boolean {
@@ -17,9 +14,7 @@ class Boolean {
 
 public:
   Boolean(bool value) : value(value) {}
-  void print(std::output_iterator<char> auto &out, size_t depth) const {
-    detail::format_indented_line(out, depth, "Boolean {}", value);
-  }
+  void print(std::output_iterator<char> auto &out, size_t depth) const;
 };
 
 class Number {
@@ -27,9 +22,7 @@ class Number {
 
 public:
   Number(long long value) : value(value) {}
-  void print(std::output_iterator<char> auto &out, size_t depth) const {
-    detail::format_indented_line(out, depth, "Number {}", value);
-  }
+  void print(std::output_iterator<char> auto &out, size_t depth) const;
 };
 
 class String {
@@ -37,10 +30,9 @@ class String {
 
 public:
   String(std::string &&value) : value(std::move(value)) {}
-  void print(std::output_iterator<char> auto &out, size_t depth) const {
-    detail::format_indented_line(out, depth, "String {}", value);
-  }
+  void print(std::output_iterator<char> auto &out, size_t depth) const;
 };
+
 class Literal {
   std::variant<Nil, Boolean, Number, String> inner;
 

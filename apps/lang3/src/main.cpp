@@ -1,6 +1,7 @@
 #include "lexer/lexer.hpp"
 #include "parser.tab.h"
 #include <cstring>
+#include <print>
 
 int main(int argc, char *argv[]) {
   const auto args = std::span{argv, static_cast<size_t>(argc)};
@@ -18,8 +19,7 @@ int main(int argc, char *argv[]) {
     return result;
   }
 
-  std::ostreambuf_iterator<char> out_iterator(std::cout);
-  program.print(out_iterator, 0);
+  std::print("{}", program);
 
   return 0;
 }

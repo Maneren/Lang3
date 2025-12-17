@@ -4,6 +4,10 @@ let b = a * -3
 
 print(a + b)
 
+function add(a, b)
+  return a + b
+end
+
 let c = add(a, b)
 
 c += 1
