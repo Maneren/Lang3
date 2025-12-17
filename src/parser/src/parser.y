@@ -61,6 +61,7 @@
       <ast::ExpressionList> EXPRESSION_LIST
       <ast::IfClause> IF
       <ast::Statement> STATEMENT
+      <ast::LastStatement> LAST_STATEMENT
       <ast::Block> BLOCK
       PROGRAM
 
@@ -144,9 +145,14 @@ STATEMENT: id equal EXPRESSION       { $$ = ast::Statement(ast::Assignment($1, $
          | function id FUNCTION_BODY  { $$ = ast::Statement(ast::NamedFunction($2, $3)); }
          | let id equal EXPRESSION    { $$ = ast::Statement(ast::Declaration($2, $4)); }
 
+LAST_STATEMENT: _return EXPRESSION  { $$ = ast::ReturnStatement{ $2 }; }
+              | _continue           { $$ = ast::ContinueStatement{}; }
+              | _break              { $$ = ast::BreakStatement{}; }
 
 BLOCK: STATEMENT            { $$ = ast::Block{ { $1 }, std::nullopt }; }
      | STATEMENT semi BLOCK { $3.statements.push_back($1); $$ = $3; }
+     | LAST_STATEMENT       { $$ = ast::Block{ {}, std::make_optional($1) }; }
+     | LAST_STATEMENT semi  { $$ = ast::Block{ {}, std::make_optional($1) }; }
      | %empty               { $$ = ast::Block{ {}, std::nullopt }; std::cerr << "empty block" << std::endl; }
 
 PROGRAM: BLOCK { program = $1; }

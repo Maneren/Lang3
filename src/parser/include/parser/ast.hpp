@@ -39,7 +39,6 @@ struct String {
 };
 using Literal = std::variant<Nil, True, False, Num, String>;
 
-
 enum class Separator : uint8_t { Comma, Semicolon };
 
 using Identifier = std::string;
@@ -166,17 +165,17 @@ using Statement = std::variant<
     IfClause,
     NamedFunction>;
 
-// using ReturnStatement = Expression;
-//
-// struct BreakStatement {};
-// struct ContinueStatement {};
-//
-// using LastStatement =
-//     std::variant<ReturnStatement, BreakStatement, ContinueStatement>;
+using ReturnStatement = Expression;
+
+struct BreakStatement {};
+struct ContinueStatement {};
+
+using LastStatement =
+    std::variant<ReturnStatement, BreakStatement, ContinueStatement>;
 
 struct Block {
   std::vector<Statement> statements;
-  // std::optional<LastStatement> lastStatement;
+  std::optional<LastStatement> lastStatement;
 };
 
 using Program = Block;
