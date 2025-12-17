@@ -45,7 +45,8 @@
 %token _if _else _while _break _continue _return _for in _do _true _false then
        end nil function let plus minus mul div equal equal_equal not_equal less
        less_equal greater greater_equal _not _and _or lparen rparen lbrace
-       rbrace lbracket rbracket comma semi dot mod concat colon
+       rbrace lbracket rbracket comma semi dot mod concat colon plus_equal
+       minus_equal mul_equal div_equal mod_equal pow_equal concat_equal
        <std::string> id
        <std::string> string
        <size_t> num
@@ -62,6 +63,9 @@
       <ast::Identifier> IDENTIFIER
       <ast::Variable> VAR
       <ast::IfClause> IF
+      <ast::AssignmentOperator> ASSIGNMENT_OPERATOR
+      <ast::Assignment> ASSIGNMENT
+      <ast::Declaration> DECLARATION
       <ast::Statement> STATEMENT
       <ast::LastStatement> LAST_STATEMENT
       <ast::Block> BLOCK
@@ -80,36 +84,36 @@
 %%
 
 UNARY: minus EXPRESSION
-       { $$ = ast::UnaryExpression(ast::Unary::Minus, std::move($2)); }
+       { $$ = ast::UnaryExpression(ast::UnaryOperator::Minus, std::move($2)); }
      | _not  EXPRESSION
-       { $$ = ast::UnaryExpression(ast::Unary::Not, std::move($2)); }
+       { $$ = ast::UnaryExpression(ast::UnaryOperator::Not, std::move($2)); }
      | plus  EXPRESSION
-       { $$ = ast::UnaryExpression(ast::Unary::Plus, std::move($2)); }
+       { $$ = ast::UnaryExpression(ast::UnaryOperator::Plus, std::move($2)); }
 
 BINARY: EXPRESSION plus          EXPRESSION
-        { $$ = ast::BinaryExpression(std::move($1), ast::Binary::Plus, std::move($3)); }
+        { $$ = ast::BinaryExpression(std::move($1), ast::BinaryOperator::Plus, std::move($3)); }
       | EXPRESSION minus         EXPRESSION
-        { $$ = ast::BinaryExpression(std::move($1), ast::Binary::Minus, std::move($3)); }
+        { $$ = ast::BinaryExpression(std::move($1), ast::BinaryOperator::Minus, std::move($3)); }
       | EXPRESSION mul           EXPRESSION
-        { $$ = ast::BinaryExpression(std::move($1), ast::Binary::Multiply, std::move($3)); }
+        { $$ = ast::BinaryExpression(std::move($1), ast::BinaryOperator::Multiply, std::move($3)); }
       | EXPRESSION div           EXPRESSION
-        { $$ = ast::BinaryExpression(std::move($1), ast::Binary::Divide, std::move($3)); }
+        { $$ = ast::BinaryExpression(std::move($1), ast::BinaryOperator::Divide, std::move($3)); }
       | EXPRESSION equal_equal   EXPRESSION
-        { $$ = ast::BinaryExpression(std::move($1), ast::Binary::Equal, std::move($3)); }
+        { $$ = ast::BinaryExpression(std::move($1), ast::BinaryOperator::Equal, std::move($3)); }
       | EXPRESSION not_equal     EXPRESSION
-        { $$ = ast::BinaryExpression(std::move($1), ast::Binary::NotEqual, std::move($3)); }
+        { $$ = ast::BinaryExpression(std::move($1), ast::BinaryOperator::NotEqual, std::move($3)); }
       | EXPRESSION less          EXPRESSION
-        { $$ = ast::BinaryExpression(std::move($1), ast::Binary::Less, std::move($3)); }
+        { $$ = ast::BinaryExpression(std::move($1), ast::BinaryOperator::Less, std::move($3)); }
       | EXPRESSION less_equal    EXPRESSION
-        { $$ = ast::BinaryExpression(std::move($1), ast::Binary::LessEqual, std::move($3)); }
+        { $$ = ast::BinaryExpression(std::move($1), ast::BinaryOperator::LessEqual, std::move($3)); }
       | EXPRESSION greater       EXPRESSION
-        { $$ = ast::BinaryExpression(std::move($1), ast::Binary::Greater, std::move($3)); }
+        { $$ = ast::BinaryExpression(std::move($1), ast::BinaryOperator::Greater, std::move($3)); }
       | EXPRESSION greater_equal EXPRESSION
-        { $$ = ast::BinaryExpression(std::move($1), ast::Binary::GreaterEqual, std::move($3)); }
+        { $$ = ast::BinaryExpression(std::move($1), ast::BinaryOperator::GreaterEqual, std::move($3)); }
       | EXPRESSION _and          EXPRESSION
-        { $$ = ast::BinaryExpression(std::move($1), ast::Binary::And, std::move($3)); }
+        { $$ = ast::BinaryExpression(std::move($1), ast::BinaryOperator::And, std::move($3)); }
       | EXPRESSION _or           EXPRESSION
-        { $$ = ast::BinaryExpression(std::move($1), ast::Binary::Or, std::move($3)); }
+        { $$ = ast::BinaryExpression(std::move($1), ast::BinaryOperator::Or, std::move($3)); }
 
 LITERAL: nil    { $$ = ast::Literal(ast::Nil()); }
        | _true  { $$ = ast::Literal(ast::Boolean(true)); }
@@ -150,13 +154,23 @@ IF: _if EXPRESSION then BLOCK end
   | _if EXPRESSION then BLOCK _else BLOCK end
     { $$ = ast::IfClause{ $2, std::make_shared<ast::Block>($4), std::make_shared<ast::Block>($6) }; }
 
-STATEMENT:
-           // VAR equal EXPRESSION
-           // { $$ = ast::Statement(ast::Assignment(std::move($1), std::move($3))); }
-           let IDENTIFIER equal EXPRESSION
-           { $$ = ast::Statement(ast::Declaration(std::move($2), std::move($4))); }
-         | FUNCTION_CALL
-           { $$ = ast::Statement(std::move($1)); }
+ASSIGNMENT_OPERATOR: equal       { $$ = ast::AssignmentOperator::Assign; }
+                   | plus_equal  { $$ = ast::AssignmentOperator::Plus; }
+                   | minus_equal { $$ = ast::AssignmentOperator::Minus; }
+                   | mul_equal   { $$ = ast::AssignmentOperator::Multiply; }
+                   | div_equal   { $$ = ast::AssignmentOperator::Divide; }
+                   | mod_equal   { $$ = ast::AssignmentOperator::Modulo; }
+                   | pow_equal   { $$ = ast::AssignmentOperator::Power; }
+
+ASSIGNMENT: VAR ASSIGNMENT_OPERATOR EXPRESSION
+            { $$ = ast::Assignment(std::move($1), $2, std::move($3)); }
+
+DECLARATION: let IDENTIFIER equal EXPRESSION
+             { $$ = ast::Declaration(std::move($2), std::move($4)); }
+
+STATEMENT: ASSIGNMENT     { $$ = ast::Statement(std::move($1)); }
+         | DECLARATION    { $$ = ast::Statement(std::move($1)); }
+         | FUNCTION_CALL  { $$ = ast::Statement(std::move($1)); }
 
 LAST_STATEMENT: _return EXPRESSION
                 { $$ = ast::LastStatement(ast::ReturnStatement{ std::move($2) }); }

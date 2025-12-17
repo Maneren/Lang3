@@ -6,4 +6,8 @@ print(a + b)
 
 let c = add(a, b)
 
+c += 1
+
 let valid = 0 <= c and c < 10 or not (b == 0 and a == 0)
+
+valid = not valid

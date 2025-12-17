@@ -29,13 +29,13 @@ using PrefixExpression =
     std::variant<Variable, std::shared_ptr<Expression>, FunctionCall>;
 
 class UnaryExpression {
-  Unary op;
+  UnaryOperator op;
   std::shared_ptr<Expression> expr;
 
 public:
   UnaryExpression() = default;
 
-  UnaryExpression(Unary op, Expression &&expr)
+  UnaryExpression(UnaryOperator op, Expression &&expr)
       : op(op), expr(std::make_shared<Expression>(std::move(expr))) {}
 
   void print(std::output_iterator<char> auto &out, size_t depth) const;
@@ -43,17 +43,17 @@ public:
 
 class BinaryExpression {
   std::shared_ptr<Expression> lhs;
-  Binary op;
+  BinaryOperator op;
   std::shared_ptr<Expression> rhs;
 
 public:
   BinaryExpression() = default;
 
-  BinaryExpression(Expression &&lhs, Binary op, Expression &&rhs)
+  BinaryExpression(Expression &&lhs, BinaryOperator op, Expression &&rhs)
       : lhs(std::make_shared<Expression>(std::move(lhs))), op(op),
         rhs(std::make_shared<Expression>(std::move(rhs))) {}
 
-  BinaryExpression(Expression &lhs, Binary op, Expression &rhs)
+  BinaryExpression(Expression &lhs, BinaryOperator op, Expression &rhs)
       : lhs(std::make_shared<Expression>(lhs)), op(op),
         rhs(std::make_shared<Expression>(rhs)) {}
 

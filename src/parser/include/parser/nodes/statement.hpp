@@ -2,15 +2,22 @@
 
 #include "detail.hpp"
 #include "expression.hpp"
+#include "parser/nodes/operator.hpp"
 
 namespace l3::ast {
 
-struct Assignment {
+class Assignment {
   Variable var;
+  AssignmentOperator op;
   Expression expr;
 
+public:
+  Assignment() = default;
+  Assignment(Variable &&var, AssignmentOperator op, Expression &&expr)
+      : var(std::move(var)), op(op), expr(std::move(expr)) {}
+
   void print(std::output_iterator<char> auto &out, size_t depth) const {
-    detail::format_indented_line(out, depth, "Assignment");
+    detail::format_indented_line(out, depth, "Assignment {}", op);
     var.print(out, depth + 1);
     expr.print(out, depth + 1);
   }
@@ -34,7 +41,7 @@ public:
 
 class Statement {
   std::variant<
-      // Assignment,
+      Assignment,
       Declaration,
       FunctionCall
       // IfClause,
@@ -44,6 +51,7 @@ class Statement {
 
 public:
   Statement() = default;
+  Statement(Assignment &&assignment) : inner(std::move(assignment)) {}
   Statement(Declaration &&declaration) : inner(std::move(declaration)) {}
   Statement(FunctionCall &&call) : inner(std::move(call)) {}
 

@@ -29,6 +29,13 @@
 "/"                         { return Token::div; }
 "%"                         { return Token::mod; }
 "="                         { return Token::equal; }
+"+="                        { return Token::plus_equal; }
+"-="                        { return Token::minus_equal; }
+"*="                        { return Token::mul_equal; }
+"/="                        { return Token::div_equal; }
+"%="                        { return Token::mod_equal; }
+"^="                        { return Token::pow_equal; }
+".="                        { return Token::concat_equal; }
 "("                         { return Token::lparen; }
 ")"                         { return Token::rparen; }
 "["                         { return Token::lbracket; }
