@@ -6,7 +6,7 @@
 namespace l3::ast {
 
 struct Assignment {
-  Var var;
+  Variable var;
   Expression expr;
 
   void print(std::output_iterator<char> auto &out, size_t depth) const {
@@ -38,7 +38,7 @@ class Statement {
   std::variant<
       // Assignment,
       Declaration,
-      Expression
+      FunctionCall
       // IfClause,
       // NamedFunction
       >
@@ -47,7 +47,7 @@ class Statement {
 public:
   Statement() = default;
   Statement(Declaration &&declaration) : inner(std::move(declaration)) {}
-  Statement(Expression &&expression) : inner(std::move(expression)) {}
+  Statement(FunctionCall &&call) : inner(std::move(call)) {}
 
   void print(std::output_iterator<char> auto &out, size_t depth) const {
     detail::indent(out, depth);

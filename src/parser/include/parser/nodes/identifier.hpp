@@ -20,11 +20,11 @@ public:
   }
 };
 
-class Var : public Identifier {
+class Variable : public Identifier {
 public:
   void print(std::output_iterator<char> auto &out, size_t depth) const {
     detail::indent(out, depth);
-    std::format_to(out, "Var '{}'\n", id);
+    std::format_to(out, "Variable '{}'\n", id);
   }
 };
 using NameList = std::vector<Identifier>;

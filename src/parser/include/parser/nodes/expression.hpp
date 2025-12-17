@@ -26,11 +26,19 @@ public:
 };
 
 using PrefixExpression =
-    std::variant<Var, std::shared_ptr<Expression>, FunctionCall>;
+    std::variant<Variable, std::shared_ptr<Expression>, FunctionCall>;
 
-struct UnaryExpression {
+class UnaryExpression {
   Unary op;
   std::shared_ptr<Expression> expr;
+
+public:
+  UnaryExpression() = default;
+
+  UnaryExpression(Unary op, Expression &&expr)
+      : op(op), expr(std::make_shared<Expression>(std::move(expr))) {}
+
+  void print(std::output_iterator<char> auto &out, size_t depth) const;
 };
 
 class BinaryExpression {
@@ -52,39 +60,43 @@ public:
   void print(std::output_iterator<char> auto &out, size_t depth) const;
 };
 
-class Expression {
-  std::variant<
-      Literal,
-      // UnaryExpression,
-      BinaryExpression,
-      Var,
-      FunctionCall
-      // PrefixExpression,
-      // AnonymousFunction,
-      // Table
-      >
-      inner;
+using ExpressionVariant = std::variant<
+    Literal,
+    UnaryExpression,
+    BinaryExpression,
+    Variable,
+    FunctionCall
+    // PrefixExpression,
+    // AnonymousFunction,
+    // Table
+    >;
 
+class Expression : ExpressionVariant {
 public:
   Expression() = default;
 
-  Expression(Literal &&literal) : inner(std::move(literal)) {}
-  // Expression(UnaryExpression &&expression) : inner(std::move(expression)) {}
-  Expression(BinaryExpression &&expression) : inner(std::move(expression)) {}
-  Expression(Var &&var) : inner(std::move(var)) {}
-  Expression(FunctionCall &&call) : inner(std::move(call)) {}
+  Expression(Literal &&literal) : ExpressionVariant(std::move(literal)) {}
+  Expression(UnaryExpression &&expression)
+      : ExpressionVariant(std::move(expression)) {}
+  Expression(BinaryExpression &&expression)
+      : ExpressionVariant(std::move(expression)) {}
+  Expression(Variable &&var) : ExpressionVariant(std::move(var)) {}
+  Expression(FunctionCall &&call) : ExpressionVariant(std::move(call)) {}
   // Expression(PrefixExpression &&expression) : inner(std::move(expression)) {}
   // Expression(AnonymousFunction &&function) : inner(std::move(function)) {}
   // Expression(Table &&table) : inner(std::move(table)) {}
 
   void print(std::output_iterator<char> auto &out, size_t depth) const {
-    detail::indent(out, depth);
-    std::format_to(out, "Expression\n");
-    inner.visit([&out, depth](const auto &node) -> void {
-      node.print(out, depth + 1);
-    });
+    visit([&out, depth](const auto &node) -> void { node.print(out, depth); });
   }
 };
+
+inline void UnaryExpression::print(
+    std::output_iterator<char> auto &out, size_t depth
+) const {
+  detail::format_indented_line(out, depth, "UnaryExpression {}", op);
+  expr->print(out, depth + 1);
+}
 
 inline void BinaryExpression::print(
     std::output_iterator<char> auto &out, size_t depth
