@@ -65,3 +65,5 @@
 
 [[:space:]] ;
 . { std::fprintf(stderr, "Unknown character: %c\n", *yytext); }
+
+%%

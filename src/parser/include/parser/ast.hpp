@@ -179,4 +179,6 @@ struct Block {
   // std::optional<LastStatement> lastStatement;
 };
 
+using Program = Block;
+
 } // namespace l3::ast

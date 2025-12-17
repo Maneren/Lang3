@@ -24,6 +24,7 @@
 
 %parse-param {L3Lexer &lexer}
 %parse-param {const bool debug}
+%parse-param {ast::Program &program}
 
 %initial-action
 {
@@ -61,6 +62,7 @@
       <ast::IfClause> IF
       <ast::Statement> STATEMENT
       <ast::Block> BLOCK
+      PROGRAM
 
 %right equal
 %left  _or
@@ -71,7 +73,7 @@
 %left  mul div
 %right pow
 
-%start BLOCK
+%start PROGRAM
 
 %%
 
@@ -146,6 +148,8 @@ STATEMENT: id equal EXPRESSION       { $$ = ast::Statement(ast::Assignment($1, $
 BLOCK: STATEMENT            { $$ = ast::Block{ { $1 }, std::nullopt }; }
      | STATEMENT semi BLOCK { $3.statements.push_back($1); $$ = $3; }
      | %empty               { $$ = ast::Block{ {}, std::nullopt }; std::cerr << "empty block" << std::endl; }
+
+PROGRAM: BLOCK { program = $1; }
 
 %%
 

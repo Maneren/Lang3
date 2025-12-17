@@ -6,9 +6,15 @@
 int main(int argc, char *argv[]) {
   const bool debug = argc > 1 && std::strcmp(argv[1], "--debug") == 0;
   l3::L3Lexer lexer(std::cin, debug);
-  l3::L3Parser parser(lexer, debug);
+
+  auto program = l3::ast::Program{};
+
+  l3::L3Parser parser(lexer, debug, program);
   const auto result = parser();
 
-  std::println("result: {}", result);
+  if (result != 0) {
+    return result;
+  }
+
   return 0;
 }
