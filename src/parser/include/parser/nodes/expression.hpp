@@ -50,7 +50,8 @@ class Expression {
   std::variant<
       Literal,
       // UnaryExpression,
-      BinaryExpression
+      BinaryExpression,
+      Var
       // PrefixExpression,
       // AnonymousFunction,
       // Table
@@ -63,6 +64,7 @@ public:
   Expression(Literal &&literal) : inner(std::move(literal)) {}
   // Expression(UnaryExpression &&expression) : inner(std::move(expression)) {}
   Expression(BinaryExpression &&expression) : inner(std::move(expression)) {}
+  Expression(Var &&var) : inner(std::move(var)) {}
   // Expression(PrefixExpression &&expression) : inner(std::move(expression)) {}
   // Expression(AnonymousFunction &&function) : inner(std::move(function)) {}
   // Expression(Table &&table) : inner(std::move(table)) {}

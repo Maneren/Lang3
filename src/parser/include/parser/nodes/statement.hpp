@@ -11,18 +11,25 @@ struct Assignment {
 
   void print(std::output_iterator<char> auto &out, size_t depth) const {
     detail::indent(out, depth);
-    std::format_to(out, "Assignment '{}'\n", var);
+    std::format_to(out, "Assignment\n");
+    var.print(out, depth + 1);
     expr.print(out, depth + 1);
   }
 };
 
-struct Declaration {
+class Declaration {
   Identifier var;
   Expression expr;
 
+public:
+  Declaration() = default;
+  Declaration(Identifier &&var, Expression &&expr)
+      : var(std::move(var)), expr(std::move(expr)) {}
+
   void print(std::output_iterator<char> auto &out, size_t depth) const {
     detail::indent(out, depth);
-    std::format_to(out, "Declaration '{}'\n", var);
+    std::format_to(out, "Declaration\n");
+    var.print(out, depth + 1);
     expr.print(out, depth + 1);
   }
 };
