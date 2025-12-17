@@ -10,8 +10,7 @@ struct Assignment {
   Expression expr;
 
   void print(std::output_iterator<char> auto &out, size_t depth) const {
-    detail::indent(out, depth);
-    std::format_to(out, "Assignment\n");
+    detail::format_indented_line(out, depth, "Assignment");
     var.print(out, depth + 1);
     expr.print(out, depth + 1);
   }
@@ -27,8 +26,7 @@ public:
       : var(std::move(var)), expr(std::move(expr)) {}
 
   void print(std::output_iterator<char> auto &out, size_t depth) const {
-    detail::indent(out, depth);
-    std::format_to(out, "Declaration\n");
+    detail::format_indented_line(out, depth, "Declaration");
     var.print(out, depth + 1);
     expr.print(out, depth + 1);
   }
@@ -50,8 +48,7 @@ public:
   Statement(FunctionCall &&call) : inner(std::move(call)) {}
 
   void print(std::output_iterator<char> auto &out, size_t depth) const {
-    detail::indent(out, depth);
-    std::format_to(out, "Statement\n");
+    detail::format_indented_line(out, depth, "Statement");
     inner.visit([&out, depth](const auto &node) -> void {
       node.print(out, depth + 1);
     });
@@ -66,8 +63,7 @@ public:
   ReturnStatement(Expression &&expression) : expr(std::move(expression)) {}
 
   void print(std::output_iterator<char> auto &out, size_t depth) const {
-    detail::indent(out, depth);
-    std::format_to(out, "Return\n");
+    detail::format_indented_line(out, depth, "Return");
     if (expr) {
       expr->print(out, depth + 1);
     }
@@ -76,15 +72,13 @@ public:
 
 struct BreakStatement {
   void print(std::output_iterator<char> auto &out, size_t depth) const {
-    detail::indent(out, depth);
-    std::format_to(out, "Break\n");
+    detail::format_indented_line(out, depth, "Break");
   }
 };
 
 struct ContinueStatement {
   void print(std::output_iterator<char> auto &out, size_t depth) const {
-    detail::indent(out, depth);
-    std::format_to(out, "Continue\n");
+    detail::format_indented_line(out, depth, "Continue");
   }
 };
 
@@ -98,8 +92,7 @@ public:
   LastStatement(ContinueStatement statement) : inner(statement) {}
 
   void print(std::output_iterator<char> auto &out, size_t depth) const {
-    detail::indent(out, depth);
-    std::format_to(out, "LastStatement\n");
+    detail::format_indented_line(out, depth, "LastStatement");
     inner.visit([&out, depth](const auto &node) -> void {
       node.print(out, depth + 1);
     });

@@ -108,8 +108,7 @@ inline void BinaryExpression::print(
 
 inline void
 FunctionCall::print(std::output_iterator<char> auto &out, size_t depth) const {
-  detail::indent(out, depth);
-  std::format_to(out, "FunctionCall\n");
+  detail::format_indented_line(out, depth, "FunctionCall");
   name.print(out, depth + 1);
   for (const auto &arg : args) {
     arg.print(out, depth + 1);

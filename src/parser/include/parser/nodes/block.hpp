@@ -22,13 +22,13 @@ public:
   void add_statement(Statement &&statement);
 
   void print(std::output_iterator<char> auto &out, size_t depth) const {
-    detail::indent(out, depth);
-    std::format_to(out, "Block\n");
+    detail::format_indented_line(out, depth, "Block");
     for (const Statement &statement : statements) {
       statement.print(out, depth + 1);
     }
     if (lastStatement) {
-      lastStatement->print(out, depth + 1);
+      detail::format_indented_line(out, depth + 1, "LastStatement");
+      lastStatement->print(out, depth + 2);
     }
   }
 };

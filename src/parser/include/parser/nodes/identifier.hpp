@@ -15,16 +15,14 @@ public:
   Identifier(std::string &&id) : id(std::move(id)) {}
 
   void print(std::output_iterator<char> auto &out, size_t depth) const {
-    detail::indent(out, depth);
-    std::format_to(out, "Identifier '{}'\n", id);
+    detail::format_indented_line(out, depth, "Identifier '{}'", id);
   }
 };
 
 class Variable : public Identifier {
 public:
   void print(std::output_iterator<char> auto &out, size_t depth) const {
-    detail::indent(out, depth);
-    std::format_to(out, "Variable '{}'\n", id);
+    detail::format_indented_line(out, depth, "Variable '{}'", id);
   }
 };
 using NameList = std::vector<Identifier>;
