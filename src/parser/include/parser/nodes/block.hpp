@@ -18,7 +18,7 @@ public:
   Block(LastStatement &&lastStatement)
       : lastStatement(std::move(lastStatement)) {}
 
-  void add_statement(Statement &&statement);
+  Block &&with_statement(Statement &&statement);
 
   void print(std::output_iterator<char> auto &out, size_t depth) const {
     detail::format_indented_line(out, depth, "Block");

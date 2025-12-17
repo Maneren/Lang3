@@ -132,13 +132,14 @@ FUNCTION_CALL: IDENTIFIER ARGUMENTS
 
 ARGUMENTS: lparen EXPRESSION_LIST rparen { $$ = $2; }
 
-EXPRESSION: UNARY         { $$ = ast::Expression(std::move($1)); }
-          | BINARY        { $$ = ast::Expression(std::move($1)); }
-          // | TABLE                        { $$ = ast::Expression($1); }
-          // | FUNCTION                     { $$ = ast::Expression($1); }
-          | FUNCTION_CALL { $$ = ast::Expression(std::move($1)); }
-          | VAR           { $$ = ast::Expression(std::move($1)); }
-          | LITERAL       { $$ = ast::Expression(std::move($1)); }
+EXPRESSION: UNARY                    { $$ = ast::Expression(std::move($1)); }
+          | BINARY                   { $$ = ast::Expression(std::move($1)); }
+          // | TABLE                     { $$ = ast::Expression($1); }
+          // | FUNCTION                  { $$ = ast::Expression($1); }
+          | FUNCTION_CALL            { $$ = ast::Expression(std::move($1)); }
+          | VAR                      { $$ = ast::Expression(std::move($1)); }
+          | LITERAL                  { $$ = ast::Expression(std::move($1)); }
+          | lparen EXPRESSION rparen { $$ = std::move($2); }
 
 EXPRESSION_LIST: EXPRESSION comma EXPRESSION_LIST { $3.push_back($1); $$ = ast::ExpressionList{ $3 }; }
                | EXPRESSION                       { $$ = ast::ExpressionList{ $1 }; }
@@ -163,8 +164,8 @@ LAST_STATEMENT: _return EXPRESSION
               | _break              { $$ = ast::LastStatement(ast::BreakStatement{}); }
 
 BLOCK: STATEMENT            { $$ = ast::Block{ std::move($1) }; }
-     | STATEMENT BLOCK      { $2.add_statement(std::move($1)); $$ = std::move($2); }
-     | STATEMENT semi BLOCK { $3.add_statement(std::move($1)); $$ = std::move($3); }
+     | STATEMENT BLOCK      { $$ = $2.with_statement(std::move($1)); }
+     | STATEMENT semi BLOCK { $$ = $3.with_statement(std::move($1)); }
      | LAST_STATEMENT       { $$ = ast::Block{ std::move($1) }; }
      | LAST_STATEMENT semi  { $$ = ast::Block{ std::move($1) }; }
 

@@ -4,8 +4,9 @@
 
 namespace l3::ast {
 
-void Block::add_statement(Statement &&statement) {
+Block &&Block::with_statement(Statement &&statement) {
   statements.push_front(std::move(statement));
+  return std::move(*this);
 }
 
 } // namespace l3::ast
