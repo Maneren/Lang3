@@ -5,6 +5,28 @@
 
 namespace l3::ast {
 
+class Expression;
+
+class ExpressionList : public std::deque<Expression> {
+public:
+  ExpressionList() = default;
+  ExpressionList(Expression &&expr) { emplace_front(std::move(expr)); };
+  ExpressionList &&with_expression(Expression &&);
+};
+
+using Arguments = ExpressionList;
+
+class FunctionCall {
+  Variable name;
+  Arguments args;
+
+public:
+  FunctionCall() = default;
+  FunctionCall(Variable &&name, Arguments &&args);
+
+  void print(std::output_iterator<char> auto &out, size_t depth) const;
+};
+
 class Block;
 
 class FunctionBody {

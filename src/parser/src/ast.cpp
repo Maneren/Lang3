@@ -30,7 +30,17 @@ BinaryExpression::BinaryExpression(
     : lhs(std::make_unique<Expression>(std::move(lhs))), op(op),
       rhs(std::make_unique<Expression>(std::move(rhs))) {}
 
-FunctionCall::FunctionCall(Identifier &&name, ExpressionList &&args)
+NameList &&NameList::with_name(Identifier &&ident) {
+  emplace_front(std::move(ident));
+  return std::move(*this);
+}
+
+ExpressionList &&ExpressionList::with_expression(Expression &&expr) {
+  emplace_front(std::move(expr));
+  return std::move(*this);
+}
+
+FunctionCall::FunctionCall(Variable &&name, ExpressionList &&args)
     : name(std::move(name)), args(std::move(args)) {}
 
 FunctionBody::FunctionBody(NameList &&parameters, Block &&block)

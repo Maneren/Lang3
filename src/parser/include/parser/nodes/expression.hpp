@@ -6,26 +6,10 @@
 #include "operator.hpp"
 #include <memory>
 #include <variant>
-#include <vector>
 
 namespace l3::ast {
 
 class Expression;
-
-using ExpressionList = std::vector<Expression>;
-
-using Arguments = ExpressionList;
-
-class FunctionCall {
-  Identifier name;
-  Arguments args;
-
-public:
-  FunctionCall() = default;
-  FunctionCall(Identifier &&name, Arguments &&args);
-
-  void print(std::output_iterator<char> auto &out, size_t depth) const;
-};
 
 using PrefixExpression =
     std::variant<Variable, std::unique_ptr<Expression>, FunctionCall>;

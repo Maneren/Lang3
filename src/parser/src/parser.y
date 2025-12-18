@@ -126,16 +126,16 @@ LITERAL: nil    { $$ = ast::Literal(ast::Nil()); }
 IDENTIFIER: id { $$ = ast::Identifier(std::move($1)); }
 
 VAR: IDENTIFIER { $$ = ast::Variable(std::move($1)); }
-NAME_LIST: IDENTIFIER comma NAME_LIST { $3.push_back($1); $$ = $3; }
-         | IDENTIFIER                 { $$ = ast::NameList{ $1 }; }
-         | %empty             { $$ = ast::NameList{}; }
+NAME_LIST: IDENTIFIER comma NAME_LIST { $$ = $3.with_name(std::move($1)); }
+         | IDENTIFIER                 { $$ = ast::NameList{}.with_name(std::move($1)); }
+         | %empty                     { $$ = ast::NameList{}; }
 
 FUNCTION_BODY: lparen NAME_LIST rparen BLOCK end
                { $$ = ast::FunctionBody{ std::move($2), std::move($4) }; }
 
 ANONYMOUS_FUNCTION: function FUNCTION_BODY { $$ = ast::AnonymousFunction(std::move($2)); }
 
-FUNCTION_CALL: IDENTIFIER ARGUMENTS
+FUNCTION_CALL: VAR ARGUMENTS
                { $$ = ast::FunctionCall(std::move($1), std::move($2)); }
 
 ARGUMENTS: lparen EXPRESSION_LIST rparen { $$ = std::move($2); }
@@ -150,9 +150,9 @@ EXPRESSION: UNARY                    { $$ = ast::Expression(std::move($1)); }
           | lparen EXPRESSION rparen { $$ = std::move($2); }
 
 EXPRESSION_LIST: EXPRESSION comma EXPRESSION_LIST
-                 { $3.push_back(std::move($1)); $$ = ast::ExpressionList{ std::move($3) }; }
+                 { $$ = $3.with_expression(std::move($1)); }
                | EXPRESSION
-                 { $$ = ast::ExpressionList{}; $$.push_back(std::move($1)); }
+                 { $$ = ast::ExpressionList{}.with_expression(std::move($1)); }
                | %empty
                  { $$ = ast::ExpressionList{}; }
 
@@ -190,6 +190,7 @@ LAST_STATEMENT: _return EXPRESSION
               | _break              { $$ = ast::LastStatement(ast::BreakStatement{}); }
 
 BLOCK: STATEMENT            { $$ = ast::Block{ std::move($1) }; }
+     | STATEMENT semi       { $$ = ast::Block{ std::move($1) }; }
      | STATEMENT BLOCK      { $$ = $2.with_statement(std::move($1)); }
      | STATEMENT semi BLOCK { $$ = $3.with_statement(std::move($1)); }
      | LAST_STATEMENT       { $$ = ast::Block{ std::move($1) }; }
