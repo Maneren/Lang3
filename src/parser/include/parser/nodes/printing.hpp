@@ -52,6 +52,11 @@ Number::print(std::output_iterator<char> auto &out, size_t depth) const {
 }
 
 inline void
+Float::print(std::output_iterator<char> auto &out, size_t depth) const {
+  detail::format_indented_line(out, depth, "Float {}", value);
+}
+
+inline void
 Boolean::print(std::output_iterator<char> auto &out, size_t depth) const {
   detail::format_indented_line(out, depth, "Boolean {}", value);
 }

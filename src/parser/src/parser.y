@@ -50,6 +50,7 @@
        <std::string> id
        <std::string> string
        <size_t> num
+       <double> fnum
 
 %type <ast::UnaryExpression> UNARY
       <ast::BinaryExpression> BINARY
@@ -121,6 +122,7 @@ LITERAL: nil    { $$ = ast::Literal(ast::Nil()); }
        | _true  { $$ = ast::Literal(ast::Boolean(true)); }
        | _false { $$ = ast::Literal(ast::Boolean(false)); }
        | num    { $$ = ast::Literal(ast::Number($1)); }
+       | fnum   { $$ = ast::Literal(ast::Float($1)); }
        | string { $$ = ast::Literal(ast::String($1)); }
 
 IDENTIFIER: id { $$ = ast::Identifier(std::move($1)); }

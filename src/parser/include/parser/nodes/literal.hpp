@@ -29,6 +29,14 @@ public:
   void print(std::output_iterator<char> auto &out, size_t depth) const;
 };
 
+class Float {
+  double value;
+
+public:
+  Float(double value) : value(value) {}
+  void print(std::output_iterator<char> auto &out, size_t depth) const;
+};
+
 class String {
   std::string value;
 
@@ -54,13 +62,14 @@ public:
 };
 
 class Literal {
-  std::variant<Nil, Boolean, Number, String> inner;
+  std::variant<Nil, Boolean, Number, Float, String> inner;
 
 public:
   Literal() = default;
   Literal(Nil nil) : inner(nil) {}
   Literal(Boolean boolean) : inner(boolean) {}
   Literal(Number num) : inner(num) {}
+  Literal(Float num) : inner(num) {}
   Literal(String &&string) : inner(std::move(string)) {}
 
   void print(std::output_iterator<char> auto &out, size_t depth) const {

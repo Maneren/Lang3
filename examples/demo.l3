@@ -1,6 +1,6 @@
 # This is a comment
 let a = 1 + 2 + 2 * 3
-let b = a * -3
+let b = a * -3.5
 
 print(a + b)
 

@@ -10,12 +10,16 @@
     #define YY_USER_INIT yylval = lval; yylloc = lloc;
 %}
 
-%option c++ noyywrap debug
+%option c++ noyywrap batch debug
 
 %option yyclass="L3Lexer"
 %option prefix="yy_l3_"
 
 %x STR
+
+DIGIT    [0-9]
+INTEGER  [+-]?{DIGIT}+
+FLOAT    [+-]?({DIGIT}+\.{DIGIT}*|\.{DIGIT}+)
 
 %%
 
@@ -23,7 +27,8 @@
     using Token = L3Parser::token;
 %}
 
-[0-9]+                      { yylval->emplace<long>(std::stol(yytext)); return Token::num; }
+{FLOAT}                     { yylval->emplace<double>(std::stod(yytext)); return Token::fnum; }
+{INTEGER}                   { yylval->emplace<long>(std::stol(yytext)); return Token::num; }
 \"                          { BEGIN(STR); yylval->emplace<std::string>(); }
 <STR>\"                     { BEGIN(INITIAL); return Token::string; }
 <STR>\\[nt]                 { yylval->as<std::string>() += yytext; }
