@@ -43,7 +43,7 @@ constexpr void format_indented_line(
 
 inline void
 String::print(std::output_iterator<char> auto &out, size_t depth) const {
-  detail::format_indented_line(out, depth, "String {}", value);
+  detail::format_indented_line(out, depth, "String \"{}\"", value);
 }
 
 inline void
@@ -116,6 +116,18 @@ inline void AnonymousFunction::print(
 ) const {
   detail::format_indented_line(out, depth, "AnonymousFunction");
   body.print(out, depth + 1);
+}
+
+inline void
+IfClause::print(std::output_iterator<char> auto &out, size_t depth) const {
+  detail::format_indented_line(out, depth, "IfClause");
+  condition.print(out, depth + 1);
+  detail::format_indented_line(out, depth + 1, "Then");
+  block->print(out, depth);
+  if (elseBlock) {
+    detail::format_indented_line(out, depth + 1, "Else");
+    elseBlock.value()->print(out, depth);
+  }
 }
 
 inline void

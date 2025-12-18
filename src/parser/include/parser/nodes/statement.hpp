@@ -2,6 +2,7 @@
 
 #include "expression.hpp"
 #include "function.hpp"
+#include "if_else.hpp"
 #include "operator.hpp"
 
 namespace l3::ast {
@@ -32,19 +33,21 @@ public:
 };
 
 class Statement {
-  std::variant<
-      Assignment,
-      Declaration,
-      FunctionCall,
-      // IfClause,
-      NamedFunction>
+  std::variant<Assignment, Declaration, FunctionCall, IfClause, NamedFunction>
       inner;
 
 public:
   Statement() = default;
+  Statement(const Statement &) = delete;
+  Statement(Statement &&) = default;
+  Statement &operator=(const Statement &) = delete;
+  Statement &operator=(Statement &&) = default;
+  ~Statement() = default;
+
   Statement(Assignment &&assignment) : inner(std::move(assignment)) {}
   Statement(Declaration &&declaration) : inner(std::move(declaration)) {}
   Statement(FunctionCall &&call) : inner(std::move(call)) {}
+  Statement(IfClause &&clause) : inner(std::move(clause)) {}
   Statement(NamedFunction &&function) : inner(std::move(function)) {}
 
   void print(std::output_iterator<char> auto &out, size_t depth) const;

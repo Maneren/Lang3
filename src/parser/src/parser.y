@@ -121,7 +121,7 @@ LITERAL: nil    { $$ = ast::Literal(ast::Nil()); }
        | _true  { $$ = ast::Literal(ast::Boolean(true)); }
        | _false { $$ = ast::Literal(ast::Boolean(false)); }
        | num    { $$ = ast::Literal(ast::Number($1)); }
-       | string { $$ = ast::Literal(ast::String(std::move($1))); }
+       | string { $$ = ast::Literal(ast::String($1)); }
 
 IDENTIFIER: id { $$ = ast::Identifier(std::move($1)); }
 
@@ -131,14 +131,14 @@ NAME_LIST: IDENTIFIER comma NAME_LIST { $3.push_back($1); $$ = $3; }
          | %empty             { $$ = ast::NameList{}; }
 
 FUNCTION_BODY: lparen NAME_LIST rparen BLOCK end
-               { $$ = ast::FunctionBody{ std::move($2), std::make_shared<ast::Block>($4) }; }
+               { $$ = ast::FunctionBody{ std::move($2), std::move($4) }; }
 
 ANONYMOUS_FUNCTION: function FUNCTION_BODY { $$ = ast::AnonymousFunction(std::move($2)); }
 
 FUNCTION_CALL: IDENTIFIER ARGUMENTS
                { $$ = ast::FunctionCall(std::move($1), std::move($2)); }
 
-ARGUMENTS: lparen EXPRESSION_LIST rparen { $$ = $2; }
+ARGUMENTS: lparen EXPRESSION_LIST rparen { $$ = std::move($2); }
 
 EXPRESSION: UNARY                    { $$ = ast::Expression(std::move($1)); }
           | BINARY                   { $$ = ast::Expression(std::move($1)); }
@@ -149,14 +149,17 @@ EXPRESSION: UNARY                    { $$ = ast::Expression(std::move($1)); }
           | LITERAL                  { $$ = ast::Expression(std::move($1)); }
           | lparen EXPRESSION rparen { $$ = std::move($2); }
 
-EXPRESSION_LIST: EXPRESSION comma EXPRESSION_LIST { $3.push_back($1); $$ = ast::ExpressionList{ $3 }; }
-               | EXPRESSION                       { $$ = ast::ExpressionList{ $1 }; }
-               | %empty                           { $$ = ast::ExpressionList{}; }
+EXPRESSION_LIST: EXPRESSION comma EXPRESSION_LIST
+                 { $3.push_back(std::move($1)); $$ = ast::ExpressionList{ std::move($3) }; }
+               | EXPRESSION
+                 { $$ = ast::ExpressionList{}; $$.push_back(std::move($1)); }
+               | %empty
+                 { $$ = ast::ExpressionList{}; }
 
 IF: _if EXPRESSION then BLOCK end
-    { $$ = ast::IfClause{ $2, std::make_shared<ast::Block>($4), std::nullopt }; }
+    { $$ = ast::IfClause{ std::move($2), std::move($4) }; }
   | _if EXPRESSION then BLOCK _else BLOCK end
-    { $$ = ast::IfClause{ $2, std::make_shared<ast::Block>($4), std::make_shared<ast::Block>($6) }; }
+    { $$ = ast::IfClause{ std::move($2), std::move($4), std::move($6) }; }
 
 ASSIGNMENT_OPERATOR: equal       { $$ = ast::AssignmentOperator::Assign; }
                    | plus_equal  { $$ = ast::AssignmentOperator::Plus; }
@@ -177,6 +180,7 @@ FUNCTION_DEFINITION: function IDENTIFIER FUNCTION_BODY
 
 STATEMENT: ASSIGNMENT           { $$ = ast::Statement(std::move($1)); }
          | DECLARATION          { $$ = ast::Statement(std::move($1)); }
+         | IF                   { $$ = ast::Statement(std::move($1)); }
          | FUNCTION_CALL        { $$ = ast::Statement(std::move($1)); }
          | FUNCTION_DEFINITION  { $$ = ast::Statement(std::move($1)); }
 
@@ -191,7 +195,7 @@ BLOCK: STATEMENT            { $$ = ast::Block{ std::move($1) }; }
      | LAST_STATEMENT       { $$ = ast::Block{ std::move($1) }; }
      | LAST_STATEMENT semi  { $$ = ast::Block{ std::move($1) }; }
 
-PROGRAM: BLOCK { program = $1; }
+PROGRAM: BLOCK { program = std::move($1); }
 
 %%
 

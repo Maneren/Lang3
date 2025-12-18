@@ -16,10 +16,14 @@ function curry_add(a)
   return f
 end
 
-let c = add(a, b)
+let c = add(a, b,)
+
+# let d = curry_add(a)(b)
 
 c += 1
 
-let valid = 0 <= c and c < 10 or not (b == 0 and a == 0)
-
-valid = not valid
+if not (0 <= c and c < 10 or not (b == 0 and a == 0)) then
+  print("valid")
+else
+  print("invalid")
+end

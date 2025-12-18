@@ -8,11 +8,11 @@
 
 namespace l3::ast {
 
-using FieldName = std::variant<Identifier, std::shared_ptr<Expression>>;
+using FieldName = std::variant<Identifier, std::unique_ptr<Expression>>;
 
 struct AssignmentField {
   FieldName name;
-  std::shared_ptr<Expression> expr;
+  std::unique_ptr<Expression> expr;
 };
 
 using Field = std::variant<AssignmentField, Expression>;

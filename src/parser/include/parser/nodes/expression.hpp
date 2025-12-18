@@ -28,36 +28,27 @@ public:
 };
 
 using PrefixExpression =
-    std::variant<Variable, std::shared_ptr<Expression>, FunctionCall>;
+    std::variant<Variable, std::unique_ptr<Expression>, FunctionCall>;
 
 class UnaryExpression {
   UnaryOperator op;
-  std::shared_ptr<Expression> expr;
+  std::unique_ptr<Expression> expr;
 
 public:
   UnaryExpression() = default;
-
-  UnaryExpression(UnaryOperator op, Expression &&expr)
-      : op(op), expr(std::make_shared<Expression>(std::move(expr))) {}
+  UnaryExpression(UnaryOperator op, Expression &&expr);
 
   void print(std::output_iterator<char> auto &out, size_t depth) const;
 };
 
 class BinaryExpression {
-  std::shared_ptr<Expression> lhs;
+  std::unique_ptr<Expression> lhs;
   BinaryOperator op;
-  std::shared_ptr<Expression> rhs;
+  std::unique_ptr<Expression> rhs;
 
 public:
   BinaryExpression() = default;
-
-  BinaryExpression(Expression &&lhs, BinaryOperator op, Expression &&rhs)
-      : lhs(std::make_shared<Expression>(std::move(lhs))), op(op),
-        rhs(std::make_shared<Expression>(std::move(rhs))) {}
-
-  BinaryExpression(Expression &lhs, BinaryOperator op, Expression &rhs)
-      : lhs(std::make_shared<Expression>(lhs)), op(op),
-        rhs(std::make_shared<Expression>(rhs)) {}
+  BinaryExpression(Expression &&lhs, BinaryOperator op, Expression &&rhs);
 
   void print(std::output_iterator<char> auto &out, size_t depth) const;
 };
@@ -93,8 +84,5 @@ public:
     visit([&out, depth](const auto &node) -> void { node.print(out, depth); });
   }
 };
-
-inline FunctionCall::FunctionCall(Identifier &&name, ExpressionList &&args)
-    : name(std::move(name)), args(std::move(args)) {}
 
 } // namespace l3::ast

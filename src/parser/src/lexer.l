@@ -15,6 +15,8 @@
 %option yyclass="L3Lexer"
 %option prefix="yy_l3_"
 
+%x STR
+
 %%
 
 %{
@@ -22,7 +24,11 @@
 %}
 
 [0-9]+                      { yylval->emplace<long>(std::stol(yytext)); return Token::num; }
-\"([^\"](\\\")?)*\"         { yylval->emplace<std::string>(yytext); return Token::string; }
+\"                          { BEGIN(STR); yylval->emplace<std::string>(); }
+<STR>\"                     { BEGIN(INITIAL); return Token::string; }
+<STR>\\[nt]                 { yylval->as<std::string>() += yytext; }
+<STR>\\(.|\n)               { yylval->as<std::string>() += yytext[1]; }
+<STR>[^"]*                  { yylval->as<std::string>() += yytext; }
 "+"                         { return Token::plus; }
 "-"                         { return Token::minus; }
 "*"                         { return Token::mul; }
@@ -54,6 +60,7 @@
 "<="                        { return Token::less_equal; }
 ">="                        { return Token::greater_equal; }
 "if"                        { return Token::_if; }
+"then"                      { return Token::then; }
 "else"                      { return Token::_else; }
 "while"                     { return Token::_while; }
 "do"                        { return Token::_do; }
@@ -71,6 +78,6 @@
 "#".* ;
 
 [[:space:]] ;
-. { std::fprintf(stderr, "Unknown character: %c\n", *yytext); }
+.                           { std::println(std::cerr, "Unexpected character: '{}'", yytext); }
 
 %%

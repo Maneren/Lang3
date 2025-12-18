@@ -1,7 +1,6 @@
 #pragma once
 
 #include "statement.hpp"
-
 #include <deque>
 #include <iterator>
 #include <optional>
@@ -14,7 +13,9 @@ class Block {
 
 public:
   Block() = default;
-  Block(Statement &&statement) : statements({std::move(statement)}) {}
+  Block(Statement &&statement) {
+    statements.emplace_front(std::move(statement));
+  }
   Block(LastStatement &&lastStatement)
       : lastStatement(std::move(lastStatement)) {}
 

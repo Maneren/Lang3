@@ -9,13 +9,17 @@ class Block;
 
 class FunctionBody {
   NameList parameters;
-  std::shared_ptr<Block> block;
+  std::unique_ptr<Block> block;
 
 public:
   FunctionBody() = default;
+  FunctionBody(const FunctionBody &) = delete;
+  FunctionBody(FunctionBody &&) noexcept;
+  FunctionBody &operator=(const FunctionBody &) = delete;
+  FunctionBody &operator=(FunctionBody &&) noexcept;
+  FunctionBody(NameList &&parameters, Block &&block);
 
-  FunctionBody(NameList &&parameters, std::shared_ptr<Block> &&block)
-      : parameters(std::move(parameters)), block(std::move(block)) {}
+  ~FunctionBody();
 
   void print(std::output_iterator<char> auto &out, size_t depth) const;
 };
