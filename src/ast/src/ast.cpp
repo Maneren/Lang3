@@ -1,5 +1,6 @@
 #include "ast/nodes/block.hpp"
 #include "ast/nodes/detail.hpp"
+#include <memory>
 #include <utility>
 
 namespace l3::ast {
@@ -50,16 +51,33 @@ FunctionBody::FunctionBody(FunctionBody &&) noexcept = default;
 FunctionBody &FunctionBody::operator=(FunctionBody &&) noexcept = default;
 FunctionBody::~FunctionBody() = default;
 
-IfClause::IfClause(Expression &&condition, Block &&block, Block &&elseBlock)
-    : condition(std::move(condition)),
-      block(std::make_unique<Block>(std::move(block))),
-      elseBlock(std::make_unique<Block>(std::move(elseBlock))) {}
-IfClause::IfClause(Expression &&condition, Block &&block)
-    : condition(std::move(condition)),
-      block(std::make_unique<Block>(std::move(block))) {};
-IfClause::IfClause(IfClause &&) noexcept = default;
-IfClause &IfClause::operator=(IfClause &&) noexcept = default;
-IfClause::~IfClause() = default;
+IfBase::IfBase(Expression &&condition, Block &&block)
+    : condition(std::make_unique<Expression>(std::move(condition))),
+      block(std::make_unique<Block>(std::move(block))) {}
+
+IfExpression::IfExpression(IfBase &&base_if, Block &&else_block)
+    : base_if(std::move(base_if)),
+      else_block(std::make_unique<Block>(std::move(else_block))) {}
+IfExpression::IfExpression(
+    IfBase &&base_if, std::vector<IfBase> &&elseif, Block &&else_block
+)
+    : base_if(std::move(base_if)), elseif(std::move(elseif)),
+      else_block(std::make_unique<Block>(std::move(else_block))) {}
+IfExpression::IfExpression(IfExpression &&) noexcept = default;
+IfExpression &IfExpression::operator=(IfExpression &&) noexcept = default;
+IfExpression::~IfExpression() = default;
+
+IfStatement::IfStatement(
+    IfBase &&base_if, std::vector<IfBase> &&elseif, Block &&else_block
+)
+    : base_if(std::move(base_if)), elseif(std::move(elseif)),
+      else_block(std::make_unique<Block>(std::move(else_block))) {};
+IfStatement::IfStatement(IfBase &&base_if) : base_if(std::move(base_if)) {}
+IfStatement::IfStatement(IfBase &&base_if, std::vector<IfBase> &&elseif)
+    : base_if(std::move(base_if)), elseif(std::move(elseif)) {}
+IfStatement::IfStatement(IfStatement &&) noexcept = default;
+IfStatement &IfStatement::operator=(IfStatement &&) noexcept = default;
+IfStatement::~IfStatement() = default;
 
 Block &&Block::with_statement(Statement &&statement) {
   statements.push_front(std::move(statement));

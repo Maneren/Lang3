@@ -82,7 +82,7 @@ FLOAT    [+-]?({DIGIT}+\.{DIGIT}*|\.{DIGIT}+)
 
 "#".* ;
 
-[[:space:]] ;
+[[:space:]]+ ;
 .                           { std::println(std::cerr, "Unexpected character: '{}'", yytext); }
 
 %%

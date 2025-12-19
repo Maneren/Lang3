@@ -33,8 +33,9 @@ public:
 };
 
 class Statement {
-  std::variant<Assignment, Declaration, FunctionCall, IfClause, NamedFunction>
-      inner;
+  std::
+      variant<Assignment, Declaration, FunctionCall, IfStatement, NamedFunction>
+          inner;
 
 public:
   Statement() = default;
@@ -47,7 +48,7 @@ public:
   Statement(Assignment &&assignment) : inner(std::move(assignment)) {}
   Statement(Declaration &&declaration) : inner(std::move(declaration)) {}
   Statement(FunctionCall &&call) : inner(std::move(call)) {}
-  Statement(IfClause &&clause) : inner(std::move(clause)) {}
+  Statement(IfStatement &&clause) : inner(std::move(clause)) {}
   Statement(NamedFunction &&function) : inner(std::move(function)) {}
 
   void print(std::output_iterator<char> auto &out, size_t depth) const;

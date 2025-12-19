@@ -2,6 +2,7 @@
 
 #include "function.hpp"
 #include "identifier.hpp"
+#include "if_else.hpp"
 #include "literal.hpp"
 #include "operator.hpp"
 #include <memory>
@@ -44,7 +45,8 @@ using ExpressionVariant = std::variant<
     Variable,
     FunctionCall,
     // PrefixExpression,
-    AnonymousFunction
+    AnonymousFunction,
+    IfExpression
     // Table
     >;
 
@@ -62,6 +64,7 @@ public:
   // Expression(PrefixExpression &&expression) : inner(std::move(expression)) {}
   Expression(AnonymousFunction &&function)
       : ExpressionVariant(std::move(function)) {}
+  Expression(IfExpression &&clause) : ExpressionVariant(std::move(clause)) {}
   // Expression(Table &&table) : inner(std::move(table)) {}
 
   void print(std::output_iterator<char> auto &out, size_t depth) const {

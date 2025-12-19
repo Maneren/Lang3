@@ -46,7 +46,7 @@
        end nil function let plus minus mul div equal equal_equal not_equal less
        less_equal greater greater_equal _not _and _or lparen rparen lbrace
        rbrace lbracket rbracket comma semi dot mod concat colon plus_equal
-       minus_equal mul_equal div_equal mod_equal pow_equal concat_equal
+       minus_equal mul_equal div_equal mod_equal pow_equal concat_equal elif
        <std::string> id
        <std::string> string
        <size_t> num
@@ -56,6 +56,7 @@
       <ast::BinaryExpression> BINARY
       <ast::Literal> LITERAL
       <ast::NameList> NAME_LIST
+      <ast::NameList> PARAMETERS
       <ast::ExpressionList> ARGUMENTS
       <ast::FunctionCall> FUNCTION_CALL
       <ast::FunctionBody> FUNCTION_BODY
@@ -64,12 +65,16 @@
       <ast::ExpressionList> EXPRESSION_LIST
       <ast::Identifier> IDENTIFIER
       <ast::Variable> VAR
-      <ast::IfClause> IF
+      <ast::IfBase> IF_BASE
+      <ast::IfStatement> IF_STATEMENT
+      <ast::IfExpression> IF_EXPRESSION
+      <ast::IfElseList> IF_ELSE
       <ast::AssignmentOperator> ASSIGNMENT_OPERATOR
       <ast::Assignment> ASSIGNMENT
       <ast::Declaration> DECLARATION
       <ast::NamedFunction> FUNCTION_DEFINITION
       <ast::Statement> STATEMENT
+      <ast::ReturnStatement> RETURN
       <ast::LastStatement> LAST_STATEMENT
       <ast::Block> BLOCK
 
@@ -132,8 +137,10 @@ NAME_LIST: IDENTIFIER comma NAME_LIST { $$ = $3.with_name(std::move($1)); }
          | IDENTIFIER                 { $$ = ast::NameList{}.with_name(std::move($1)); }
          | %empty                     { $$ = ast::NameList{}; }
 
-FUNCTION_BODY: lparen NAME_LIST rparen BLOCK end
-               { $$ = ast::FunctionBody{ std::move($2), std::move($4) }; }
+PARAMETERS: lparen NAME_LIST rparen { $$ = std::move($2); }
+
+FUNCTION_BODY: PARAMETERS BLOCK end
+               { $$ = ast::FunctionBody{ std::move($1), std::move($2) }; }
 
 ANONYMOUS_FUNCTION: function FUNCTION_BODY { $$ = ast::AnonymousFunction(std::move($2)); }
 
@@ -150,6 +157,7 @@ EXPRESSION: UNARY                    { $$ = ast::Expression(std::move($1)); }
           | VAR                      { $$ = ast::Expression(std::move($1)); }
           | LITERAL                  { $$ = ast::Expression(std::move($1)); }
           | lparen EXPRESSION rparen { $$ = std::move($2); }
+          | IF_EXPRESSION            { $$ = ast::Expression(std::move($1)); }
 
 EXPRESSION_LIST: EXPRESSION comma EXPRESSION_LIST
                  { $$ = $3.with_expression(std::move($1)); }
@@ -158,10 +166,21 @@ EXPRESSION_LIST: EXPRESSION comma EXPRESSION_LIST
                | %empty
                  { $$ = ast::ExpressionList{}; }
 
-IF: _if EXPRESSION then BLOCK end
-    { $$ = ast::IfClause{ std::move($2), std::move($4) }; }
-  | _if EXPRESSION then BLOCK _else BLOCK end
-    { $$ = ast::IfClause{ std::move($2), std::move($4), std::move($6) }; }
+IF_BASE: _if EXPRESSION then BLOCK
+         { $$ = ast::IfBase{ std::move($2), std::move($4) }; }
+
+IF_STATEMENT: IF_BASE IF_ELSE end
+              { $$ = ast::IfStatement{ std::move($1), std::move($2) }; }
+            | IF_BASE IF_ELSE _else BLOCK end
+              { $$ = ast::IfStatement{ std::move($1), std::move($2), std::move($4) }; }
+
+IF_EXPRESSION: IF_BASE IF_ELSE _else BLOCK end
+               { $$ = ast::IfExpression{ std::move($1), std::move($2), std::move($4) }; }
+
+IF_ELSE: elif EXPRESSION then BLOCK IF_ELSE
+         { $5.emplace_back(ast::IfBase{ std::move($2), std::move($4) }); $$ = std::move($5); }
+       | %empty
+         { $$ = std::vector<ast::IfBase>{}; }
 
 ASSIGNMENT_OPERATOR: equal       { $$ = ast::AssignmentOperator::Assign; }
                    | plus_equal  { $$ = ast::AssignmentOperator::Plus; }
@@ -182,14 +201,15 @@ FUNCTION_DEFINITION: function IDENTIFIER FUNCTION_BODY
 
 STATEMENT: ASSIGNMENT           { $$ = ast::Statement(std::move($1)); }
          | DECLARATION          { $$ = ast::Statement(std::move($1)); }
-         | IF                   { $$ = ast::Statement(std::move($1)); }
+         | IF_STATEMENT         { $$ = ast::Statement(std::move($1)); }
          | FUNCTION_CALL        { $$ = ast::Statement(std::move($1)); }
          | FUNCTION_DEFINITION  { $$ = ast::Statement(std::move($1)); }
 
-LAST_STATEMENT: _return EXPRESSION
-                { $$ = ast::LastStatement(ast::ReturnStatement{ std::move($2) }); }
-              | _continue           { $$ = ast::LastStatement(ast::ContinueStatement{}); }
-              | _break              { $$ = ast::LastStatement(ast::BreakStatement{}); }
+RETURN: _return EXPRESSION { $$ = ast::ReturnStatement{ std::move($2) }; }
+
+LAST_STATEMENT: RETURN    { $$ = ast::LastStatement(std::move($1)); }
+              | _continue { $$ = ast::LastStatement(ast::ContinueStatement{}); }
+              | _break    { $$ = ast::LastStatement(ast::BreakStatement{}); }
 
 BLOCK: STATEMENT            { $$ = ast::Block{ std::move($1) }; }
      | STATEMENT semi       { $$ = ast::Block{ std::move($1) }; }

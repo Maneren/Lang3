@@ -95,14 +95,15 @@ inline void
 FunctionCall::print(std::output_iterator<char> auto &out, size_t depth) const {
   detail::format_indented_line(out, depth, "FunctionCall");
   name.print(out, depth + 1);
+  detail::format_indented_line(out, depth + 1, "Arguments");
   for (const auto &arg : args) {
-    arg.print(out, depth + 1);
+    arg.print(out, depth + 2);
   }
 }
 
 inline void
 FunctionBody::print(std::output_iterator<char> auto &out, size_t depth) const {
-  detail::format_indented_line(out, depth, "Arguments");
+  detail::format_indented_line(out, depth, "Parameters");
   for (const Identifier &parameter : parameters) {
     parameter.print(out, depth + 1);
   }
@@ -124,14 +125,35 @@ inline void AnonymousFunction::print(
 }
 
 inline void
-IfClause::print(std::output_iterator<char> auto &out, size_t depth) const {
-  detail::format_indented_line(out, depth, "IfClause");
-  condition.print(out, depth + 1);
-  detail::format_indented_line(out, depth + 1, "Then");
+IfBase::print(std::output_iterator<char> auto &out, size_t depth) const {
+  detail::format_indented_line(out, depth, "Condition");
+  condition->print(out, depth + 1);
   block->print(out, depth);
-  if (elseBlock) {
+}
+
+inline void
+IfExpression::print(std::output_iterator<char> auto &out, size_t depth) const {
+  detail::format_indented_line(out, depth, "IfExpression");
+  base_if.print(out, depth + 1);
+  for (const auto &elseif : elseif) {
+    detail::format_indented_line(out, depth + 1, "ElseIf");
+    elseif.print(out, depth + 2);
+  }
+  detail::format_indented_line(out, depth + 1, "Else");
+  else_block->print(out, depth + 2);
+}
+
+inline void
+IfStatement::print(std::output_iterator<char> auto &out, size_t depth) const {
+  detail::format_indented_line(out, depth, "IfStatement");
+  base_if.print(out, depth + 1);
+  for (const auto &elseif : elseif) {
+    detail::format_indented_line(out, depth + 1, "ElseIf");
+    elseif.print(out, depth + 2);
+  }
+  if (else_block) {
     detail::format_indented_line(out, depth + 1, "Else");
-    elseBlock.value()->print(out, depth);
+    else_block.value()->print(out, depth + 2);
   }
 }
 
