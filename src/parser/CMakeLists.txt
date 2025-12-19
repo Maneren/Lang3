@@ -29,7 +29,9 @@ set(SOURCES
   ${PARSER_CPP}
 )
 
-create_library(${LIB_NAME} "${SOURCES}" "")
+create_library(${LIB_NAME} "${SOURCES}" ""
+  PUBLIC_DEPS ast
+)
 
 target_include_directories(${LIB_NAME}
   PUBLIC

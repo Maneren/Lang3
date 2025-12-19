@@ -1,5 +1,5 @@
-#include "parser/nodes/block.hpp"
-#include "parser/nodes/detail.hpp"
+#include "ast/nodes/block.hpp"
+#include "ast/nodes/detail.hpp"
 #include <utility>
 
 namespace l3::ast {
