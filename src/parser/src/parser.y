@@ -133,8 +133,8 @@ LITERAL: nil    { $$ = ast::Literal(ast::Nil()); }
 IDENTIFIER: id { $$ = ast::Identifier(std::move($1)); }
 
 VAR: IDENTIFIER { $$ = ast::Variable(std::move($1)); }
-NAME_LIST: IDENTIFIER comma NAME_LIST { $$ = $3.with_name(std::move($1)); }
-         | IDENTIFIER                 { $$ = ast::NameList{}.with_name(std::move($1)); }
+NAME_LIST: IDENTIFIER comma NAME_LIST { $$ = std::move($3.with_name(std::move($1))); }
+         | IDENTIFIER                 { $$ = ast::NameList{ std::move($1) }; }
          | %empty                     { $$ = ast::NameList{}; }
 
 PARAMETERS: lparen NAME_LIST rparen { $$ = std::move($2); }
@@ -160,9 +160,9 @@ EXPRESSION: UNARY                    { $$ = ast::Expression(std::move($1)); }
           | IF_EXPRESSION            { $$ = ast::Expression(std::move($1)); }
 
 EXPRESSION_LIST: EXPRESSION comma EXPRESSION_LIST
-                 { $$ = $3.with_expression(std::move($1)); }
+                 { $$ = std::move($3.with_expression(std::move($1))); }
                | EXPRESSION
-                 { $$ = ast::ExpressionList{}.with_expression(std::move($1)); }
+                 { $$ = ast::ExpressionList{ std::move($1) }; }
                | %empty
                  { $$ = ast::ExpressionList{}; }
 
@@ -213,8 +213,8 @@ LAST_STATEMENT: RETURN    { $$ = ast::LastStatement(std::move($1)); }
 
 BLOCK: STATEMENT            { $$ = ast::Block{ std::move($1) }; }
      | STATEMENT semi       { $$ = ast::Block{ std::move($1) }; }
-     | STATEMENT BLOCK      { $$ = $2.with_statement(std::move($1)); }
-     | STATEMENT semi BLOCK { $$ = $3.with_statement(std::move($1)); }
+     | STATEMENT BLOCK      { $$ = std::move($2.with_statement(std::move($1))); }
+     | STATEMENT semi BLOCK { $$ = std::move($3.with_statement(std::move($1))); }
      | LAST_STATEMENT       { $$ = ast::Block{ std::move($1) }; }
      | LAST_STATEMENT semi  { $$ = ast::Block{ std::move($1) }; }
 

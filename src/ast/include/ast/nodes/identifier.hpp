@@ -30,8 +30,8 @@ public:
 class NameList : public std::deque<Identifier> {
 public:
   NameList() = default;
-  NameList(Identifier &&ident) : std::deque<Identifier>({std::move(ident)}) {};
-  NameList &&with_name(Identifier &&ident);
+  NameList(Identifier &&ident);
+  NameList &with_name(Identifier &&ident);
 };
 
 } // namespace l3::ast

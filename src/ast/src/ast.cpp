@@ -31,14 +31,20 @@ BinaryExpression::BinaryExpression(
     : lhs(std::make_unique<Expression>(std::move(lhs))), op(op),
       rhs(std::make_unique<Expression>(std::move(rhs))) {}
 
-NameList &&NameList::with_name(Identifier &&ident) {
+NameList::NameList(Identifier &&ident) { emplace_front(std::move(ident)); }
+
+NameList &NameList::with_name(Identifier &&ident) {
   emplace_front(std::move(ident));
-  return std::move(*this);
+  return *this;
 }
 
-ExpressionList &&ExpressionList::with_expression(Expression &&expr) {
+ExpressionList::ExpressionList(Expression &&expr) {
   emplace_front(std::move(expr));
-  return std::move(*this);
+};
+
+ExpressionList &ExpressionList::with_expression(Expression &&expr) {
+  emplace_front(std::move(expr));
+  return *this;
 }
 
 FunctionCall::FunctionCall(Variable &&name, ExpressionList &&args)
@@ -79,9 +85,9 @@ IfStatement::IfStatement(IfStatement &&) noexcept = default;
 IfStatement &IfStatement::operator=(IfStatement &&) noexcept = default;
 IfStatement::~IfStatement() = default;
 
-Block &&Block::with_statement(Statement &&statement) {
+Block &Block::with_statement(Statement &&statement) {
   statements.push_front(std::move(statement));
-  return std::move(*this);
+  return *this;
 }
 
 } // namespace l3::ast

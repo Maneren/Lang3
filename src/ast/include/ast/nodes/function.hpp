@@ -10,8 +10,8 @@ class Expression;
 class ExpressionList : public std::deque<Expression> {
 public:
   ExpressionList() = default;
-  ExpressionList(Expression &&expr) { emplace_front(std::move(expr)); };
-  ExpressionList &&with_expression(Expression &&);
+  ExpressionList(Expression &&expr);
+  ExpressionList &with_expression(Expression &&);
 };
 
 using Arguments = ExpressionList;
