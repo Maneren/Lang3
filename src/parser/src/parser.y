@@ -42,11 +42,19 @@
     #define yylex lexer.lex
 }
 
+%right equal
+%left  _or
+%left  _and
+%left  _not
+%left  plus minus concat
+%left  mul div mod
+%right pow
+%nonassoc equal_equal not_equal less less_equal greater greater_equal
+
 %token _if _else _while _break _continue _return _for in _do _true _false then
-       end nil function let plus minus mul div equal equal_equal not_equal less
-       less_equal greater greater_equal _not _and _or lparen rparen lbrace
-       rbrace lbracket rbracket comma semi dot mod concat colon plus_equal
-       minus_equal mul_equal div_equal mod_equal pow_equal concat_equal elif
+       end nil function let equal _not lparen rparen lbrace rbrace lbracket
+       rbracket comma semi dot concat colon plus_equal minus_equal mul_equal
+       div_equal mod_equal pow_equal concat_equal elif
        <std::string> id
        <std::string> string
        <size_t> num
@@ -77,15 +85,6 @@
       <ast::ReturnStatement> RETURN
       <ast::LastStatement> LAST_STATEMENT
       <ast::Block> BLOCK
-
-%right equal
-%left  _or
-%left  _and
-%left  _not
-%left  equal_equal not_equal less less_equal greater greater_equal
-%left  plus minus concat
-%left  mul div
-%right pow
 
 %start PROGRAM
 
