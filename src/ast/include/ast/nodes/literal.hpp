@@ -41,8 +41,7 @@ class String {
   std::string value;
 
 public:
-  String(std::string literal) {
-    std::println("'{}'", literal);
+  String(const std::string &literal) {
     auto view = std::string_view(literal);
     if (const auto *pos = std::ranges::find(view, '\\'); pos != view.end()) {
       do {
