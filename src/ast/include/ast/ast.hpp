@@ -1,7 +1,6 @@
 #pragma once
 
 #include "nodes/block.hpp"
-#include "nodes/detail.hpp"
 #include "nodes/printing.hpp"
 
 namespace l3::ast {

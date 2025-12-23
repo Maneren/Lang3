@@ -1,10 +1,6 @@
 #pragma once
 
-#include "detail.hpp"
-#include <algorithm>
-#include <print>
 #include <string>
-#include <string_view>
 #include <variant>
 
 namespace l3::ast {
@@ -41,22 +37,7 @@ class String {
   std::string value;
 
 public:
-  String(const std::string &literal) {
-    auto view = std::string_view(literal);
-    if (const auto *pos = std::ranges::find(view, '\\'); pos != view.end()) {
-      do {
-        value += {view.begin(), pos};
-
-        value += detail::decode_escape(*std::next(pos));
-        view.remove_prefix(pos - view.begin() + 2);
-
-        pos = std::ranges::find(view, '\\');
-      } while (pos != view.end());
-      value += {view.begin(), view.end()};
-      return;
-    }
-    value = {view.begin(), view.end()};
-  }
+  String(const std::string &literal);
   void print(std::output_iterator<char> auto &out, size_t depth) const;
 };
 

@@ -1,11 +1,11 @@
 #include "ast/nodes/block.hpp"
-#include "ast/nodes/detail.hpp"
 #include <memory>
+#include <ranges>
 #include <utility>
 
 namespace l3::ast {
 
-namespace detail {
+namespace {
 
 char decode_escape(char c) {
   switch (c) {
@@ -20,7 +20,26 @@ char decode_escape(char c) {
   }
 }
 
-} // namespace detail
+} // namespace
+
+String::String(const std::string &literal) {
+  using namespace std::ranges;
+
+  value.reserve(literal.size());
+
+  for (auto &&[index, segment] :
+       literal | views::split('\\') | views::enumerate) {
+    if (index == 0) {
+      // First segment has no preceding escape character
+      value.append_range(segment);
+    } else if (!segment.empty()) {
+      value += decode_escape(segment.front());
+      value.append_range(segment | views::drop(1));
+    } else {
+      // Do nothing if the segment is empty
+    }
+  }
+}
 
 UnaryExpression::UnaryExpression(UnaryOperator op, Expression &&expr)
     : op(op), expr(std::make_unique<Expression>(std::move(expr))) {}
