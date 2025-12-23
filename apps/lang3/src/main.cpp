@@ -1,6 +1,7 @@
 #include "ast/printing.hpp"
 #include "lexer/lexer.hpp"
 #include "parser.tab.h"
+#include "vm/vm.hpp"
 #include <cstring>
 #include <print>
 
@@ -21,6 +22,10 @@ int main(int argc, char *argv[]) {
   }
 
   std::print("{}", program);
+
+  l3::vm::VM vm;
+
+  vm.execute(program);
 
   return 0;
 }

@@ -22,6 +22,10 @@ public:
   Block &with_statement(Statement &&statement);
 
   void print(std::output_iterator<char> auto &out, size_t depth) const;
+
+  [[nodiscard]] const std::deque<Statement> &get_statements() const {
+    return statements;
+  }
 };
 
 } // namespace l3::ast

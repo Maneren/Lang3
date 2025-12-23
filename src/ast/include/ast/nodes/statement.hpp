@@ -30,6 +30,9 @@ public:
       : var(std::move(var)), expr(std::move(expr)) {}
 
   void print(std::output_iterator<char> auto &out, size_t depth) const;
+
+  [[nodiscard]] const Identifier &get_variable() const { return var; }
+  [[nodiscard]] const Expression &get_expression() const { return expr; }
 };
 
 class Statement {
@@ -52,6 +55,11 @@ public:
   Statement(NamedFunction &&function) : inner(std::move(function)) {}
 
   void print(std::output_iterator<char> auto &out, size_t depth) const;
+
+  auto visit(auto &&visitor) const -> decltype(auto) {
+    return inner.visit(visitor);
+  }
+  auto visit(auto &&visitor) -> decltype(auto) { return inner.visit(visitor); }
 };
 
 class ReturnStatement {

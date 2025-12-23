@@ -16,7 +16,7 @@ using PrefixExpression =
     std::variant<Variable, std::unique_ptr<Expression>, FunctionCall>;
 
 class UnaryExpression {
-  UnaryOperator op;
+  UnaryOperator op = UnaryOperator::Plus;
   std::unique_ptr<Expression> expr;
 
 public:
@@ -28,7 +28,7 @@ public:
 
 class BinaryExpression {
   std::unique_ptr<Expression> lhs;
-  BinaryOperator op;
+  BinaryOperator op = BinaryOperator::Plus;
   std::unique_ptr<Expression> rhs;
 
 public:
@@ -36,6 +36,14 @@ public:
   BinaryExpression(Expression &&lhs, BinaryOperator op, Expression &&rhs);
 
   void print(std::output_iterator<char> auto &out, size_t depth) const;
+
+  [[nodiscard]] const auto &get_lhs() const { return *lhs; }
+  [[nodiscard]] const auto &get_rhs() const { return *rhs; }
+
+  auto &get_lhs() { return *lhs; }
+  auto &get_rhs() { return *rhs; }
+
+  [[nodiscard]] BinaryOperator get_op() const { return op; }
 };
 
 using ExpressionVariant = std::variant<
@@ -50,7 +58,7 @@ using ExpressionVariant = std::variant<
     // Table
     >;
 
-class Expression : ExpressionVariant {
+class Expression : public ExpressionVariant {
 public:
   Expression() = default;
 

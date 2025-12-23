@@ -15,6 +15,8 @@ public:
   [[nodiscard]] const std::string &name() const { return id; }
 
   void print(std::output_iterator<char> auto &out, size_t depth) const;
+
+  std::compare_three_way operator<=>(const Identifier &) const = default;
 };
 
 class Variable {
