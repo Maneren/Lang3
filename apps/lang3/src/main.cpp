@@ -1,3 +1,4 @@
+#include "ast/printing.hpp"
 #include "lexer/lexer.hpp"
 #include "parser.tab.h"
 #include <cstring>

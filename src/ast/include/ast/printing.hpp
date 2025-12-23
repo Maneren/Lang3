@@ -1,8 +1,8 @@
 #pragma once
 
-#include "block.hpp"
-#include "expression.hpp"
-#include "function.hpp"
+#include "nodes/block.hpp"
+#include "nodes/expression.hpp"
+#include "nodes/function.hpp"
 #include <format>
 #include <iterator>
 
