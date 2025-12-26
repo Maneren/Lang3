@@ -2,6 +2,7 @@
 
 #include "ast/ast.hpp"
 #include "ast/nodes/literal.hpp"
+#include "utils/debug.h"
 #include "vm/types.hpp"
 #include <cpptrace/from_current.hpp>
 #include <stdexcept>
@@ -18,8 +19,10 @@ public:
   void execute(const ast::Declaration &declaration);
   void execute(const ast::Assignment &assignment);
 
-  void execute(const auto & /*unused*/) {
-    throw std::runtime_error("not implemented");
+  void execute(const auto &node) {
+    throw std::runtime_error(
+        std::format("not implemented: {}", utils::debug::type_name(node))
+    );
   }
 
   CowValue evaluate(const ast::Expression &expression);
@@ -30,7 +33,7 @@ public:
 
   CowValue evaluate(const auto &node) {
     throw std::runtime_error(
-        std::format("not implemented: {}", typeid(node).name())
+        std::format("not implemented: {}", utils::debug::type_name(node))
     );
   }
 
