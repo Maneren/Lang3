@@ -177,14 +177,6 @@ Primitive operator||(const Primitive &lhs, const Primitive &rhs) {
   );
 }
 
-void Scope::assign_variable(const ast::Identifier &id, Value &&value) {
-  auto present = variables.find(id);
-  if (present == variables.end()) {
-    throw RuntimeError("variable '{}' not declared", id.name());
-  }
-  present->second = std::make_unique<Value>(std::move(value));
-}
-
 std::optional<std::reference_wrapper<Value>>
 Scope::get_variable(const ast::Identifier &id) const {
   auto present = variables.find(id);
@@ -194,16 +186,15 @@ Scope::get_variable(const ast::Identifier &id) const {
   return *present->second;
 }
 
-void Scope::declare_variable(
-    const ast::Identifier &id, const std::function<CowValue()> &value
-) {
+Value &Scope::declare_variable(const ast::Identifier &id) {
   const auto present = variables.find(id);
   if (present != variables.end()) {
-    throw RuntimeError("variable '{}' already declared", id.name());
+    throw NameError("variable '{}' already declared", id.name());
   }
-  variables.emplace_hint(
-      present, id, std::make_unique<Value>(value().into_value())
-  );
+  const auto &[_, inserted] =
+      *variables.emplace_hint(present, id, std::make_unique<Value>());
+
+  return *inserted;
 }
 
 } // namespace l3::vm

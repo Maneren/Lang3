@@ -96,14 +96,10 @@ class Scope {
 public:
   Scope() = default;
 
-  void declare_variable(
-      const ast::Identifier &id, const std::function<CowValue()> &value
-  );
+  Value &declare_variable(const ast::Identifier &id);
 
   std::optional<std::reference_wrapper<Value>>
   get_variable(const ast::Identifier &id) const;
-
-  void assign_variable(const ast::Identifier &id, Value &&value);
 
 private:
   std::unordered_map<ast::Identifier, std::unique_ptr<Value>> variables;

@@ -41,8 +41,12 @@ template <class... Ts> struct Overloaded : Ts... {
 template <typename... Variants, typename... Visitors>
 constexpr auto
 match(const std::tuple<Variants...> variants, Visitors &&...visitors) {
-  static_assert(is_all_same_v<Variants...>);
-
+  static_assert(
+      sizeof...(Visitors) > 0, "At least one visitor must be provided"
+  );
+  static_assert(
+      sizeof...(Variants) > 0, "At least one variant must be provided"
+  );
   return std::apply(
       [&visitors...](auto &&...args) {
         return std::visit(
@@ -70,20 +74,10 @@ constexpr auto match(const Variant &variant, Visitors &&...visitors) {
 /// @param args The lambdas to apply.
 /// @return The result of applying the appropriate lambda to the variant.
 template <typename Variant, typename... Visitors>
-constexpr auto match(Variant &variants, Visitors &&...visitors) {
-  return std::visit(Overloaded{std::forward<Visitors>(visitors)...}, variants);
-}
-
-/// A utility function for pattern matching on std::variant.
-/// Combines multiple lambdas into a single callable object and applies them to
-/// the given variant.
-/// @tparam T The type of the variant.
-/// @tparam Args The types of the lambdas.
-/// @param t The variant to match.
-/// @param args The lambdas to apply.
-/// @return The result of applying the appropriate lambda to the variant.
-template <typename Variant, typename... Visitors>
 constexpr auto match(Variant &&variants, Visitors &&...visitors) {
+  static_assert(
+      sizeof...(visitors) > 0, "At least one visitor must be provided"
+  );
   return std::visit(
       Overloaded{std::forward<Visitors>(visitors)...},
       std::forward<Variant>(variants)

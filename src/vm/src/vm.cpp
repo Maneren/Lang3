@@ -1,37 +1,40 @@
 #include "vm/vm.hpp"
 #include <iostream>
+#include <ranges>
 
 namespace l3::vm {
 
 CowValue VM::evaluate(const ast::BinaryExpression &binary) {
   std::println(std::cerr, "Evaluating binary expression {}", binary.get_op());
   const auto left = evaluate(binary.get_lhs());
+  const auto &left_ref = left.as_ref();
   const auto right = evaluate(binary.get_rhs());
+  const auto &right_ref = right.as_ref();
 
-  std::println(std::cerr, "Left: {}", *left.as_ref());
-  std::println(std::cerr, "Right: {}", *right.as_ref());
+  std::println(std::cerr, "Left: {}", left_ref);
+  std::println(std::cerr, "Right: {}", right.as_ref());
 
   switch (binary.get_op()) {
   case ast::BinaryOperator::Plus: {
-    return CowValue{left.as_ref()->add(*right.as_ref())};
+    return CowValue{left_ref.add(right_ref)};
   }
   case ast::BinaryOperator::Minus: {
-    return CowValue{left.as_ref()->sub(*right.as_ref())};
+    return CowValue{left_ref.sub(right_ref)};
   }
   case ast::BinaryOperator::Multiply: {
-    return CowValue{left.as_ref()->mul(*right.as_ref())};
+    return CowValue{left_ref.mul(right_ref)};
   }
   case ast::BinaryOperator::Divide: {
-    return CowValue{left.as_ref()->div(*right.as_ref())};
+    return CowValue{left_ref.div(right_ref)};
   }
   case ast::BinaryOperator::Modulo: {
-    return CowValue{left.as_ref()->mod(*right.as_ref())};
+    return CowValue{left_ref.mod(right_ref)};
   }
   case ast::BinaryOperator::And: {
-    return CowValue{left.as_ref()->and_op(*right.as_ref())};
+    return CowValue{left_ref.and_op(right_ref)};
   }
   case ast::BinaryOperator::Or: {
-    return CowValue{left.as_ref()->or_op(*right.as_ref())};
+    return CowValue{left_ref.or_op(right_ref)};
   }
   default:
     throw std::runtime_error(
@@ -42,9 +45,13 @@ CowValue VM::evaluate(const ast::BinaryExpression &binary) {
 
 CowValue VM::evaluate(const ast::Identifier &identifier) {
   if (auto value = get_variable(identifier)) {
-    return *std::move(value);
+    return CowValue{*value};
   }
-  throw RuntimeError("variable '{}' not declared", identifier.name());
+  throw UndefinedVariableError(identifier);
+}
+
+CowValue VM::evaluate(const ast::Variable &variable) {
+  return evaluate(variable.get_identifier());
 }
 
 CowValue VM::evaluate(const ast::Literal &literal) {
@@ -65,16 +72,56 @@ CowValue VM::evaluate(const ast::Expression &expression) {
   std::println(std::cerr, "Evaluating expression");
   return expression.visit([this](const auto &expr) {
     auto result = evaluate(expr);
-    std::println(std::cerr, "Result: {}", *result.as_ref());
+    std::println(std::cerr, "Expression result: {}", result.as_ref());
     return result;
   });
 }
+void VM::execute(const ast::Assignment &assignment) {
+  const auto &variable = assignment.get_variable();
+  std::println(
+      std::cerr, "Executing assignment to {}", variable.get_identifier().name()
+  );
+  auto value = get_variable(variable.get_identifier());
+  if (!value) {
+    throw UndefinedVariableError(variable);
+  }
+  const auto &expression = assignment.get_expression();
+  auto &lhs = value->get();
+  const auto rhs = evaluate(expression);
+  const auto &rhs_ref = rhs.as_ref();
+  switch (assignment.get_operator()) {
+  case ast::AssignmentOperator::Assign:
+    lhs = rhs_ref;
+    break;
+  case ast::AssignmentOperator::Plus:
+    lhs = lhs.add(rhs_ref);
+    break;
+  case ast::AssignmentOperator::Minus:
+    lhs = lhs.sub(rhs_ref);
+    break;
+  case ast::AssignmentOperator::Multiply:
+    lhs = lhs.mul(rhs_ref);
+    break;
+  case ast::AssignmentOperator::Divide:
+    lhs = lhs.div(rhs_ref);
+    break;
+  case ast::AssignmentOperator::Modulo:
+    lhs = lhs.mod(rhs_ref);
+    break;
+  default:
+    throw std::runtime_error(
+        std::format("not implemented: {}", assignment.get_operator())
+    );
+  }
+  std::println(std::cerr, "Assigned: {}", value->get());
+}
 void VM::execute(const ast::Declaration &declaration) {
-  std::println(std::cerr, "Executing declaration");
-  const auto value = [this, &expression = declaration.get_expression()]() {
-    return evaluate(expression);
-  };
-  current_scope().declare_variable(declaration.get_variable(), value);
+  const auto &variable = declaration.get_variable();
+  const auto &expression = declaration.get_expression();
+  std::println(std::cerr, "Executing declaration of {}", variable.name());
+  auto &value = current_scope().declare_variable(variable);
+  value = evaluate(expression).into_value();
+  std::println(std::cerr, "Declared {} = {}", variable.name(), value);
 }
 void VM::execute(const ast::Statement &statement) {
   std::println(std::cerr, "Executing statement");
@@ -94,5 +141,15 @@ void VM::execute(const ast::Program &program) {
     std::cerr << "Exception: " << e.what() << '\n';
     cpptrace::from_current_exception().print();
   }
+}
+
+[[nodiscard]] std::optional<std::reference_wrapper<Value>>
+VM::get_variable(const ast::Identifier &id) const {
+  for (const auto &it : std::views::reverse(scopes)) {
+    if (auto value = it.get_variable(id)) {
+      return value;
+    }
+  }
+  return std::nullopt;
 }
 } // namespace l3::vm

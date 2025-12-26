@@ -4,7 +4,6 @@
 #include "ast/nodes/literal.hpp"
 #include "vm/types.hpp"
 #include <cpptrace/from_current.hpp>
-#include <ranges>
 #include <stdexcept>
 #include <utils/cow.h>
 
@@ -17,6 +16,7 @@ public:
   void execute(const ast::Program &program);
   void execute(const ast::Statement &statement);
   void execute(const ast::Declaration &declaration);
+  void execute(const ast::Assignment &assignment);
 
   void execute(const auto & /*unused*/) {
     throw std::runtime_error("not implemented");
@@ -24,6 +24,7 @@ public:
 
   CowValue evaluate(const ast::Expression &expression);
   CowValue evaluate(const ast::Literal &literal);
+  CowValue evaluate(const ast::Variable &variable);
   CowValue evaluate(const ast::BinaryExpression &binary);
   CowValue evaluate(const ast::Identifier &identifier);
 
@@ -36,15 +37,8 @@ public:
 private:
   Scope &current_scope() { return scopes.back(); }
 
-  [[nodiscard]] std::optional<CowValue>
-  get_variable(const ast::Identifier &id) const {
-    for (const auto &it : std::views::reverse(scopes)) {
-      if (auto value = it.get_variable(id)) {
-        return CowValue{*value};
-      }
-    }
-    return std::nullopt;
-  }
+  [[nodiscard]] std::optional<std::reference_wrapper<Value>>
+  get_variable(const ast::Identifier &id) const;
 
   std::vector<Scope> scopes;
 };

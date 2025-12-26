@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ast/nodes/identifier.hpp"
 #include <format>
 #include <stdexcept>
 
@@ -23,6 +24,21 @@ public:
       : RuntimeError(
             "{} between '{}' and '{}' not supported", operation, lhs, rhs
         ) {}
+};
+
+class NameError : public RuntimeError {
+public:
+  using RuntimeError::RuntimeError;
+};
+
+class UndefinedVariableError : public NameError {
+public:
+  using NameError::NameError;
+
+  UndefinedVariableError(const ast::Identifier &id)
+      : NameError("variable '{}' not declared", id.name()) {}
+  UndefinedVariableError(const ast::Variable &id)
+      : NameError("variable '{}' not declared", id.get_identifier().name()) {}
 };
 
 } // namespace l3::vm

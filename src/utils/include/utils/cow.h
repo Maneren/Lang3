@@ -14,24 +14,21 @@ public:
   explicit Cow(T &t) : data(std::ref(t)) {}
   explicit Cow(T &&t) : data(std::move(t)) {}
 
-  T *as_ref() {
+  T &as_ref() {
     return match::match(
-        data,
-        [](T &t) -> T * { return &t; },
-        [](std::reference_wrapper<T> &t) -> T * { return &t.get(); },
-        [](std::unique_ptr<T> &t) -> T * { return &*t; }
-
-    );
+               data,
+               [](T &t) { return std::ref(t); },
+               [](std::reference_wrapper<T> &t) { return t; },
+               [](std::unique_ptr<T> &t) { return std::ref(*t); }
+    ).get();
   }
-  const T *as_ref() const {
+  const T &as_ref(this const Cow<T> &self) {
     return match::match(
-        data,
-        [](const T &t) -> const T * { return &t; },
-        [](const std::reference_wrapper<T> &t) -> const T * {
-          return &t.get();
-        },
-        [](const std::unique_ptr<T> &t) -> const T * { return &*t; }
-    );
+               self.data,
+               [](const T &t) { return std::cref(t); },
+               [](const std::reference_wrapper<T> t) { return std::cref(t); },
+               [](const std::unique_ptr<T> &t) { return std::cref(*t); }
+    ).get();
   }
 
   T into_value(this Cow<T> &&self) {

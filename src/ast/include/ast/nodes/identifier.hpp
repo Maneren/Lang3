@@ -27,6 +27,8 @@ public:
   Variable(Identifier &&id) : id(std::move(id)) {}
 
   void print(std::output_iterator<char> auto &out, size_t depth) const;
+
+  [[nodiscard]] const Identifier &get_identifier() const { return id; }
 };
 
 class NameList : public std::deque<Identifier> {

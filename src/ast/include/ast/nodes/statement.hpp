@@ -18,6 +18,10 @@ public:
       : var(std::move(var)), op(op), expr(std::move(expr)) {}
 
   void print(std::output_iterator<char> auto &out, size_t depth) const;
+
+  [[nodiscard]] const Variable &get_variable() const { return var; }
+  [[nodiscard]] AssignmentOperator get_operator() const { return op; }
+  [[nodiscard]] const Expression &get_expression() const { return expr; }
 };
 
 class Declaration {
