@@ -33,6 +33,7 @@ public:
   CowValue evaluate(const ast::Variable &variable);
   CowValue evaluate(const ast::BinaryExpression &binary);
   CowValue evaluate(const ast::Identifier &identifier);
+  CowValue evaluate(const ast::FunctionCall &function_call);
 
   CowValue evaluate(const auto &node) {
     throw std::runtime_error(

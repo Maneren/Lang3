@@ -126,6 +126,12 @@ void VM::execute(const ast::Declaration &declaration) {
   std::println(std::cerr, "Declared {} = {}", variable.name(), value);
 }
 void VM::execute(const ast::FunctionCall &function_call) {
+  const auto &value = evaluate(function_call);
+  if (!value->is_nil()) {
+    throw RuntimeError("Top-value function call returned non-nil value");
+  }
+}
+CowValue VM::evaluate(const ast::FunctionCall &function_call) {
   const auto &function = function_call.get_name();
   const auto &arguments = function_call.get_arguments();
   auto evaluated_function = evaluate(function);
@@ -148,11 +154,7 @@ void VM::execute(const ast::FunctionCall &function_call) {
     std::println(std::cerr, "  {}", argument);
   }
 
-  const auto value = function_ptr->operator()(evaluated_arguments);
-  std::println(std::cerr, "Function call result: {}", value);
-  if (!value->is_nil()) {
-    throw std::runtime_error("Function call returned non-nil value");
-  }
+  return function_ptr->operator()(evaluated_arguments);
 };
 void VM::execute(const ast::Statement &statement) {
   std::println(std::cerr, "Executing statement");
