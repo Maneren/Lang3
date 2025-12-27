@@ -25,6 +25,9 @@ public:
   FunctionCall(Variable &&name, Arguments &&args);
 
   void print(std::output_iterator<char> auto &out, size_t depth) const;
+
+  [[nodiscard]] const Variable &get_name() const { return name; }
+  [[nodiscard]] const Arguments &get_arguments() const { return args; }
 };
 
 class Block;

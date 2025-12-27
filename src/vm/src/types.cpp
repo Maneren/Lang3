@@ -1,4 +1,6 @@
 #include "vm/types.hpp"
+#include <print>
+#include <ranges>
 
 namespace l3::vm {
 
@@ -196,5 +198,35 @@ Value &Scope::declare_variable(const ast::Identifier &id) {
 
   return *inserted;
 }
+
+Scope Scope::global() {
+  Scope scope;
+  scope.declare_variable(ast::Identifier{"print"}) =
+      Value{BuiltinFunction{[](std::span<const CowValue> args) {
+        std::print("{}", args[0]);
+        for (const auto &arg : args | std::views::drop(1)) {
+          std::print(" {}", arg);
+        }
+        return CowValue{Value{Nil{}}};
+      }}};
+  scope.declare_variable(ast::Identifier{"println"}) =
+      Value{BuiltinFunction{[](std::span<const CowValue> args) {
+        std::print("{}", args[0]);
+        for (const auto &arg : args | std::views::drop(1)) {
+          std::print(" {}", arg);
+        }
+        std::print("\n");
+        return CowValue{Value{Nil{}}};
+      }}};
+  return scope;
+}
+
+L3Function::L3Function(Scope &&capture_scope, ast::FunctionBody body)
+    : capture_scope{std::make_unique<Scope>(std::move(capture_scope))},
+      body{std::move(body)} {}
+
+CowValue Function::operator()(std::span<const CowValue> args) const {
+  return inner.visit([&args](const auto &func) { return func(args); });
+};
 
 } // namespace l3::vm

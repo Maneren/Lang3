@@ -1,27 +1,30 @@
 #pragma once
 
-#include "ast/ast.hpp"
-#include "ast/nodes/literal.hpp"
-#include "utils/debug.h"
 #include "vm/types.hpp"
+#include <ast/ast.hpp>
+#include <ast/printing.hpp>
 #include <cpptrace/from_current.hpp>
 #include <stdexcept>
 #include <utils/cow.h>
+#include <utils/debug.h>
 
 namespace l3::vm {
 
 class VM {
 public:
-  VM() { scopes.emplace_back(); }
+  VM() { scopes.emplace_back(Scope::global()); }
 
   void execute(const ast::Program &program);
   void execute(const ast::Statement &statement);
   void execute(const ast::Declaration &declaration);
   void execute(const ast::Assignment &assignment);
+  void execute(const ast::FunctionCall &function_call);
 
   void execute(const auto &node) {
     throw std::runtime_error(
-        std::format("not implemented: {}", utils::debug::type_name(node))
+        std::format(
+            "execution not implemented: {}", utils::debug::type_name(node)
+        )
     );
   }
 
@@ -33,7 +36,9 @@ public:
 
   CowValue evaluate(const auto &node) {
     throw std::runtime_error(
-        std::format("not implemented: {}", utils::debug::type_name(node))
+        std::format(
+            "evaluation not implemented: {}", utils::debug::type_name(node)
+        )
     );
   }
 

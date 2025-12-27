@@ -1,6 +1,7 @@
 #pragma once
 
 #include <deque>
+#include <format>
 #include <string>
 
 namespace l3::ast {

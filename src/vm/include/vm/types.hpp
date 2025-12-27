@@ -3,6 +3,7 @@
 #include "ast/nodes/function.hpp"
 #include "ast/nodes/identifier.hpp"
 #include "utils/cow.h"
+#include "utils/format.h"
 #include "vm/error.hpp"
 #include <format>
 #include <functional>
@@ -52,10 +53,13 @@ class Function;
 class Value {
 
 public:
+  using function_type = std::shared_ptr<Function>;
   Value() : inner{Nil{}} {}
   Value(Nil /*unused*/) : inner{Nil{}} {}
   Value(Primitive &&primitive) : inner{std::move(primitive)} {}
-  Value(std::shared_ptr<Function> function) : inner{std::move(function)} {}
+  Value(Function &&function)
+      : inner{std::make_shared<Function>(std::move(function))} {}
+  Value(function_type function) : inner{std::move(function)} {}
 
   [[nodiscard]] Value add(const Value &other) const;
   [[nodiscard]] Value sub(const Value &other) const;
@@ -67,6 +71,16 @@ public:
 
   auto visit(auto &&...visitor) const {
     return match::match(inner, std::forward<decltype(visitor)>(visitor)...);
+  }
+
+  [[nodiscard]] bool is_nil() const {
+    return std::holds_alternative<Nil>(inner);
+  }
+  [[nodiscard]] bool is_function() const {
+    return std::holds_alternative<function_type>(inner);
+  }
+  [[nodiscard]] bool is_primitive() const {
+    return std::holds_alternative<Primitive>(inner);
   }
 
 private:
@@ -87,14 +101,42 @@ private:
     );
   }
 
-  std::variant<Nil, Primitive, std::shared_ptr<Function>> inner;
+  std::variant<Nil, Primitive, function_type> inner;
 };
 
 using CowValue = utils::Cow<Value>;
 
+class L3Function {
+public:
+  L3Function(Scope &&capture_scope, ast::FunctionBody body);
+
+  CowValue operator()(std::span<const CowValue> /*args*/) const {
+    throw std::runtime_error("not implemented");
+  }
+
+private:
+  std::unique_ptr<Scope> capture_scope;
+  ast::FunctionBody body;
+};
+
+class BuiltinFunction {
+public:
+  BuiltinFunction(std::function<CowValue(std::span<const CowValue>)> body)
+      : body{std::move(body)} {}
+
+  CowValue operator()(std::span<const CowValue> args) const {
+    return body(args);
+  }
+
+private:
+  std::function<CowValue(std::span<const CowValue>)> body;
+};
+
 class Scope {
 public:
   Scope() = default;
+
+  static Scope global();
 
   Value &declare_variable(const ast::Identifier &id);
 
@@ -106,28 +148,31 @@ private:
 };
 
 class Function {
-  Scope capture_scope;
-  ast::FunctionBody body;
+public:
+  Function(L3Function &&function) : inner{std::move(function)} {}
+  Function(BuiltinFunction &&function) : inner{std::move(function)} {}
+
+  CowValue operator()(std::span<const CowValue> args) const;
+
+private:
+  std::variant<L3Function, BuiltinFunction> inner;
 };
 
 } // namespace l3::vm
 
-template <> struct std::formatter<l3::vm::Nil> {
-  static constexpr auto parse(std::format_parse_context &ctx) {
-    return ctx.begin();
-  }
+template <>
+struct std::formatter<l3::vm::Nil> : utils::static_formatter<l3::vm::Nil> {
   static constexpr auto
-  format(const l3::vm::Nil & /*unused*/, std::format_context &ctx) {
+  format(const auto & /*unused*/, std::format_context &ctx) {
     return std::format_to(ctx.out(), "nil");
   }
 };
 
-template <> struct std::formatter<l3::vm::Primitive> {
-  static constexpr auto parse(std::format_parse_context &ctx) {
-    return ctx.begin();
-  }
+template <>
+struct std::formatter<l3::vm::Primitive>
+    : utils::static_formatter<l3::vm::Primitive> {
   static constexpr auto
-  format(const l3::vm::Primitive &primitive, std::format_context &ctx) {
+  format(const auto &primitive, std::format_context &ctx) {
     return match::match(
         primitive,
         [&ctx](const bool &value) {
@@ -146,12 +191,9 @@ template <> struct std::formatter<l3::vm::Primitive> {
   }
 };
 
-template <> struct std::formatter<l3::vm::Value> {
-  static constexpr auto parse(std::format_parse_context &ctx) {
-    return ctx.begin();
-  }
-  static constexpr auto
-  format(const l3::vm::Value &value, std::format_context &ctx) {
+template <>
+struct std::formatter<l3::vm::Value> : utils::static_formatter<l3::vm::Value> {
+  static constexpr auto format(const auto &value, std::format_context &ctx) {
     return value.visit(
         [&ctx](const l3::vm::Nil &value) {
           return std::format_to(ctx.out(), "{}", value);

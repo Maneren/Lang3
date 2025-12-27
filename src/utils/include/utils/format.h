@@ -5,7 +5,7 @@
 #include <unordered_set>
 #include <vector>
 
-namespace {
+namespace utils {
 
 template <typename T>
 concept formattable = std::semiregular<std::formatter<T>>;
@@ -20,11 +20,12 @@ template <typename t> struct static_formatter {
   }
 };
 
-} // namespace
+} // namespace utils
 
 template <typename T, typename A>
-  requires(formattable<T>)
-struct std::formatter<std::vector<T, A>> : static_formatter<std::vector<T, A>> {
+  requires(utils::formattable<T>)
+struct std::formatter<std::vector<T, A>>
+    : utils::static_formatter<std::vector<T, A>> {
   static auto format(auto &obj, std::format_context &ctx) {
     std::format_to(ctx.out(), "[");
     for (const auto &item : obj) {
@@ -38,9 +39,9 @@ struct std::formatter<std::vector<T, A>> : static_formatter<std::vector<T, A>> {
 };
 
 template <typename T, typename H, typename P, typename A>
-  requires(formattable<T>)
+  requires(utils::formattable<T>)
 struct std::formatter<std::unordered_set<T, H, P, A>>
-    : static_formatter<std::unordered_set<T, H, P, A>> {
+    : utils::static_formatter<std::unordered_set<T, H, P, A>> {
   static auto format(auto &obj, std::format_context &ctx) {
     std::format_to(ctx.out(), "{{");
     bool first = true;
@@ -56,9 +57,9 @@ struct std::formatter<std::unordered_set<T, H, P, A>>
 };
 
 template <typename T, typename U, typename H, typename P, typename A>
-  requires(all_formattable<T, U>)
+  requires(utils::all_formattable<T, U>)
 struct std::formatter<std::unordered_map<T, U, H, P, A>>
-    : static_formatter<std::unordered_map<T, U, H, P, A>> {
+    : utils::static_formatter<std::unordered_map<T, U, H, P, A>> {
   static auto format(auto &obj, std::format_context &ctx) {
     std::format_to(ctx.out(), "{{");
     bool first = true;
@@ -74,8 +75,9 @@ struct std::formatter<std::unordered_map<T, U, H, P, A>>
 };
 
 template <typename T>
-  requires(formattable<T>)
-struct std::formatter<std::optional<T>> : static_formatter<std::optional<T>> {
+  requires(utils::formattable<T>)
+struct std::formatter<std::optional<T>>
+    : utils::static_formatter<std::optional<T>> {
   static auto format(auto &obj, std::format_context &ctx) {
     if (obj.has_value()) {
       return std::format_to(ctx.out(), "{}", obj.value());
@@ -84,10 +86,21 @@ struct std::formatter<std::optional<T>> : static_formatter<std::optional<T>> {
   }
 };
 
-template <typename T>
-  requires(formattable<T>)
-struct std::formatter<std::pair<T, T>> : static_formatter<std::pair<T, T>> {
+template <typename... Ts>
+  requires(utils::formattable<Ts> && ...)
+struct std::formatter<std::tuple<Ts...>>
+    : utils::static_formatter<std::tuple<Ts...>> {
   static auto format(auto &obj, std::format_context &ctx) {
-    return std::format_to(ctx.out(), "({}, {})", obj.first, obj.second);
+    auto out = std::format_to(ctx.out(), "(");
+    std::apply(
+        [&](const auto &...args) {
+          bool first = true;
+          ((out = std::format_to(out, "{}{}", first ? "" : ", ", args),
+            first = false),
+           ...);
+        },
+        obj
+    );
+    return std::format_to(out, ")");
   }
 };

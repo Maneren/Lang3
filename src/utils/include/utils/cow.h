@@ -1,6 +1,8 @@
 #pragma once
 
+#include "format.h"
 #include "match.h"
+#include <format>
 #include <memory>
 #include <variant>
 
@@ -54,8 +56,21 @@ public:
     );
   }
 
+  auto &operator*() { return as_ref(); }
+  const auto &operator*() const { return as_ref(); }
+  auto *operator->() { return &as_ref(); }
+  const auto *operator->() const { return &as_ref(); }
+
 private:
   std::variant<T, std::reference_wrapper<T>, std::unique_ptr<T>> data;
 };
 
 } // namespace utils
+
+template <typename T>
+  requires utils::formattable<T>
+struct std::formatter<utils::Cow<T>> : utils::static_formatter<utils::Cow<T>> {
+  constexpr static auto format(const auto &t, std::format_context &ctx) {
+    return std::format_to(ctx.out(), "{}", t.as_ref());
+  }
+};

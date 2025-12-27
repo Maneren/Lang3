@@ -1,5 +1,6 @@
 #include "vm/vm.hpp"
 #include <iostream>
+#include <print>
 #include <ranges>
 
 namespace l3::vm {
@@ -7,12 +8,13 @@ namespace l3::vm {
 CowValue VM::evaluate(const ast::BinaryExpression &binary) {
   std::println(std::cerr, "Evaluating binary expression {}", binary.get_op());
   const auto left = evaluate(binary.get_lhs());
-  const auto &left_ref = left.as_ref();
   const auto right = evaluate(binary.get_rhs());
-  const auto &right_ref = right.as_ref();
 
-  std::println(std::cerr, "Left: {}", left_ref);
-  std::println(std::cerr, "Right: {}", right.as_ref());
+  std::println(std::cerr, "Left: {}", left);
+  std::println(std::cerr, "Right: {}", right);
+
+  const auto &left_ref = left.as_ref();
+  const auto &right_ref = right.as_ref();
 
   switch (binary.get_op()) {
   case ast::BinaryOperator::Plus: {
@@ -123,6 +125,35 @@ void VM::execute(const ast::Declaration &declaration) {
   value = evaluate(expression).into_value();
   std::println(std::cerr, "Declared {} = {}", variable.name(), value);
 }
+void VM::execute(const ast::FunctionCall &function_call) {
+  const auto &function = function_call.get_name();
+  const auto &arguments = function_call.get_arguments();
+  auto evaluated_function = evaluate(function);
+
+  Value::function_type function_ptr = evaluated_function->visit(
+      [](const Value::function_type &function) { return function; },
+      [](const auto &value) -> Value::function_type {
+        throw std::runtime_error(std::format("{} is not a function", value));
+      }
+  );
+
+  const auto evaluated_arguments =
+      std::views::transform(
+          arguments, [this](const auto &argument) { return evaluate(argument); }
+      ) |
+      std::ranges::to<std::vector>();
+
+  std::println(std::cerr, "Arguments:");
+  for (const auto &argument : evaluated_arguments) {
+    std::println(std::cerr, "  {}", argument);
+  }
+
+  const auto value = function_ptr->operator()(evaluated_arguments);
+  std::println(std::cerr, "Function call result: {}", value);
+  if (!value->is_nil()) {
+    throw std::runtime_error("Function call returned non-nil value");
+  }
+};
 void VM::execute(const ast::Statement &statement) {
   std::println(std::cerr, "Executing statement");
   statement.visit([this](const auto &stmt) { execute(stmt); });
@@ -152,4 +183,5 @@ VM::get_variable(const ast::Identifier &id) const {
   }
   return std::nullopt;
 }
+
 } // namespace l3::vm
