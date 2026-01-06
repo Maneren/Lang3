@@ -67,6 +67,7 @@ FLOAT    [+-]?({DIGIT}+\.{DIGIT}*|\.{DIGIT}+)
 "if"                        { return Token::_if; }
 "then"                      { return Token::then; }
 "else"                      { return Token::_else; }
+"elif"                      { return Token::elif; }
 "while"                     { return Token::_while; }
 "do"                        { return Token::_do; }
 "return"                    { return Token::_return; }

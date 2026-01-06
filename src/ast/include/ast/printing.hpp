@@ -134,8 +134,8 @@ IfBase::print(std::output_iterator<char> auto &out, size_t depth) const {
 inline void
 IfExpression::print(std::output_iterator<char> auto &out, size_t depth) const {
   detail::format_indented_line(out, depth, "IfExpression");
-  base_if.print(out, depth + 1);
-  for (const auto &elseif : elseif) {
+  get_base_if().print(out, depth + 1);
+  for (const auto &elseif : get_elseif()) {
     detail::format_indented_line(out, depth + 1, "ElseIf");
     elseif.print(out, depth + 2);
   }
@@ -146,8 +146,8 @@ IfExpression::print(std::output_iterator<char> auto &out, size_t depth) const {
 inline void
 IfStatement::print(std::output_iterator<char> auto &out, size_t depth) const {
   detail::format_indented_line(out, depth, "IfStatement");
-  base_if.print(out, depth + 1);
-  for (const auto &elseif : elseif) {
+  get_base_if().print(out, depth + 1);
+  for (const auto &elseif : get_elseif()) {
     detail::format_indented_line(out, depth + 1, "ElseIf");
     elseif.print(out, depth + 2);
   }

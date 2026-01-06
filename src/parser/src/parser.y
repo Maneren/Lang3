@@ -76,7 +76,7 @@
       <ast::IfBase> IF_BASE
       <ast::IfStatement> IF_STATEMENT
       <ast::IfExpression> IF_EXPRESSION
-      <ast::IfElseList> IF_ELSE
+      <ast::ElseIfList> IF_ELSE
       <ast::AssignmentOperator> ASSIGNMENT_OPERATOR
       <ast::Assignment> ASSIGNMENT
       <ast::Declaration> DECLARATION
@@ -178,8 +178,7 @@ IF_EXPRESSION: IF_BASE IF_ELSE _else BLOCK end
 
 IF_ELSE: elif EXPRESSION then BLOCK IF_ELSE
          { $5.emplace_back(ast::IfBase{ std::move($2), std::move($4) }); $$ = std::move($5); }
-       | %empty
-         { $$ = std::vector<ast::IfBase>{}; }
+       | %empty { $$ = ast::ElseIfList{}; }
 
 ASSIGNMENT_OPERATOR: equal       { $$ = ast::AssignmentOperator::Assign; }
                    | plus_equal  { $$ = ast::AssignmentOperator::Plus; }

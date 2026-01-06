@@ -38,6 +38,8 @@ public:
 
   [[nodiscard]] const PrimitiveType &get() const { return *this; }
   [[nodiscard]] PrimitiveType &get() { return *this; }
+
+  [[nodiscard]] bool as_bool() const;
 };
 
 Primitive operator+(const Primitive &lhs, const Primitive &rhs);
@@ -83,6 +85,8 @@ public:
     return std::holds_alternative<Primitive>(inner);
   }
 
+  [[nodiscard]] bool as_bool() const;
+
 private:
   template <typename Op>
   [[nodiscard]] Value
@@ -92,10 +96,16 @@ private:
         [&op](const Primitive &lhs, const Primitive &rhs) -> Value {
           return op(lhs, rhs);
         },
-        [](const Nil & /*lhs*/, const Nil & /*rhs*/) -> Value { return Nil{}; },
+        [](const Nil & /*lhs*/, const Nil & /*rhs*/) -> Value {
+          throw RuntimeError("cannot perform operation on nil values");
+        },
         [&op_name](const auto & /*lhs*/, const auto & /*rhs*/) -> Value {
           throw RuntimeError(
-              std::format("cannot {} function and value", op_name)
+              std::format(
+                  "cannot {} function and value, did you mean to call the "
+                  "function?",
+                  op_name
+              )
           );
         }
     );

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ast/nodes/block.hpp"
 #include <memory>
 #include <optional>
 #include <vector>
@@ -18,13 +19,33 @@ public:
   IfBase(Expression &&condition, Block &&block);
 
   void print(std::output_iterator<char> auto &out, size_t depth) const;
+
+  [[nodiscard]] const Expression &get_condition() const { return *condition; }
+  [[nodiscard]] const Block &get_block() const { return *block; }
 };
 
-using IfElseList = std::vector<IfBase>;
+using ElseIfList = std::vector<IfBase>;
 
-class IfExpression final {
+class IfElseBase {
   IfBase base_if;
-  std::vector<IfBase> elseif;
+  ElseIfList elseif;
+
+public:
+  IfElseBase() = default;
+  IfElseBase(const IfElseBase &) = delete;
+  IfElseBase(IfElseBase &&) noexcept = default;
+  IfElseBase &operator=(const IfElseBase &) = delete;
+  IfElseBase &operator=(IfElseBase &&) noexcept = default;
+  virtual ~IfElseBase();
+
+  IfElseBase(IfBase &&base_if);
+  IfElseBase(IfBase &&base_if, ElseIfList &&elseif);
+
+  [[nodiscard]] const IfBase &get_base_if() const { return base_if; }
+  [[nodiscard]] const ElseIfList &get_elseif() const { return elseif; }
+};
+
+class IfExpression final : public IfElseBase {
   std::unique_ptr<Block> else_block;
 
 public:
@@ -33,7 +54,7 @@ public:
   IfExpression(IfExpression &&) noexcept;
   IfExpression &operator=(const IfExpression &) = delete;
   IfExpression &operator=(IfExpression &&) noexcept;
-  ~IfExpression();
+  ~IfExpression() override;
 
   IfExpression(IfBase &&base_if, Block &&else_block);
   IfExpression(
@@ -45,9 +66,7 @@ public:
   void print(std::output_iterator<char> auto &out, size_t depth) const;
 };
 
-class IfStatement final {
-  IfBase base_if;
-  std::vector<IfBase> elseif;
+class IfStatement final : public IfElseBase {
   std::optional<std::unique_ptr<Block>> else_block;
 
 public:
@@ -56,7 +75,7 @@ public:
   IfStatement(IfStatement &&) noexcept;
   IfStatement &operator=(const IfStatement &) = delete;
   IfStatement &operator=(IfStatement &&) noexcept;
-  ~IfStatement();
+  ~IfStatement() override;
 
   IfStatement(IfBase &&base_if);
   IfStatement(IfBase &&base_if, std::vector<IfBase> &&elseif);
@@ -67,6 +86,9 @@ public:
   IfStatement &&with_elseif(IfBase &&elseif);
 
   void print(std::output_iterator<char> auto &out, size_t depth) const;
+
+  [[nodiscard]] std::optional<std::reference_wrapper<const Block>>
+  get_else_block() const;
 };
 
 } // namespace l3::ast

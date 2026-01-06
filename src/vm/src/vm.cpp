@@ -1,4 +1,5 @@
 #include "vm/vm.hpp"
+#include <algorithm>
 #include <iostream>
 #include <print>
 #include <ranges>
@@ -69,7 +70,6 @@ CowValue VM::evaluate(const ast::Literal &literal) {
 
   return CowValue{std::move(primitive)};
 }
-
 CowValue VM::evaluate(const ast::Expression &expression) {
   std::println(std::cerr, "Evaluating expression");
   return expression.visit([this](const auto &expr) {
@@ -131,6 +131,21 @@ void VM::execute(const ast::FunctionCall &function_call) {
     throw RuntimeError("Top-value function call returned non-nil value");
   }
 }
+void VM::execute(const ast::IfStatement &if_statement) {
+  std::println(std::cerr, "Evaluating if statement");
+  if (evaluate_if_branch(if_statement.get_base_if()) ||
+      std::ranges::any_of(
+          if_statement.get_elseif(),
+          std::bind_front(&VM::evaluate_if_branch, this)
+      )) {
+    return;
+  }
+
+  std::println(std::cerr, "Executing else block");
+  if (auto else_block = if_statement.get_else_block(); else_block) {
+    execute(else_block->get());
+  }
+}
 CowValue VM::evaluate(const ast::FunctionCall &function_call) {
   const auto &function = function_call.get_name();
   const auto &arguments = function_call.get_arguments();
@@ -185,5 +200,19 @@ VM::get_variable(const ast::Identifier &id) const {
   }
   return std::nullopt;
 }
+
+bool VM::evaluate_if_branch(const ast::IfBase &if_base) {
+  std::println(std::cerr, "Evaluating if branch");
+  const auto condition_value = evaluate(if_base.get_condition());
+  const auto &condition = condition_value.as_ref();
+  if (condition.as_bool()) {
+    std::println(std::cerr, "Condition is truthy {}", condition_value);
+    execute(if_base.get_block());
+    return true;
+  }
+
+  std::println(std::cerr, "Condition is falsy {}", condition_value);
+  return false;
+};
 
 } // namespace l3::vm

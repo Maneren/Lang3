@@ -12,13 +12,13 @@ namespace l3::vm {
 
 class VM {
 public:
-  VM() { scopes.emplace_back(Scope::global()); }
 
   void execute(const ast::Program &program);
   void execute(const ast::Statement &statement);
   void execute(const ast::Declaration &declaration);
   void execute(const ast::Assignment &assignment);
   void execute(const ast::FunctionCall &function_call);
+  void execute(const ast::IfStatement &if_statement);
 
   void execute(const auto &node) {
     throw std::runtime_error(
@@ -48,6 +48,8 @@ private:
 
   [[nodiscard]] std::optional<std::reference_wrapper<Value>>
   get_variable(const ast::Identifier &id) const;
+
+  bool evaluate_if_branch(const ast::IfBase &if_base);
 
   std::vector<Scope> scopes;
 };

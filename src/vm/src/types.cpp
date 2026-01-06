@@ -229,4 +229,26 @@ CowValue Function::operator()(std::span<const CowValue> args) const {
   return inner.visit([&args](const auto &func) { return func(args); });
 };
 
+[[nodiscard]] bool Primitive::as_bool() const {
+  return visit(
+      [](const bool &value) { return value; },
+      [](const long long &value) { return value != 0; },
+      [](const std::string &value) { return !value.empty(); },
+      [](const double & /*value*/) -> bool {
+        throw RuntimeError("cannot convert a floating point number to bool");
+      }
+  );
+}
+[[nodiscard]] bool Value::as_bool() const {
+  return visit(
+      [](const Primitive &primitive) { return primitive.as_bool(); },
+      [](const Nil & /*value*/) { return false; },
+      [](const function_type & /*value*/) -> bool {
+        throw RuntimeError(
+            "cannot convert a function to bool, did you mean to call the "
+            "function?"
+        );
+      }
+  );
+}
 } // namespace l3::vm
