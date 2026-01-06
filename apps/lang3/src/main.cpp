@@ -10,18 +10,23 @@ int main(int argc, char *argv[]) {
 
   const bool debug = argc > 1 && std::strcmp(args[1], "--debug") == 0;
 
+  std::string filename = "<stdin>";
+
   l3::L3Lexer lexer(std::cin, debug);
 
   auto program = l3::ast::Program{};
 
-  l3::L3Parser parser(lexer, debug, program);
-  const auto result = parser();
+  l3::L3Parser parser(lexer, filename, debug, program);
+  const auto result = parser.parse();
 
   if (result != 0) {
+    std::println(std::cerr, "Syntax error, returning {}", result);
     return result;
   }
 
-  std::print("{}", program);
+  if (debug) {
+    std::print(std::cerr, "{}", program);
+  }
 
   l3::vm::VM vm;
 

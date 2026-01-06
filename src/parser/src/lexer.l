@@ -8,6 +8,8 @@
     #define YY_DECL int L3Lexer::lex(L3Parser::semantic_type *lval, location *lloc)
 
     #define YY_USER_INIT yylval = lval; yylloc = lloc;
+
+    #define YY_USER_ACTION update_location();
 %}
 
 %option c++ noyywrap batch debug

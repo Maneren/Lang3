@@ -16,7 +16,21 @@ namespace l3 {
 
 class L3Lexer : public yy_l3_FlexLexer {
   L3Parser::semantic_type *yylval = nullptr;
-  location *yylloc = nullptr;
+  L3Parser::location_type *yylloc = nullptr;
+
+  void update_location() {
+    yylloc->step();
+
+    char *s = yytext;
+    for (; *s != '\0'; s++) {
+      if (*s == '\n') {
+        yylloc->lines();
+        yylloc->end.column = 1;
+      } else {
+        yylloc->columns();
+      }
+    }
+  }
 
 public:
   L3Lexer(std::istream &in, const bool debug) : yy_l3_FlexLexer(&in) {

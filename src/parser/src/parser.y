@@ -23,6 +23,7 @@
 %verbose
 
 %parse-param {L3Lexer &lexer}
+%parse-param {const std::string &filename}
 %parse-param {const bool debug}
 %parse-param {ast::Program &program}
 
@@ -31,11 +32,12 @@
     #if YYDEBUG != 0
         set_debug_level(debug);
     #endif
+
+    yyla.location.initialize(&filename, 1, 1);
 };
 
 %code {
     #include <string>
-    #include <print>
 
     #include "lexer/lexer.hpp"
 
