@@ -71,12 +71,11 @@ Primitive operator/(const Primitive &lhs, const Primitive &rhs) {
       "division",
       lhs,
       rhs,
-      []<typename T, typename U>(const T &lhs, const U &rhs) -> Primitive
-        requires std::is_same_v<T, U> &&
-                 requires(T lhs, U rhs) { lhs / rhs; } &&
-                 (!std::is_same_v<T, bool> || !std::is_same_v<U, bool>)
+      []<typename T>(const T &lhs, const T &rhs) -> Primitive
+        requires requires(T lhs, T rhs) { lhs / rhs; } &&
+                 (!std::is_same_v<T, bool>)
       {
-        if (!rhs) {
+        if (rhs == static_cast<T>(0)) {
           throw UnsupportedOperation("division by zero");
         }
         return Primitive{lhs / rhs};
@@ -89,10 +88,9 @@ Primitive operator%(const Primitive &lhs, const Primitive &rhs) {
       "modulo",
       lhs,
       rhs,
-      []<typename T, typename U>(const T &lhs, const U &rhs) -> Primitive
-        requires std::is_same_v<T, U> &&
-                 requires(T lhs, U rhs) { lhs % rhs; } &&
-                 (!std::is_same_v<T, bool> || !std::is_same_v<U, bool>)
+      []<typename T>(const T &lhs, const T &rhs) -> Primitive
+        requires requires(T lhs, T rhs) { lhs % rhs; } &&
+                 (!std::is_same_v<T, bool>)
       { return Primitive{lhs % rhs}; }
       );
 }
