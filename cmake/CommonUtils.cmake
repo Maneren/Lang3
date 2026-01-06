@@ -7,7 +7,7 @@ function(set_compiler_and_linker_flags TARGET)
     )
 
     target_compile_options(${TARGET} PRIVATE
-        $<$<CXX_COMPILER_ID:GNU,Clang>:-Wall -Wextra -Wpedantic>
+        $<$<CXX_COMPILER_ID:GNU,Clang>:-Wall -Wextra -Wpedantic -Wconversion>
         $<$<CXX_COMPILER_ID:MSVC>:/W4>
     )
 
