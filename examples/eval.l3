@@ -6,6 +6,6 @@ println(a)
 println(b)
 a = 0
 if a then println("a is truthy")
-elif b then println("b is truthy"
+elif b then println("b is truthy")
 else println("neither a or b is truthy")
 end

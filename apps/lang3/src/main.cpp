@@ -48,7 +48,7 @@ int main(int argc, char *argv[]) {
     std::print(std::cerr, "{}", program);
   }
 
-  l3::vm::VM vm;
+  l3::vm::VM vm{debug};
 
   vm.execute(program);
 

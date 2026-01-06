@@ -6,7 +6,7 @@
 namespace l3::ast {
 
 struct Nil {
-  void print(std::output_iterator<char> auto &out, size_t depth) const;
+  void print(std::output_iterator<char> auto &out, size_t depth = 0) const;
 };
 
 class Boolean {
@@ -14,7 +14,7 @@ class Boolean {
 
 public:
   Boolean(bool value) : value(value) {}
-  void print(std::output_iterator<char> auto &out, size_t depth) const;
+  void print(std::output_iterator<char> auto &out, size_t depth = 0) const;
 
   [[nodiscard]] const bool &get() const { return value; }
   bool &get() { return value; }
@@ -25,7 +25,7 @@ class Number {
 
 public:
   Number(long long value) : value(value) {}
-  void print(std::output_iterator<char> auto &out, size_t depth) const;
+  void print(std::output_iterator<char> auto &out, size_t depth = 0) const;
 
   [[nodiscard]] const long long &get() const { return value; }
   long long &get() { return value; }
@@ -36,7 +36,7 @@ class Float {
 
 public:
   Float(double value) : value(value) {}
-  void print(std::output_iterator<char> auto &out, size_t depth) const;
+  void print(std::output_iterator<char> auto &out, size_t depth = 0) const;
 
   [[nodiscard]] const double &get() const { return value; }
   double &get() { return value; }
@@ -47,7 +47,7 @@ class String {
 
 public:
   String(const std::string &literal);
-  void print(std::output_iterator<char> auto &out, size_t depth) const;
+  void print(std::output_iterator<char> auto &out, size_t depth = 0) const;
 
   [[nodiscard]] const std::string &get() const { return value; }
   std::string &get() { return value; }
@@ -64,7 +64,7 @@ public:
   Literal(Float num) : inner(num) {}
   Literal(String &&string) : inner(std::move(string)) {}
 
-  void print(std::output_iterator<char> auto &out, size_t depth) const {
+  void print(std::output_iterator<char> auto &out, size_t depth = 0) const {
     inner.visit([&out, depth](const auto &node) -> void {
       node.print(out, depth);
     });

@@ -18,7 +18,7 @@ public:
   IfBase() = default;
   IfBase(Expression &&condition, Block &&block);
 
-  void print(std::output_iterator<char> auto &out, size_t depth) const;
+  void print(std::output_iterator<char> auto &out, size_t depth = 0) const;
 
   [[nodiscard]] const Expression &get_condition() const { return *condition; }
   [[nodiscard]] const Block &get_block() const { return *block; }
@@ -63,7 +63,7 @@ public:
 
   IfExpression &&with_elseif(IfBase &&elseif);
 
-  void print(std::output_iterator<char> auto &out, size_t depth) const;
+  void print(std::output_iterator<char> auto &out, size_t depth = 0) const;
 };
 
 class IfStatement final : public IfElseBase {
@@ -85,7 +85,7 @@ public:
 
   IfStatement &&with_elseif(IfBase &&elseif);
 
-  void print(std::output_iterator<char> auto &out, size_t depth) const;
+  void print(std::output_iterator<char> auto &out, size_t depth = 0) const;
 
   [[nodiscard]] std::optional<std::reference_wrapper<const Block>>
   get_else_block() const;

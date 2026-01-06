@@ -4,6 +4,8 @@
 #include <ast/ast.hpp>
 #include <ast/printing.hpp>
 #include <cpptrace/from_current.hpp>
+#include <iostream>
+#include <print>
 #include <stdexcept>
 #include <utils/cow.h>
 #include <utils/debug.h>
@@ -12,6 +14,9 @@ namespace l3::vm {
 
 class VM {
 public:
+  VM(bool debug = false) : debug{debug} {
+    scopes.emplace_back(Scope::global());
+  }
 
   void execute(const ast::Program &program);
   void execute(const ast::Statement &statement);
@@ -51,7 +56,15 @@ private:
 
   bool evaluate_if_branch(const ast::IfBase &if_base);
 
+  bool debug;
   std::vector<Scope> scopes;
+
+  template <typename... Ts>
+  void debug_print(std::format_string<Ts...> message, Ts &&...args) const {
+    if (debug) {
+      std::println(std::cerr, message, std::forward<Ts>(args)...);
+    }
+  }
 };
 
 } // namespace l3::vm

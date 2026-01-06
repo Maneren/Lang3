@@ -15,7 +15,7 @@ public:
 
   [[nodiscard]] const std::string &name() const { return id; }
 
-  void print(std::output_iterator<char> auto &out, size_t depth) const;
+  void print(std::output_iterator<char> auto &out, size_t depth = 0) const;
 
   std::compare_three_way operator<=>(const Identifier &) const = default;
 };
@@ -27,7 +27,7 @@ public:
   Variable() = default;
   Variable(Identifier &&id) : id(std::move(id)) {}
 
-  void print(std::output_iterator<char> auto &out, size_t depth) const;
+  void print(std::output_iterator<char> auto &out, size_t depth = 0) const;
 
   [[nodiscard]] const Identifier &get_identifier() const { return id; }
 };

@@ -1,18 +1,16 @@
 #include "vm/vm.hpp"
 #include <algorithm>
-#include <iostream>
-#include <print>
 #include <ranges>
 
 namespace l3::vm {
 
 CowValue VM::evaluate(const ast::BinaryExpression &binary) {
-  std::println(std::cerr, "Evaluating binary expression {}", binary.get_op());
+  debug_print("Evaluating binary expression {}", binary.get_op());
   const auto left = evaluate(binary.get_lhs());
   const auto right = evaluate(binary.get_rhs());
 
-  std::println(std::cerr, "Left: {}", left);
-  std::println(std::cerr, "Right: {}", right);
+  debug_print("Left: {}", left);
+  debug_print("Right: {}", right);
 
   const auto &left_ref = left.as_ref();
   const auto &right_ref = right.as_ref();
@@ -58,7 +56,7 @@ CowValue VM::evaluate(const ast::Variable &variable) {
 }
 
 CowValue VM::evaluate(const ast::Literal &literal) {
-  std::println(std::cerr, "Evaluating literal");
+  debug_print("Evaluating literal");
   Value primitive = match::match(
       literal.get(),
       [](const ast::Nil & /*unused*/) -> Value { return {Nil{}}; },
@@ -66,23 +64,21 @@ CowValue VM::evaluate(const ast::Literal &literal) {
         return Primitive{literal_value.get()};
       }
   );
-  std::println(std::cerr, "Primitive: {}", primitive);
+  debug_print("Primitive: {}", primitive);
 
   return CowValue{std::move(primitive)};
 }
 CowValue VM::evaluate(const ast::Expression &expression) {
-  std::println(std::cerr, "Evaluating expression");
+  debug_print("Evaluating expression");
   return expression.visit([this](const auto &expr) {
     auto result = evaluate(expr);
-    std::println(std::cerr, "Expression result: {}", result.as_ref());
+    debug_print("Expression result: {}", result.as_ref());
     return result;
   });
 }
 void VM::execute(const ast::Assignment &assignment) {
   const auto &variable = assignment.get_variable();
-  std::println(
-      std::cerr, "Executing assignment to {}", variable.get_identifier().name()
-  );
+  debug_print("Executing assignment to {}", variable.get_identifier().name());
   auto value = get_variable(variable.get_identifier());
   if (!value) {
     throw UndefinedVariableError(variable);
@@ -115,15 +111,15 @@ void VM::execute(const ast::Assignment &assignment) {
         std::format("not implemented: {}", assignment.get_operator())
     );
   }
-  std::println(std::cerr, "Assigned: {}", value->get());
+  debug_print("Assigned: {}", value->get());
 }
 void VM::execute(const ast::Declaration &declaration) {
   const auto &variable = declaration.get_variable();
   const auto &expression = declaration.get_expression();
-  std::println(std::cerr, "Executing declaration of {}", variable.name());
+  debug_print("Executing declaration of {}", variable.name());
   auto &value = current_scope().declare_variable(variable);
   value = evaluate(expression).into_value();
-  std::println(std::cerr, "Declared {} = {}", variable.name(), value);
+  debug_print("Declared {} = {}", variable.name(), value);
 }
 void VM::execute(const ast::FunctionCall &function_call) {
   const auto &value = evaluate(function_call);
@@ -132,7 +128,7 @@ void VM::execute(const ast::FunctionCall &function_call) {
   }
 }
 void VM::execute(const ast::IfStatement &if_statement) {
-  std::println(std::cerr, "Evaluating if statement");
+  debug_print("Evaluating if statement");
   if (evaluate_if_branch(if_statement.get_base_if()) ||
       std::ranges::any_of(
           if_statement.get_elseif(),
@@ -141,7 +137,7 @@ void VM::execute(const ast::IfStatement &if_statement) {
     return;
   }
 
-  std::println(std::cerr, "Executing else block");
+  debug_print("Executing else block");
   if (auto else_block = if_statement.get_else_block(); else_block) {
     execute(else_block->get());
   }
@@ -164,15 +160,15 @@ CowValue VM::evaluate(const ast::FunctionCall &function_call) {
       ) |
       std::ranges::to<std::vector>();
 
-  std::println(std::cerr, "Arguments:");
+  debug_print("Arguments:");
   for (const auto &argument : evaluated_arguments) {
-    std::println(std::cerr, "  {}", argument);
+    debug_print("  {}", argument);
   }
 
   return function_ptr->operator()(evaluated_arguments);
 };
 void VM::execute(const ast::Statement &statement) {
-  std::println(std::cerr, "Executing statement");
+  debug_print("Executing statement");
   statement.visit([this](const auto &stmt) { execute(stmt); });
 }
 void VM::execute(const ast::Program &program) {
@@ -182,7 +178,7 @@ void VM::execute(const ast::Program &program) {
         execute(statement);
       }
     } catch (const RuntimeError &error) {
-      std::println(std::cerr, "{}", error.what());
+      debug_print("{}", error.what());
     }
   }
   CPPTRACE_CATCH(const std::exception &e) {
@@ -202,16 +198,16 @@ VM::get_variable(const ast::Identifier &id) const {
 }
 
 bool VM::evaluate_if_branch(const ast::IfBase &if_base) {
-  std::println(std::cerr, "Evaluating if branch");
+  debug_print("Evaluating if branch");
   const auto condition_value = evaluate(if_base.get_condition());
   const auto &condition = condition_value.as_ref();
   if (condition.as_bool()) {
-    std::println(std::cerr, "Condition is truthy {}", condition_value);
+    debug_print("Condition is truthy {}", condition_value);
     execute(if_base.get_block());
     return true;
   }
 
-  std::println(std::cerr, "Condition is falsy {}", condition_value);
+  debug_print("Condition is falsy {}", condition_value);
   return false;
 };
 

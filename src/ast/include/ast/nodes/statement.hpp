@@ -17,7 +17,7 @@ public:
   Assignment(Variable &&var, AssignmentOperator op, Expression &&expr)
       : var(std::move(var)), op(op), expr(std::move(expr)) {}
 
-  void print(std::output_iterator<char> auto &out, size_t depth) const;
+  void print(std::output_iterator<char> auto &out, size_t depth = 0) const;
 
   [[nodiscard]] const Variable &get_variable() const { return var; }
   [[nodiscard]] AssignmentOperator get_operator() const { return op; }
@@ -33,7 +33,7 @@ public:
   Declaration(Identifier &&var, Expression &&expr)
       : var(std::move(var)), expr(std::move(expr)) {}
 
-  void print(std::output_iterator<char> auto &out, size_t depth) const;
+  void print(std::output_iterator<char> auto &out, size_t depth = 0) const;
 
   [[nodiscard]] const Identifier &get_variable() const { return var; }
   [[nodiscard]] const Expression &get_expression() const { return expr; }
@@ -58,7 +58,7 @@ public:
   Statement(IfStatement &&clause) : inner(std::move(clause)) {}
   Statement(NamedFunction &&function) : inner(std::move(function)) {}
 
-  void print(std::output_iterator<char> auto &out, size_t depth) const;
+  void print(std::output_iterator<char> auto &out, size_t depth = 0) const;
 
   auto visit(auto &&visitor) const -> decltype(auto) {
     return inner.visit(visitor);
@@ -73,15 +73,15 @@ public:
   ReturnStatement() = default;
   ReturnStatement(Expression &&expression) : expr(std::move(expression)) {}
 
-  void print(std::output_iterator<char> auto &out, size_t depth) const;
+  void print(std::output_iterator<char> auto &out, size_t depth = 0) const;
 };
 
 struct BreakStatement {
-  void print(std::output_iterator<char> auto &out, size_t depth) const;
+  void print(std::output_iterator<char> auto &out, size_t depth = 0) const;
 };
 
 struct ContinueStatement {
-  void print(std::output_iterator<char> auto &out, size_t depth) const;
+  void print(std::output_iterator<char> auto &out, size_t depth = 0) const;
 };
 
 class LastStatement {
@@ -93,7 +93,7 @@ public:
   LastStatement(BreakStatement statement) : inner(statement) {}
   LastStatement(ContinueStatement statement) : inner(statement) {}
 
-  void print(std::output_iterator<char> auto &out, size_t depth) const;
+  void print(std::output_iterator<char> auto &out, size_t depth = 0) const;
 };
 
 } // namespace l3::ast

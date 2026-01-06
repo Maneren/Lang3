@@ -23,7 +23,7 @@ public:
   UnaryExpression() = default;
   UnaryExpression(UnaryOperator op, Expression &&expr);
 
-  void print(std::output_iterator<char> auto &out, size_t depth) const;
+  void print(std::output_iterator<char> auto &out, size_t depth = 0) const;
 };
 
 class BinaryExpression {
@@ -35,7 +35,7 @@ public:
   BinaryExpression() = default;
   BinaryExpression(Expression &&lhs, BinaryOperator op, Expression &&rhs);
 
-  void print(std::output_iterator<char> auto &out, size_t depth) const;
+  void print(std::output_iterator<char> auto &out, size_t depth = 0) const;
 
   [[nodiscard]] const auto &get_lhs() const { return *lhs; }
   [[nodiscard]] const auto &get_rhs() const { return *rhs; }
@@ -75,7 +75,7 @@ public:
   Expression(IfExpression &&clause) : ExpressionVariant(std::move(clause)) {}
   // Expression(Table &&table) : inner(std::move(table)) {}
 
-  void print(std::output_iterator<char> auto &out, size_t depth) const {
+  void print(std::output_iterator<char> auto &out, size_t depth = 0) const {
     visit([&out, depth](const auto &node) -> void { node.print(out, depth); });
   }
 };

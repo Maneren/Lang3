@@ -24,7 +24,7 @@ public:
   FunctionCall() = default;
   FunctionCall(Variable &&name, Arguments &&args);
 
-  void print(std::output_iterator<char> auto &out, size_t depth) const;
+  void print(std::output_iterator<char> auto &out, size_t depth = 0) const;
 
   [[nodiscard]] const Variable &get_name() const { return name; }
   [[nodiscard]] const Arguments &get_arguments() const { return args; }
@@ -46,7 +46,7 @@ public:
 
   ~FunctionBody();
 
-  void print(std::output_iterator<char> auto &out, size_t depth) const;
+  void print(std::output_iterator<char> auto &out, size_t depth = 0) const;
 };
 
 class NamedFunction {
@@ -58,7 +58,7 @@ public:
   NamedFunction(Identifier &&name, FunctionBody &&body)
       : name(std::move(name)), body(std::move(body)) {}
 
-  void print(std::output_iterator<char> auto &out, size_t depth) const;
+  void print(std::output_iterator<char> auto &out, size_t depth = 0) const;
 };
 
 class AnonymousFunction {
@@ -68,7 +68,7 @@ public:
   AnonymousFunction() = default;
   AnonymousFunction(FunctionBody &&body) : body(std::move(body)) {}
 
-  void print(std::output_iterator<char> auto &out, size_t depth) const;
+  void print(std::output_iterator<char> auto &out, size_t depth = 0) const;
 };
 
 } // namespace l3::ast

@@ -224,7 +224,7 @@ template <typename Node>
   requires requires(
       Node const &node, std::back_insert_iterator<std::string> &out
   ) {
-    { node.print(out, 0) } -> std::same_as<void>;
+    { node.print(out) } -> std::same_as<void>;
   }
 struct std::formatter<Node> {
   static constexpr auto parse(std::format_parse_context &ctx) {
@@ -232,7 +232,7 @@ struct std::formatter<Node> {
   }
   static constexpr auto format(Node const &node, std::format_context &ctx) {
     auto out = ctx.out();
-    node.print(out, 0);
+    node.print(out);
     return out;
   }
 };
