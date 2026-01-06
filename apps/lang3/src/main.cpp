@@ -1,18 +1,38 @@
 #include "ast/printing.hpp"
+#include "cli/cli.hpp"
 #include "lexer/lexer.hpp"
 #include "parser.tab.h"
 #include "vm/vm.hpp"
-#include <cstring>
+#include <cstdlib>
+#include <fstream>
+#include <iostream>
 #include <print>
 
 int main(int argc, char *argv[]) {
-  const auto args = std::span{argv, static_cast<size_t>(argc)};
+  cli::Parser cli_parser = cli::Parser{}.flag("d", "debug");
+  const auto args = cli_parser.parse(argc, argv);
 
-  const bool debug = argc > 1 && std::strcmp(args[1], "--debug") == 0;
+  if (!args) {
+    std::println(std::cerr, "{}", args.error().what());
+    return EXIT_FAILURE;
+  }
 
+  const auto &positional = args->positional();
+
+  const bool debug = args->has_flag("debug");
+
+  std::istream *input = &std::cin;
   std::string filename = "<stdin>";
 
-  l3::L3Lexer lexer(std::cin, debug);
+  std::ifstream input_file;
+
+  if (positional.size() == 1 && positional[0] != "-") {
+    input_file = std::ifstream{positional[0]};
+    input = &input_file;
+    filename = positional[0];
+  }
+
+  l3::L3Lexer lexer(*input, debug);
 
   auto program = l3::ast::Program{};
 
@@ -32,5 +52,5 @@ int main(int argc, char *argv[]) {
 
   vm.execute(program);
 
-  return 0;
+  return EXIT_SUCCESS;
 }
