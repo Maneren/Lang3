@@ -34,19 +34,22 @@ class Block;
 
 class FunctionBody {
   NameList parameters;
-  std::unique_ptr<Block> block;
+  std::shared_ptr<Block> block;
 
 public:
   FunctionBody() = default;
-  FunctionBody(const FunctionBody &) = delete;
+  FunctionBody(const FunctionBody &) = default;
   FunctionBody(FunctionBody &&) noexcept;
-  FunctionBody &operator=(const FunctionBody &) = delete;
+  FunctionBody &operator=(const FunctionBody &) = default;
   FunctionBody &operator=(FunctionBody &&) noexcept;
   FunctionBody(NameList &&parameters, Block &&block);
 
   ~FunctionBody();
 
   void print(std::output_iterator<char> auto &out, size_t depth = 0) const;
+
+  [[nodiscard]] const NameList &get_parameters() const { return parameters; }
+  [[nodiscard]] const Block &get_block() const { return *block; }
 };
 
 class NamedFunction {
@@ -59,6 +62,9 @@ public:
       : name(std::move(name)), body(std::move(body)) {}
 
   void print(std::output_iterator<char> auto &out, size_t depth = 0) const;
+
+  [[nodiscard]] const Identifier &get_name() const { return name; }
+  [[nodiscard]] const FunctionBody &get_body() const { return body; }
 };
 
 class AnonymousFunction {
@@ -69,6 +75,8 @@ public:
   AnonymousFunction(FunctionBody &&body) : body(std::move(body)) {}
 
   void print(std::output_iterator<char> auto &out, size_t depth = 0) const;
+
+  [[nodiscard]] const FunctionBody &get_body() const { return body; }
 };
 
 } // namespace l3::ast

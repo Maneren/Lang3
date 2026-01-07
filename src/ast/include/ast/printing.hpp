@@ -3,6 +3,7 @@
 #include "nodes/block.hpp"
 #include "nodes/expression.hpp"
 #include "nodes/function.hpp"
+#include "utils/format.h"
 #include <format>
 #include <iterator>
 
@@ -226,13 +227,19 @@ template <typename Node>
   ) {
     { node.print(out) } -> std::same_as<void>;
   }
-struct std::formatter<Node> {
-  static constexpr auto parse(std::format_parse_context &ctx) {
-    return ctx.begin();
-  }
+struct std::formatter<Node> : utils::static_formatter<Node> {
   static constexpr auto format(Node const &node, std::format_context &ctx) {
     auto out = ctx.out();
     node.print(out);
     return out;
+  }
+};
+
+template <>
+struct std::formatter<l3::ast::Identifier>
+    : utils::static_formatter<l3::ast::Identifier> {
+  static constexpr auto
+  format(l3::ast::Identifier const &id, std::format_context &ctx) {
+    return std::format_to(ctx.out(), "{}", id.name());
   }
 };

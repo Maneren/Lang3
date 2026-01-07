@@ -1,6 +1,7 @@
 #pragma once
 
 #include <format>
+#include <memory>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -102,5 +103,23 @@ struct std::formatter<std::tuple<Ts...>>
         obj
     );
     return std::format_to(out, ")");
+  }
+};
+
+template <typename T>
+  requires(utils::formattable<T>)
+struct std::formatter<std::unique_ptr<T>>
+    : utils::static_formatter<std::optional<T>> {
+  static auto format(auto &obj, std::format_context &ctx) {
+    return std::format_to(ctx.out(), "{}", *obj);
+  }
+};
+
+template <typename T>
+  requires(utils::formattable<T>)
+struct std::formatter<std::shared_ptr<T>>
+    : utils::static_formatter<std::optional<T>> {
+  static auto format(auto &obj, std::format_context &ctx) {
+    return std::format_to(ctx.out(), "{}", *obj);
   }
 };

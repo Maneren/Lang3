@@ -74,6 +74,8 @@ public:
   ReturnStatement(Expression &&expression) : expr(std::move(expression)) {}
 
   void print(std::output_iterator<char> auto &out, size_t depth = 0) const;
+
+  [[nodiscard]] const auto &get_expression() const { return expr; }
 };
 
 struct BreakStatement {
@@ -94,6 +96,11 @@ public:
   LastStatement(ContinueStatement statement) : inner(statement) {}
 
   void print(std::output_iterator<char> auto &out, size_t depth = 0) const;
+
+  auto visit(auto &&visitor) const -> decltype(auto) {
+    return inner.visit(visitor);
+  }
+  auto visit(auto &&visitor) -> decltype(auto) { return inner.visit(visitor); }
 };
 
 } // namespace l3::ast

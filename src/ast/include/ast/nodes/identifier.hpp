@@ -1,7 +1,6 @@
 #pragma once
 
 #include <deque>
-#include <format>
 #include <string>
 
 namespace l3::ast {
@@ -12,6 +11,7 @@ class Identifier {
 public:
   Identifier() = default;
   Identifier(std::string &&id) : id(std::move(id)) {}
+  Identifier(std::string_view id) : id(id) {}
 
   [[nodiscard]] const std::string &name() const { return id; }
 

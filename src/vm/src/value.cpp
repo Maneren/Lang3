@@ -1,5 +1,7 @@
-#include "vm/types.hpp"
-#include <print>
+#include "vm/value.hpp"
+#include "vm/scope.hpp"
+#include "vm/vm.hpp"
+
 #include <ranges>
 
 namespace l3::vm {
@@ -102,11 +104,13 @@ Primitive operator&&(const Primitive &lhs, const Primitive &rhs) {
       rhs,
       [](const bool &lhs, const bool &rhs) -> Primitive {
         return Primitive{lhs && rhs};
-      },
-      []<typename T, typename U>(const T &lhs, const U &rhs) -> Primitive
-        requires std::is_same_v<T, U> && requires(T lhs, U rhs) { lhs && rhs; }
-      { return Primitive{lhs && rhs}; }
-      );
+      }
+      // ,
+      // []<typename T, typename U>(const T &lhs, const U &rhs) -> Primitive
+      //   requires std::is_same_v<T, U> && requires(T lhs, U rhs) { lhs &&
+      //   rhs; }
+      // { return Primitive{lhs && rhs}; }
+  );
 }
 
 Primitive operator||(const Primitive &lhs, const Primitive &rhs) {
@@ -116,11 +120,13 @@ Primitive operator||(const Primitive &lhs, const Primitive &rhs) {
       rhs,
       [](const bool &lhs, const bool &rhs) -> Primitive {
         return Primitive{lhs || rhs};
-      },
-      []<typename T, typename U>(const T &lhs, const U &rhs) -> Primitive
-        requires std::is_same_v<T, U> && requires(T lhs, U rhs) { lhs || rhs; }
-      { return Primitive{lhs || rhs}; }
-      );
+      }
+      // ,
+      // []<typename T, typename U>(const T &lhs, const U &rhs) -> Primitive
+      //   requires std::is_same_v<T, U> && requires(T lhs, U rhs) { lhs || rhs;
+      //   }
+      // { return Primitive{lhs || rhs}; }
+  );
 }
 
 [[nodiscard]] Value Value::add(const Value &other) const {
@@ -177,61 +183,22 @@ Primitive operator||(const Primitive &lhs, const Primitive &rhs) {
   );
 }
 
-std::optional<std::reference_wrapper<Value>>
-Scope::get_variable(const ast::Identifier &id) const {
-  auto present = variables.find(id);
-  if (present == variables.end()) {
-    return std::nullopt;
-  }
-  return *present->second;
-}
+L3Function::L3Function(
+    const std::vector<std::shared_ptr<Scope>> &active_scopes,
+    const ast::NamedFunction &function
+)
+    : capture_scopes{active_scopes}, body{function.get_body()},
+      name{function.get_name()} {}
 
-Value &Scope::declare_variable(const ast::Identifier &id) {
-  const auto present = variables.find(id);
-  if (present != variables.end()) {
-    throw NameError("variable '{}' already declared", id.name());
-  }
-  const auto &[_, inserted] =
-      *variables.emplace_hint(present, id, std::make_unique<Value>());
-
-  return *inserted;
-}
-
-Scope Scope::global() {
-  Scope scope;
-  scope.declare_variable(ast::Identifier{"print"}) =
-      Value{BuiltinFunction{[](std::span<const CowValue> args) {
-        std::print("{}", args[0]);
-        for (const auto &arg : args | std::views::drop(1)) {
-          std::print(" {}", arg);
-        }
-        return CowValue{Value{Nil{}}};
-      }}};
-  scope.declare_variable(ast::Identifier{"println"}) =
-      Value{BuiltinFunction{[](std::span<const CowValue> args) {
-        std::print("{}", args[0]);
-        for (const auto &arg : args | std::views::drop(1)) {
-          std::print(" {}", arg);
-        }
-        std::print("\n");
-        return CowValue{Value{Nil{}}};
-      }}};
-  return scope;
-}
-
-L3Function::L3Function(Scope &&capture_scope, ast::FunctionBody body)
-    : capture_scope{std::make_unique<Scope>(std::move(capture_scope))},
-      body{std::move(body)} {}
-
-CowValue Function::operator()(std::span<const CowValue> args) const {
-  return inner.visit([&args](const auto &func) { return func(args); });
+CowValue Function::operator()(VM &vm, std::span<const CowValue> args) {
+  return inner.visit([&vm, &args](auto &func) { return func(vm, args); });
 };
 
 [[nodiscard]] bool Primitive::as_bool() const {
   return visit(
       [](const bool &value) { return value; },
       [](const long long &value) { return value != 0; },
-      [](const std::string &value) { return !value.empty(); },
+      [](const string_type &value) { return !value->empty(); },
       [](const double & /*value*/) -> bool {
         throw RuntimeError("cannot convert a floating point number to bool");
       }
@@ -249,4 +216,8 @@ CowValue Function::operator()(std::span<const CowValue> args) const {
       }
   );
 }
+
+Value::Value(Function &&function)
+    : inner{std::make_shared<Function>(std::move(function))} {}
+
 } // namespace l3::vm

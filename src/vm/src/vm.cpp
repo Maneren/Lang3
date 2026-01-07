@@ -1,4 +1,5 @@
 #include "vm/vm.hpp"
+#include "vm/format.hpp"
 #include <algorithm>
 #include <ranges>
 
@@ -44,18 +45,18 @@ CowValue VM::evaluate(const ast::BinaryExpression &binary) {
   }
 }
 
-CowValue VM::evaluate(const ast::Identifier &identifier) {
-  if (auto value = get_variable(identifier)) {
+CowValue VM::evaluate(const ast::Identifier &identifier) const {
+  if (auto value = read_variable(identifier)) {
     return CowValue{*value};
   }
   throw UndefinedVariableError(identifier);
 }
 
-CowValue VM::evaluate(const ast::Variable &variable) {
+CowValue VM::evaluate(const ast::Variable &variable) const {
   return evaluate(variable.get_identifier());
 }
 
-CowValue VM::evaluate(const ast::Literal &literal) {
+CowValue VM::evaluate(const ast::Literal &literal) const {
   debug_print("Evaluating literal");
   Value primitive = match::match(
       literal.get(),
@@ -79,7 +80,7 @@ CowValue VM::evaluate(const ast::Expression &expression) {
 void VM::execute(const ast::Assignment &assignment) {
   const auto &variable = assignment.get_variable();
   debug_print("Executing assignment to {}", variable.get_identifier().name());
-  auto value = get_variable(variable.get_identifier());
+  auto value = read_write_variable(variable.get_identifier());
   if (!value) {
     throw UndefinedVariableError(variable);
   }
@@ -122,6 +123,7 @@ void VM::execute(const ast::Declaration &declaration) {
   debug_print("Declared {} = {}", variable.name(), value);
 }
 void VM::execute(const ast::FunctionCall &function_call) {
+  debug_print("Executing function call");
   const auto &value = evaluate(function_call);
   if (!value->is_nil()) {
     throw RuntimeError("Top-value function call returned non-nil value");
@@ -145,10 +147,15 @@ void VM::execute(const ast::IfStatement &if_statement) {
 CowValue VM::evaluate(const ast::FunctionCall &function_call) {
   const auto &function = function_call.get_name();
   const auto &arguments = function_call.get_arguments();
+
+  debug_print("Calling function {}", function.get_identifier());
+
   auto evaluated_function = evaluate(function);
 
-  Value::function_type function_ptr = evaluated_function->visit(
-      [](const Value::function_type &function) { return function; },
+  const Value::function_type &function_ptr = evaluated_function->visit(
+      [](const Value::function_type &function) -> Value::function_type {
+        return function;
+      },
       [](const auto &value) -> Value::function_type {
         throw std::runtime_error(std::format("{} is not a function", value));
       }
@@ -165,7 +172,7 @@ CowValue VM::evaluate(const ast::FunctionCall &function_call) {
     debug_print("  {}", argument);
   }
 
-  return function_ptr->operator()(evaluated_arguments);
+  return function_ptr->operator()(*this, evaluated_arguments);
 };
 void VM::execute(const ast::Statement &statement) {
   debug_print("Executing statement");
@@ -187,10 +194,33 @@ void VM::execute(const ast::Program &program) {
   }
 }
 
-[[nodiscard]] std::optional<std::reference_wrapper<Value>>
-VM::get_variable(const ast::Identifier &id) const {
+CowValue VM::evaluate(const ast::Block &block) {
+  debug_print("Evaluating block");
+  for (const auto &statement : block.get_statements()) {
+    execute(statement);
+  }
+
+  if (const auto &last_statement = block.get_last_statement(); last_statement) {
+    debug_print("Block has last statement");
+    return evaluate(*last_statement);
+  }
+  return CowValue{Value{}};
+}
+
+std::optional<std::reference_wrapper<const Value>>
+VM::read_variable(const ast::Identifier &id) const {
   for (const auto &it : std::views::reverse(scopes)) {
-    if (auto value = it.get_variable(id)) {
+    if (auto value = it->get_variable(id)) {
+      return value;
+    }
+  }
+  return Scope::builtins().get_variable(id);
+}
+
+std::optional<std::reference_wrapper<Value>>
+VM::read_write_variable(const ast::Identifier &id) {
+  for (auto &it : std::views::reverse(scopes)) {
+    if (auto value = it->get_variable(id)) {
       return value;
     }
   }
@@ -210,5 +240,68 @@ bool VM::evaluate_if_branch(const ast::IfBase &if_base) {
   debug_print("Condition is falsy {}", condition_value);
   return false;
 };
+
+void VM::execute(const ast::NamedFunction &named_function) {
+  debug_print("Declaring named function");
+  const auto &name = named_function.get_name();
+
+  auto function = L3Function{scopes, named_function};
+  auto value = Value{Function{std::move(function)}};
+
+  auto &variable = current_scope().declare_variable(name);
+
+  debug_print("Declared function {}", name.name());
+  variable = std::move(value);
+}
+
+CowValue VM::evaluate_function_body(
+    std::span<std::shared_ptr<Scope>> captured,
+    Scope &&arguments,
+    const ast::FunctionBody &body
+) {
+  debug_print("entering function body");
+  for (const auto &capture : captured) {
+    debug_print("captured: {}", capture->get_variables());
+  }
+  debug_print("arguments: {}", arguments.get_variables());
+
+  auto original_scopes = std::move(scopes);
+
+  for (const auto &capture : captured) {
+    scopes.push_back(capture);
+  }
+  scopes.push_back(std::make_shared<Scope>(std::move(arguments)));
+
+  auto return_value = evaluate(body.get_block());
+
+  scopes = std::move(original_scopes);
+
+  return return_value;
+}
+
+CowValue VM::evaluate(const ast::LastStatement &last_statement) {
+  debug_print("Evaluating last statement");
+  return last_statement.visit(
+      match::Overloaded{
+          [this](const ast::ReturnStatement &return_statement) {
+            auto value = return_statement.get_expression()
+                             .transform([this](const auto &expression) {
+                               return evaluate(expression);
+                             })
+                             .value_or(CowValue{Value{}});
+            debug_print("Returning {}", value);
+            return value;
+          },
+          [](const auto & /*unused*/) -> CowValue {
+            throw std::runtime_error("last statement not implemented");
+          }
+      }
+  );
+}
+
+[[nodiscard]] CowValue
+VM::evaluate(const ast::AnonymousFunction &anonymous) const {
+  return CowValue{Function{L3Function{scopes, anonymous}}};
+}
 
 } // namespace l3::vm

@@ -12,6 +12,13 @@ template <typename T>
   requires(!std::is_reference_v<T>)
 class Cow {
 public:
+  Cow(const Cow &) = default;
+  Cow(Cow &&) = default;
+  Cow &operator=(const Cow &) = default;
+  Cow &operator=(Cow &&) = default;
+
+  ~Cow() = default;
+
   explicit Cow(const T &t) : data(std::cref(t)) {}
   explicit Cow(T &t) : data(std::ref(t)) {}
   explicit Cow(T &&t) : data(std::move(t)) {}
@@ -47,12 +54,11 @@ public:
   template <typename>
     requires std::is_copy_constructible_v<T>
   T to_value() const {
-    return data.visit(
-        match::Overloaded{
-            [](T &t) { return t; },
-            [](const std::reference_wrapper<T> &t) { return t.get(); },
-            [](std::unique_ptr<T> &t) { return *t; }
-        }
+    return match::match(
+        data,
+        [](const T &t) -> T { return t; },
+        [](const std::reference_wrapper<T> &t) -> T { return t.get(); },
+        [](const std::unique_ptr<T> &t) -> T { return *t; }
     );
   }
 

@@ -26,6 +26,9 @@ public:
   [[nodiscard]] const std::deque<Statement> &get_statements() const {
     return statements;
   }
+  [[nodiscard]] const std::optional<LastStatement> &get_last_statement() const {
+    return lastStatement;
+  }
 };
 
 } // namespace l3::ast
