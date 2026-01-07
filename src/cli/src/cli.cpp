@@ -171,8 +171,11 @@ Parser::parse_combined_option(ParsingContext &context, Args &args) const {
   return {};
 }
 
-std::expected<Args, ParseError> Parser::parse(int argc, char *argv[]) const {
-  auto context = ParsingContext{std::span{argv, static_cast<std::size_t>(argc)}};
+std::expected<Args, ParseError> Parser::parse(
+    int argc, const char *const argv[] // NOLINT(modernize-avoid-c-arrays)
+) const {
+  auto context =
+      ParsingContext{std::span{argv, static_cast<std::size_t>(argc)}};
 
   Args args;
   bool positional_only = false;

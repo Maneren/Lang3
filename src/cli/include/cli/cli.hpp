@@ -46,7 +46,7 @@ public:
 
   void advance() { ++i; }
   std::optional<argument> next() {
-    if (i < arguments.size()) {
+    if (i + 1 < arguments.size()) {
       return arguments[++i];
     }
     return std::nullopt;
@@ -102,8 +102,9 @@ public:
   Parser &short_option(std::string_view short_name);
   Parser &long_option(std::string_view long_name);
 
-  [[nodiscard]] std::expected<Args, ParseError>
-  parse(int argc, char *argv[]) const;
+  [[nodiscard]] std::expected<Args, ParseError> parse(
+      int argc, const char *const argv[] // NOLINT(modernize-avoid-c-arrays)
+  ) const;
 
 private:
   using NamePair = std::
