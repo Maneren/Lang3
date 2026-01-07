@@ -24,8 +24,12 @@ public:
   L3Function(
       const std::vector<std::shared_ptr<Scope>> &active_scopes,
       const ast::AnonymousFunction &function
-  )
-      : capture_scopes{active_scopes}, body{function.get_body()} {}
+  );
+  L3Function(
+      std::vector<std::shared_ptr<Scope>> &&active_scopes,
+      ast::FunctionBody body,
+      std::optional<ast::Identifier> name
+  );
   ~L3Function();
 
   CowValue operator()(VM &vm, std::span<const CowValue> args);

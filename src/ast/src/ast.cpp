@@ -72,6 +72,10 @@ FunctionCall::FunctionCall(Variable &&name, ExpressionList &&args)
 FunctionBody::FunctionBody(NameList &&parameters, Block &&block)
     : parameters(std::move(parameters)),
       block(std::make_unique<Block>(std::move(block))) {};
+FunctionBody::FunctionBody(
+    NameList &&parameters, std::shared_ptr<Block> &&block
+)
+    : parameters(std::move(parameters)), block(std::move(block)) {};
 FunctionBody::FunctionBody(FunctionBody &&) noexcept = default;
 FunctionBody &FunctionBody::operator=(FunctionBody &&) noexcept = default;
 FunctionBody::~FunctionBody() = default;

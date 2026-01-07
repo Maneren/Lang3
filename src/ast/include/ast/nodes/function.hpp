@@ -43,6 +43,7 @@ public:
   FunctionBody &operator=(const FunctionBody &) = default;
   FunctionBody &operator=(FunctionBody &&) noexcept;
   FunctionBody(NameList &&parameters, Block &&block);
+  FunctionBody(NameList &&parameters, std::shared_ptr<Block> &&block);
 
   ~FunctionBody();
 
@@ -50,6 +51,7 @@ public:
 
   [[nodiscard]] const NameList &get_parameters() const { return parameters; }
   [[nodiscard]] const Block &get_block() const { return *block; }
+  [[nodiscard]] std::shared_ptr<Block> get_block_ptr() const { return block; }
 };
 
 class NamedFunction {
