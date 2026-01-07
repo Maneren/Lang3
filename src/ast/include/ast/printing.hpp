@@ -12,7 +12,7 @@ namespace detail {
 
 constexpr void indent(std::output_iterator<char> auto &out, size_t depth) {
   for (size_t i = 0; i < depth; ++i) {
-    std::format_to(out, " ");
+    std::format_to(out, "▏ ");
   }
 }
 
