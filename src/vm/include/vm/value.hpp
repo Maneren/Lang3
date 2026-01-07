@@ -51,6 +51,13 @@ Primitive operator/(const Primitive &lhs, const Primitive &rhs);
 Primitive operator%(const Primitive &lhs, const Primitive &rhs);
 Primitive operator&&(const Primitive &lhs, const Primitive &rhs);
 Primitive operator||(const Primitive &lhs, const Primitive &rhs);
+Primitive operator==(const Primitive &lhs, const Primitive &rhs);
+Primitive operator!=(const Primitive &lhs, const Primitive &rhs);
+Primitive operator>(const Primitive &lhs, const Primitive &rhs);
+Primitive operator>=(const Primitive &lhs, const Primitive &rhs);
+Primitive operator<(const Primitive &lhs, const Primitive &rhs);
+Primitive operator<=(const Primitive &lhs, const Primitive &rhs);
+Primitive operator!(const Primitive &rhs);
 
 class Function;
 
@@ -78,6 +85,14 @@ public:
   [[nodiscard]] Value mod(const Value &other) const;
   [[nodiscard]] Value and_op(const Value &other) const;
   [[nodiscard]] Value or_op(const Value &other) const;
+  [[nodiscard]] Value equal(const Value &other) const;
+  [[nodiscard]] Value not_equal(const Value &other) const;
+  [[nodiscard]] Value greater(const Value &other) const;
+  [[nodiscard]] Value greater_equal(const Value &other) const;
+  [[nodiscard]] Value less(const Value &other) const;
+  [[nodiscard]] Value less_equal(const Value &other) const;
+
+  [[nodiscard]] Value not_op() const;
 
   auto visit(auto &&...visitor) const {
     return match::match(inner, std::forward<decltype(visitor)>(visitor)...);

@@ -1,6 +1,7 @@
 #include "vm/vm.hpp"
 #include "vm/format.hpp"
 #include <algorithm>
+#include <print>
 #include <ranges>
 
 namespace l3::vm {
@@ -37,6 +38,24 @@ CowValue VM::evaluate(const ast::BinaryExpression &binary) {
   }
   case ast::BinaryOperator::Or: {
     return CowValue{left_ref.or_op(right_ref)};
+  }
+  case ast::BinaryOperator::Equal: {
+    return CowValue{left_ref.equal(right_ref)};
+  }
+  case ast::BinaryOperator::NotEqual: {
+    return CowValue{left_ref.not_equal(right_ref)};
+  }
+  case ast::BinaryOperator::Less: {
+    return CowValue{left_ref.less(right_ref)};
+  }
+  case ast::BinaryOperator::LessEqual: {
+    return CowValue{left_ref.less_equal(right_ref)};
+  }
+  case ast::BinaryOperator::Greater: {
+    return CowValue{left_ref.greater(right_ref)};
+  }
+  case ast::BinaryOperator::GreaterEqual: {
+    return CowValue{left_ref.greater_equal(right_ref)};
   }
   default:
     throw std::runtime_error(
@@ -185,7 +204,7 @@ void VM::execute(const ast::Program &program) {
         execute(statement);
       }
     } catch (const RuntimeError &error) {
-      debug_print("{}", error.what());
+      std::println(std::cerr, "{}", error.what());
     }
   }
   CPPTRACE_CATCH(const std::exception &e) {

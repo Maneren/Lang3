@@ -1,8 +1,5 @@
 #include "vm/value.hpp"
-#include "vm/scope.hpp"
-#include "vm/vm.hpp"
-
-#include <ranges>
+#include "vm/function.hpp"
 
 namespace l3::vm {
 
@@ -129,6 +126,86 @@ Primitive operator||(const Primitive &lhs, const Primitive &rhs) {
   );
 }
 
+Primitive operator!(const Primitive &value) {
+  return Primitive{!value.as_bool()};
+}
+
+Primitive operator==(const Primitive &lhs, const Primitive &rhs) {
+  return handle_op(
+      "equality",
+      lhs,
+      rhs,
+      [](const bool &lhs, const bool &rhs) -> Primitive {
+        return Primitive{lhs == rhs};
+      },
+      []<typename T>(const T &lhs, const T &rhs) -> Primitive
+        requires requires(T lhs, T rhs) { lhs == rhs; }
+      { return Primitive{lhs == rhs}; }
+      );
+}
+
+Primitive operator!=(const Primitive &lhs, const Primitive &rhs) {
+  return handle_op(
+      "inequality",
+      lhs,
+      rhs,
+      [](const bool &lhs, const bool &rhs) -> Primitive {
+        return Primitive{lhs != rhs};
+      },
+      []<typename T>(const T &lhs, const T &rhs) -> Primitive
+        requires requires(T lhs, T rhs) { lhs != rhs; }
+      { return Primitive{lhs != rhs}; }
+      );
+}
+
+Primitive operator<(const Primitive &lhs, const Primitive &rhs) {
+  return handle_op(
+      "less than",
+      lhs,
+      rhs,
+      []<typename T>(const T &lhs, const T &rhs) -> Primitive
+        requires requires(T lhs, T rhs) { lhs < rhs; } &&
+                 (!std::is_same_v<T, bool>)
+      { return Primitive{lhs < rhs}; }
+      );
+}
+
+Primitive operator>(const Primitive &lhs, const Primitive &rhs) {
+  return handle_op(
+      "greater than",
+      lhs,
+      rhs,
+      []<typename T>(const T &lhs, const T &rhs) -> Primitive
+        requires requires(T lhs, T rhs) { lhs > rhs; } &&
+                 (!std::is_same_v<T, bool>)
+      { return Primitive{lhs > rhs}; }
+      );
+}
+
+Primitive operator<=(const Primitive &lhs, const Primitive &rhs) {
+  return handle_op(
+      "less than or equal to",
+      lhs,
+      rhs,
+      []<typename T>(const T &lhs, const T &rhs) -> Primitive
+        requires requires(T lhs, T rhs) { lhs <= rhs; } &&
+                 (!std::is_same_v<T, bool>)
+      { return Primitive{lhs <= rhs}; }
+      );
+}
+
+Primitive operator>=(const Primitive &lhs, const Primitive &rhs) {
+  return handle_op(
+      "greater than or equal to",
+      lhs,
+      rhs,
+      []<typename T>(const T &lhs, const T &rhs) -> Primitive
+        requires requires(T lhs, T rhs) { lhs >= rhs; } &&
+                 (!std::is_same_v<T, bool>)
+      { return Primitive{lhs >= rhs}; }
+      );
+}
+
 [[nodiscard]] Value Value::add(const Value &other) const {
   return binary_op(
       other, [](const auto &lhs, const auto &rhs) { return lhs + rhs; }, "add"
@@ -167,7 +244,7 @@ Primitive operator||(const Primitive &lhs, const Primitive &rhs) {
   );
 }
 
-[[nodiscard]] Value Value::and_op(const Value &other) const {
+Value Value::and_op(const Value &other) const {
   return binary_op(
       other,
       [](const auto &lhs, const auto &rhs) { return lhs && rhs; },
@@ -175,7 +252,7 @@ Primitive operator||(const Primitive &lhs, const Primitive &rhs) {
   );
 }
 
-[[nodiscard]] Value Value::or_op(const Value &other) const {
+Value Value::or_op(const Value &other) const {
   return binary_op(
       other,
       [](const auto &lhs, const auto &rhs) { return lhs || rhs; },
@@ -183,16 +260,53 @@ Primitive operator||(const Primitive &lhs, const Primitive &rhs) {
   );
 }
 
-L3Function::L3Function(
-    const std::vector<std::shared_ptr<Scope>> &active_scopes,
-    const ast::NamedFunction &function
-)
-    : capture_scopes{active_scopes}, body{function.get_body()},
-      name{function.get_name()} {}
-
-CowValue Function::operator()(VM &vm, std::span<const CowValue> args) {
-  return inner.visit([&vm, &args](auto &func) { return func(vm, args); });
+Value Value::equal(const Value &other) const {
+  return binary_op(
+      other,
+      [](const auto &lhs, const auto &rhs) { return lhs == rhs; },
+      "compare"
+  );
 };
+
+Value Value::not_equal(const Value &other) const {
+  return binary_op(
+      other,
+      [](const auto &lhs, const auto &rhs) { return lhs != rhs; },
+      "compare"
+  );
+}
+
+Value Value::greater(const Value &other) const {
+  return binary_op(
+      other,
+      [](const auto &lhs, const auto &rhs) { return lhs > rhs; },
+      "compare"
+  );
+}
+
+Value Value::greater_equal(const Value &other) const {
+  return binary_op(
+      other,
+      [](const auto &lhs, const auto &rhs) { return lhs >= rhs; },
+      "compare"
+  );
+}
+
+Value Value::less(const Value &other) const {
+  return binary_op(
+      other,
+      [](const auto &lhs, const auto &rhs) { return lhs < rhs; },
+      "compare"
+  );
+}
+
+Value Value::less_equal(const Value &other) const {
+  return binary_op(
+      other,
+      [](const auto &lhs, const auto &rhs) { return lhs <= rhs; },
+      "compare"
+  );
+}
 
 [[nodiscard]] bool Primitive::as_bool() const {
   return visit(
