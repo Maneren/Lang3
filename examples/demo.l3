@@ -1,16 +1,25 @@
 # This is a comment
-let a = 1 + 2 + 2 * 3
-let b = a * -3.5
+let a = 1 + 2 + 2 * -3
+let b = a * -3
 
-print(a + b)
+println(a + b)
 
 function add(a, b)
   return a + b
 end
 
+function div(a, b)
+  if b == 0 then
+    return 0
+  else
+    return a / b
+  end
+end
+
 function curry_add(a)
-  print("curry")
+  println("curry")
   return function(b)
+    println("curried")
     return a + b
   end
 end
@@ -19,10 +28,24 @@ let c = add(a, b,)
 
 # let d = curry_add(a)(b)
 
-c += 1
+let autocurry_add = add(5)
 
-if not (0 <= c and c < 10 or not (b == 0 and a == 0)) then
-  print("valid")
+let e = autocurry_add(c)
+c += 5
+
+if e == c then
+  println("working")
 else
-  print("invalid")
+  println("not working")
+  println(e, c)
 end
+
+# let message = if not (0 <= c and c < 10 or not (b == 0 and a == 0)) then
+#   return "valid"
+# else
+#   return "invalid"
+# end
+#
+# println(message)
+#
+# println(map(function(x) return x * x end, array))
