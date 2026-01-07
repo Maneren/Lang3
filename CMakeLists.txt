@@ -9,6 +9,12 @@ set(DEFAULT_CXX_STD 26)
 set(CMAKE_INSTALL_PREFIX ${PROJECT_SOURCE_DIR})
 set(CMAKE_INSTALL_MESSAGE LAZY)
 
+set(SANITIZERS OFF CACHE BOOL "Enable sanitizers")
+if(SANITIZERS)
+    add_compile_options(-fsanitize=address,undefined,leak)
+    add_link_options(-fsanitize=address,undefined,leak)
+endif()
+
 include(cmake/ExecutableTemplate.cmake)
 include(cmake/LibraryTemplate.cmake)
 

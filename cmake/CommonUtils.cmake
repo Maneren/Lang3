@@ -18,12 +18,10 @@ function(set_compiler_and_linker_flags TARGET)
     endif()
 
     set(CXX_GNU_DEBUG_INFO -g3 -gdwarf-5 -fno-omit-frame-pointer)
-    set(CXX_SANITIZERS -fsanitize=address,undefined,leak)
 
     target_compile_options(${TARGET} PRIVATE
         $<$<CONFIG:Debug>:$<$<CXX_COMPILER_ID:GNU,Clang>:-Og>>
         $<$<CONFIG:Debug>:$<$<CXX_COMPILER_ID:GNU,Clang>:${CXX_GNU_DEBUG_INFO}>>
-        $<$<CONFIG:Debug>:$<$<CXX_COMPILER_ID:GNU,Clang>:${CXX_SANITIZERS}>>
 
         $<$<CONFIG:Release>:$<$<CXX_COMPILER_ID:GNU,Clang>:-flto>>
 
@@ -34,7 +32,6 @@ function(set_compiler_and_linker_flags TARGET)
         $<$<CONFIG:Release>:$<$<CXX_COMPILER_ID:MSVC>:/O2 /DNDEBUG>>
     )
     target_link_options(${TARGET} PRIVATE
-        $<$<CONFIG:Debug>:$<$<CXX_COMPILER_ID:GNU,Clang>:${CXX_SANITIZERS}>>
         $<$<CONFIG:RelWithDebInfo>:$<$<CXX_COMPILER_ID:GNU,Clang>:-flto>>
 
         $<$<CONFIG:Release>:$<$<CXX_COMPILER_ID:GNU,Clang>:-flto>>
