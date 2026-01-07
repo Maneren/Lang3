@@ -93,14 +93,20 @@ private:
 
 class Parser {
 public:
-  Parser &flag(std::string_view short_name, std::string_view long_name = "");
-  Parser &option(std::string_view short_name, std::string_view long_name = "");
+  Parser &flag(std::string_view short_name, std::string_view long_name);
+  Parser &short_flag(std::string_view short_name);
+  Parser &long_flag(std::string_view long_name);
+
+  Parser &option(std::string_view short_name, std::string_view long_name);
+  Parser &short_option(std::string_view short_name);
+  Parser &long_option(std::string_view long_name);
 
   [[nodiscard]] std::expected<Args, ParseError>
   parse(int argc, char *argv[]) const;
 
 private:
-  using NamePair = std::pair<std::string, std::string>;
+  using NamePair = std::
+      pair<std::optional<std::string_view>, std::optional<std::string_view>>;
   std::vector<NamePair> _flags;
   std::vector<NamePair> _options;
 

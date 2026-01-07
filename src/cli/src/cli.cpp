@@ -1,4 +1,5 @@
 #include "cli/cli.hpp"
+#include <algorithm>
 #include <functional>
 
 namespace cli {
@@ -27,9 +28,30 @@ Parser &Parser::flag(std::string_view short_name, std::string_view long_name) {
   _flags.emplace_back(short_name, long_name);
   return *this;
 }
+
+Parser &Parser::short_flag(std::string_view short_name) {
+  _flags.emplace_back(short_name, std::nullopt);
+  return *this;
+}
+
+Parser &Parser::long_flag(std::string_view long_name) {
+  _flags.emplace_back(std::nullopt, long_name);
+  return *this;
+}
+
 Parser &
 Parser::option(std::string_view short_name, std::string_view long_name) {
   _options.emplace_back(short_name, long_name);
+  return *this;
+}
+
+Parser &Parser::short_option(std::string_view short_name) {
+  _options.emplace_back(short_name, std::nullopt);
+  return *this;
+}
+
+Parser &Parser::long_option(std::string_view long_name) {
+  _options.emplace_back(std::nullopt, long_name);
   return *this;
 }
 bool Parser::is_flag(
@@ -42,34 +64,37 @@ bool Parser::is_option(
 ) const {
   return find_in(_options, short_name, long_name);
 }
+
+namespace {
+
+template <typename T>
+  requires requires(T name) { name == name; }
+bool optional_contains(std::optional<T> opt, T name) {
+  return opt.transform(std::bind_front(std::equal_to<>(), name))
+      .value_or(false);
+}
+
+} // namespace
+
 bool Parser::find_in(
     const std::vector<NamePair> &vec,
     std::string_view short_name,
     std::string_view long_name
 ) {
-  for (const auto &[s, l] : vec) {
-    if ((!short_name.empty() && s == short_name) ||
-        (!long_name.empty() && l == long_name)) {
-      return true;
-    }
-  }
-  return false;
+  return std::ranges::any_of(vec, [&](const auto pair) {
+    const auto &[s, l] = pair;
+    return optional_contains(s, short_name) || optional_contains(l, long_name);
+  });
 }
 [[nodiscard]] std::string_view Parser::get_store_name(
-    std::string_view short_name, const std::vector<NamePair> &vec
+    std::string_view name, const std::vector<NamePair> &vec
 ) {
   for (const auto &[s, l] : vec) {
-    if (s == short_name) {
-      return l;
+    if (optional_contains(s, name)) {
+      return l.value_or(name);
     }
   }
-  return short_name;
-
-  const auto result = std::ranges::find_if(
-      vec, std::bind_front(std::equal_to<>{}, short_name), &NamePair::first
-  );
-
-  return result != vec.end() ? result->second : short_name;
+  return name;
 }
 
 std::expected<void, ParseError>

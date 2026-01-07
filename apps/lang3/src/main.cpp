@@ -9,7 +9,12 @@
 #include <print>
 
 int main(int argc, char *argv[]) {
-  cli::Parser cli_parser = cli::Parser{}.flag("d", "debug");
+  cli::Parser cli_parser = cli::Parser{}
+                               .flag("d", "debug")
+                               .long_flag("debug-lexer")
+                               .long_flag("debug-parser")
+                               .long_flag("debug-ast")
+                               .long_flag("debug-vm");
   const auto args = cli_parser.parse(argc, argv);
 
   if (!args) {
@@ -20,6 +25,10 @@ int main(int argc, char *argv[]) {
   const auto &positional = args->positional();
 
   const bool debug = args->has_flag("debug");
+  const bool debug_lexer = debug || args->has_flag("debug-lexer");
+  const bool debug_parser = debug || args->has_flag("debug-parser");
+  const bool debug_ast = debug || args->has_flag("debug-ast");
+  const bool debug_vm = debug || args->has_flag("debug-vm");
 
   std::istream *input = &std::cin;
   std::string filename = "<stdin>";
@@ -32,11 +41,11 @@ int main(int argc, char *argv[]) {
     filename = positional[0];
   }
 
-  l3::L3Lexer lexer(*input, debug);
+  l3::L3Lexer lexer(*input, debug_lexer);
 
   auto program = l3::ast::Program{};
 
-  l3::L3Parser parser(lexer, filename, debug, program);
+  l3::L3Parser parser(lexer, filename, debug_parser, program);
   const auto result = parser.parse();
 
   if (result != 0) {
@@ -44,11 +53,11 @@ int main(int argc, char *argv[]) {
     return result;
   }
 
-  if (debug) {
+  if (debug_ast) {
     std::print(std::cerr, "{}", program);
   }
 
-  l3::vm::VM vm{debug};
+  l3::vm::VM vm{debug_vm};
 
   vm.execute(program);
 
