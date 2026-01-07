@@ -30,7 +30,7 @@ FLOAT    [+-]?({DIGIT}+\.{DIGIT}*|\.{DIGIT}+)
 %}
 
 {FLOAT}                     { yylval->emplace<double>(std::stod(yytext)); return Token::fnum; }
-{INTEGER}                   { yylval->emplace<long>(std::stol(yytext)); return Token::num; }
+{INTEGER}                   { yylval->emplace<long long>(std::stoll(yytext)); return Token::num; }
 \"                          { BEGIN(STR); yylval->emplace<std::string>(); }
 <STR>\"                     { BEGIN(INITIAL); return Token::string; }
 <STR>\\[nt]                 { yylval->as<std::string>() += yytext; }

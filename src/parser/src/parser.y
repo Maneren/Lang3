@@ -59,7 +59,7 @@
        div_equal mod_equal pow_equal concat_equal elif
        <std::string> id
        <std::string> string
-       <size_t> num
+       <long long> num
        <double> fnum
 
 %type <ast::UnaryExpression> UNARY
