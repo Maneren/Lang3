@@ -25,4 +25,4 @@ foreach(CMAKE_FILE ${EXTERNAL_CMAKE_FILES})
     endif()
 endforeach()
 
-FetchContent_MakeAvailable(cpptrace Microsoft.GSL)
+FetchContent_MakeAvailable(cpptrace Microsoft.GSL GTest)
