@@ -1,6 +1,7 @@
 #pragma once
 
 #include "statement.hpp"
+#include <cstddef>
 #include <deque>
 #include <iterator>
 #include <optional>
@@ -13,15 +14,12 @@ class Block {
 
 public:
   Block() = default;
-  Block(Statement &&statement) {
-    statements.emplace_front(std::move(statement));
-  }
-  Block(LastStatement &&lastStatement)
-      : lastStatement(std::move(lastStatement)) {}
+  Block(Statement &&statement);
+  Block(LastStatement &&lastStatement);
 
   Block &with_statement(Statement &&statement);
 
-  void print(std::output_iterator<char> auto &out, size_t depth = 0) const;
+  void print(std::output_iterator<char> auto &out, std::size_t depth = 0) const;
 
   [[nodiscard]] const std::deque<Statement> &get_statements() const {
     return statements;

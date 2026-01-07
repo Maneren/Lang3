@@ -5,12 +5,16 @@
 #include "vm/value.hpp"
 #include <ast/ast.hpp>
 #include <ast/printing.hpp>
-#include <cpptrace/from_current.hpp>
+#include <format>
+#include <functional>
 #include <iostream>
+#include <memory>
+#include <optional>
 #include <print>
+#include <span>
 #include <stdexcept>
-#include <utils/cow.h>
 #include <utils/debug.h>
+#include <vector>
 
 namespace l3::vm {
 
@@ -60,7 +64,7 @@ public:
   );
 
 private:
-  Scope &current_scope() { return *scopes.back(); }
+  Scope &current_scope();
 
   [[nodiscard]] std::optional<std::reference_wrapper<const Value>>
   read_variable(const ast::Identifier &id) const;

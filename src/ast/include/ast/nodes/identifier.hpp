@@ -1,7 +1,11 @@
 #pragma once
 
+#include <compare>
+#include <cstddef>
 #include <deque>
+#include <iterator>
 #include <string>
+#include <string_view>
 
 namespace l3::ast {
 
@@ -10,12 +14,12 @@ class Identifier {
 
 public:
   Identifier() = default;
-  Identifier(std::string &&id) : id(std::move(id)) {}
-  Identifier(std::string_view id) : id(id) {}
+  Identifier(std::string &&id);
+  Identifier(std::string_view id);
 
-  [[nodiscard]] const std::string &name() const { return id; }
+  [[nodiscard]] const std::string &name() const;
 
-  void print(std::output_iterator<char> auto &out, size_t depth = 0) const;
+  void print(std::output_iterator<char> auto &out, std::size_t depth = 0) const;
 
   std::compare_three_way operator<=>(const Identifier &) const = default;
 };
@@ -25,11 +29,11 @@ class Variable {
 
 public:
   Variable() = default;
-  Variable(Identifier &&id) : id(std::move(id)) {}
+  Variable(Identifier &&id);
 
-  void print(std::output_iterator<char> auto &out, size_t depth = 0) const;
+  void print(std::output_iterator<char> auto &out, std::size_t depth = 0) const;
 
-  [[nodiscard]] const Identifier &get_identifier() const { return id; }
+  [[nodiscard]] const Identifier &get_identifier() const;
 };
 
 class NameList : public std::deque<Identifier> {

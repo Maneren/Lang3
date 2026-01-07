@@ -1,7 +1,10 @@
-#include "ast/nodes/block.hpp"
+#include "ast/ast.hpp"
 #include <memory>
+#include <optional>
 #include <ranges>
+#include <string>
 #include <utility>
+#include <vector>
 
 namespace l3::ast {
 
@@ -22,6 +25,15 @@ char decode_escape(char c) {
 
 } // namespace
 
+Boolean::Boolean(bool value) : value(value) {}
+[[nodiscard]] const bool &Boolean::get() const { return value; }
+bool &Boolean::get() { return value; }
+Number::Number(long long value) : value(value) {}
+[[nodiscard]] const long long &Number::get() const { return value; }
+long long &Number::get() { return value; }
+Float::Float(double value) : value(value) {}
+[[nodiscard]] const double &Float::get() const { return value; }
+double &Float::get() { return value; }
 String::String(const std::string &literal) {
   using namespace std::ranges;
 
@@ -40,6 +52,13 @@ String::String(const std::string &literal) {
     }
   }
 }
+[[nodiscard]] const std::string &String::get() const { return value; }
+std::string &String::get() { return value; }
+Literal::Literal(Nil nil) : inner(nil) {}
+Literal::Literal(Boolean boolean) : inner(boolean) {}
+Literal::Literal(Number num) : inner(num) {}
+Literal::Literal(Float num) : inner(num) {}
+Literal::Literal(String &&string) : inner(std::move(string)) {}
 
 UnaryExpression::UnaryExpression(UnaryOperator op, Expression &&expr)
     : op(op), expr(std::make_unique<Expression>(std::move(expr))) {}
@@ -49,6 +68,12 @@ BinaryExpression::BinaryExpression(
 )
     : lhs(std::make_unique<Expression>(std::move(lhs))), op(op),
       rhs(std::make_unique<Expression>(std::move(rhs))) {}
+
+Identifier::Identifier(std::string &&id) : id(std::move(id)) {}
+Identifier::Identifier(std::string_view id) : id(id) {}
+[[nodiscard]] const std::string &Identifier::name() const { return id; }
+[[nodiscard]] const Identifier &Variable::get_identifier() const { return id; }
+Variable::Variable(Identifier &&id) : id(std::move(id)) {}
 
 NameList::NameList(Identifier &&ident) { emplace_front(std::move(ident)); }
 
@@ -79,6 +104,9 @@ FunctionBody::FunctionBody(
 FunctionBody::FunctionBody(FunctionBody &&) noexcept = default;
 FunctionBody &FunctionBody::operator=(FunctionBody &&) noexcept = default;
 FunctionBody::~FunctionBody() = default;
+
+NamedFunction::NamedFunction(Identifier &&name, FunctionBody &&body)
+    : name(std::move(name)), body(std::move(body)) {}
 
 IfBase::IfBase(Expression &&condition, Block &&block)
     : condition(std::make_unique<Expression>(std::move(condition))),
@@ -113,12 +141,18 @@ IfStatement::IfStatement(IfStatement &&) noexcept = default;
 IfStatement &IfStatement::operator=(IfStatement &&) noexcept = default;
 IfStatement::~IfStatement() = default;
 
+Block::Block(LastStatement &&lastStatement)
+    : lastStatement(std::move(lastStatement)) {}
+Block::Block(Statement &&statement) {
+  statements.emplace_front(std::move(statement));
+}
+
 Block &Block::with_statement(Statement &&statement) {
   statements.push_front(std::move(statement));
   return *this;
 }
 
-[[nodiscard]] std::optional<std::reference_wrapper<const Block>>
+std::optional<std::reference_wrapper<const Block>>
 IfStatement::get_else_block() const {
   return else_block.transform([](const auto &block) {
     return std::cref(*block);

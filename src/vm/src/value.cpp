@@ -1,5 +1,11 @@
 #include "vm/value.hpp"
+#include "vm/error.hpp"
 #include "vm/function.hpp"
+#include <memory>
+#include <string_view>
+#include <tuple>
+#include <utility>
+#include <variant>
 
 namespace l3::vm {
 
@@ -206,13 +212,13 @@ Primitive operator>=(const Primitive &lhs, const Primitive &rhs) {
       );
 }
 
-[[nodiscard]] Value Value::add(const Value &other) const {
+Value Value::add(const Value &other) const {
   return binary_op(
       other, [](const auto &lhs, const auto &rhs) { return lhs + rhs; }, "add"
   );
 }
 
-[[nodiscard]] Value Value::sub(const Value &other) const {
+Value Value::sub(const Value &other) const {
   return binary_op(
       other,
       [](const auto &lhs, const auto &rhs) { return lhs - rhs; },
@@ -220,7 +226,7 @@ Primitive operator>=(const Primitive &lhs, const Primitive &rhs) {
   );
 }
 
-[[nodiscard]] Value Value::mul(const Value &other) const {
+Value Value::mul(const Value &other) const {
   return binary_op(
       other,
       [](const auto &lhs, const auto &rhs) { return lhs * rhs; },
@@ -228,7 +234,7 @@ Primitive operator>=(const Primitive &lhs, const Primitive &rhs) {
   );
 }
 
-[[nodiscard]] Value Value::div(const Value &other) const {
+Value Value::div(const Value &other) const {
   return binary_op(
       other,
       [](const auto &lhs, const auto &rhs) { return lhs / rhs; },
@@ -236,7 +242,7 @@ Primitive operator>=(const Primitive &lhs, const Primitive &rhs) {
   );
 }
 
-[[nodiscard]] Value Value::mod(const Value &other) const {
+Value Value::mod(const Value &other) const {
   return binary_op(
       other,
       [](const auto &lhs, const auto &rhs) { return lhs % rhs; },
@@ -308,7 +314,7 @@ Value Value::less_equal(const Value &other) const {
   );
 }
 
-[[nodiscard]] bool Primitive::as_bool() const {
+bool Primitive::as_bool() const {
   return visit(
       [](const bool &value) { return value; },
       [](const long long &value) { return value != 0; },
@@ -318,7 +324,7 @@ Value Value::less_equal(const Value &other) const {
       }
   );
 }
-[[nodiscard]] bool Value::as_bool() const {
+bool Value::as_bool() const {
   return visit(
       [](const Primitive &primitive) { return primitive.as_bool(); },
       [](const Nil & /*value*/) { return false; },
@@ -333,5 +339,26 @@ Value Value::less_equal(const Value &other) const {
 
 Value::Value(Function &&function)
     : inner{std::make_shared<Function>(std::move(function))} {}
+
+Primitive::Primitive(bool value) : PrimitiveType{value} {}
+Primitive::Primitive(long long value) : PrimitiveType{value} {}
+Primitive::Primitive(double value) : PrimitiveType{value} {}
+Primitive::Primitive(const std::string &value)
+    : PrimitiveType{std::make_shared<std::string>(value)} {}
+Primitive::Primitive(std::string &&value)
+    : PrimitiveType{std::make_shared<std::string>(std::move(value))} {}
+const PrimitiveType &Primitive::get() const { return *this; }
+PrimitiveType &Primitive::get() { return *this; }
+Value::Value() : inner{Nil{}} {}
+Value::Value(Nil /*unused*/) : inner{Nil{}} {}
+Value::Value(Primitive &&primitive) : inner{std::move(primitive)} {}
+Value::Value(function_type function) : inner{std::move(function)} {}
+bool Value::is_nil() const { return std::holds_alternative<Nil>(inner); }
+bool Value::is_function() const {
+  return std::holds_alternative<function_type>(inner);
+}
+bool Value::is_primitive() const {
+  return std::holds_alternative<Primitive>(inner);
+}
 
 } // namespace l3::vm

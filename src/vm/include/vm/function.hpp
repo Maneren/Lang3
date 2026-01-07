@@ -47,8 +47,7 @@ private:
 class BuiltinFunction {
 public:
   using Body = std::function<CowValue(VM &vm, std::span<const CowValue> args)>;
-  BuiltinFunction(ast::Identifier &&name, Body &&body)
-      : name{std::move(name)}, body{std::move(body)} {}
+  BuiltinFunction(ast::Identifier &&name, Body &&body);
 
   CowValue operator()(VM &vm, std::span<const CowValue> args) const {
     return body(vm, args);

@@ -10,9 +10,9 @@ public:
   using VariableMap =
       std::unordered_map<ast::Identifier, std::shared_ptr<Value>>;
   Scope() = default;
-  Scope(VariableMap &&variables) : variables{std::move(variables)} {};
+  Scope(VariableMap &&variables);
 
-  static const Scope &builtins() { return _builtins; }
+  static const Scope &builtins();
 
   Value &declare_variable(const ast::Identifier &id);
 
@@ -21,7 +21,7 @@ public:
   std::optional<std::reference_wrapper<Value>>
   get_variable(const ast::Identifier &id);
 
-  const auto &get_variables() const { return variables; }
+  const Scope::VariableMap &get_variables() const;
 
 private:
   static Scope _builtins;

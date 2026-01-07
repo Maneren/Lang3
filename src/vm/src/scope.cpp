@@ -1,7 +1,17 @@
 #include "vm/scope.hpp"
 #include "vm/format.hpp"
+#include "vm/function.hpp"
+#include "vm/value.hpp"
+#include "vm/vm.hpp"
+#include <ast/nodes/identifier.hpp>
+#include <functional>
+#include <memory>
+#include <optional>
 #include <print>
 #include <ranges>
+#include <span>
+#include <string_view>
+#include <utility>
 
 namespace l3::vm {
 
@@ -70,5 +80,9 @@ Scope create_builtins() {
 } // namespace
 
 Scope Scope::_builtins = create_builtins();
+
+Scope::Scope(VariableMap &&variables) : variables{std::move(variables)} {};
+const Scope &Scope::builtins() { return _builtins; }
+const Scope::VariableMap &Scope::get_variables() const { return variables; }
 
 } // namespace l3::vm

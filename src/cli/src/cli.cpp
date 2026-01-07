@@ -1,6 +1,12 @@
 #include "cli/cli.hpp"
 #include <algorithm>
+#include <cstddef>
+#include <expected>
 #include <functional>
+#include <optional>
+#include <string>
+#include <string_view>
+#include <vector>
 
 namespace cli {
 
@@ -86,7 +92,7 @@ bool Parser::find_in(
     return optional_contains(s, short_name) || optional_contains(l, long_name);
   });
 }
-[[nodiscard]] std::string_view Parser::get_store_name(
+std::string_view Parser::get_store_name(
     std::string_view name, const std::vector<NamePair> &vec
 ) {
   for (const auto &[s, l] : vec) {
@@ -166,7 +172,7 @@ Parser::parse_combined_option(ParsingContext &context, Args &args) const {
 }
 
 std::expected<Args, ParseError> Parser::parse(int argc, char *argv[]) const {
-  auto context = ParsingContext{std::span{argv, static_cast<size_t>(argc)}};
+  auto context = ParsingContext{std::span{argv, static_cast<std::size_t>(argc)}};
 
   Args args;
   bool positional_only = false;
@@ -174,7 +180,7 @@ std::expected<Args, ParseError> Parser::parse(int argc, char *argv[]) const {
   context.advance(); // skip executable name
 
   for (; !context.empty(); context.advance()) {
-    std::string_view arg = context.current();
+    const std::string_view arg = context.current();
 
     if (positional_only || !arg.starts_with("-")) {
       args._positional.emplace_back(arg);

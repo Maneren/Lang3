@@ -1,7 +1,11 @@
 #pragma once
 
 #include "identifier.hpp"
+#include <cstddef>
+#include <deque>
+#include <iterator>
 #include <memory>
+#include <utility>
 
 namespace l3::ast {
 
@@ -24,7 +28,7 @@ public:
   FunctionCall() = default;
   FunctionCall(Variable &&name, Arguments &&args);
 
-  void print(std::output_iterator<char> auto &out, size_t depth = 0) const;
+  void print(std::output_iterator<char> auto &out, std::size_t depth = 0) const;
 
   [[nodiscard]] const Variable &get_name() const { return name; }
   [[nodiscard]] const Arguments &get_arguments() const { return args; }
@@ -47,7 +51,7 @@ public:
 
   ~FunctionBody();
 
-  void print(std::output_iterator<char> auto &out, size_t depth = 0) const;
+  void print(std::output_iterator<char> auto &out, std::size_t depth = 0) const;
 
   [[nodiscard]] const NameList &get_parameters() const { return parameters; }
   [[nodiscard]] const Block &get_block() const { return *block; }
@@ -60,10 +64,9 @@ class NamedFunction {
 
 public:
   NamedFunction() = default;
-  NamedFunction(Identifier &&name, FunctionBody &&body)
-      : name(std::move(name)), body(std::move(body)) {}
+  NamedFunction(Identifier &&name, FunctionBody &&body);
 
-  void print(std::output_iterator<char> auto &out, size_t depth = 0) const;
+  void print(std::output_iterator<char> auto &out, std::size_t depth = 0) const;
 
   [[nodiscard]] const Identifier &get_name() const { return name; }
   [[nodiscard]] const FunctionBody &get_body() const { return body; }
@@ -76,7 +79,7 @@ public:
   AnonymousFunction() = default;
   AnonymousFunction(FunctionBody &&body) : body(std::move(body)) {}
 
-  void print(std::output_iterator<char> auto &out, size_t depth = 0) const;
+  void print(std::output_iterator<char> auto &out, std::size_t depth = 0) const;
 
   [[nodiscard]] const FunctionBody &get_body() const { return body; }
 };

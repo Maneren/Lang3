@@ -1,18 +1,19 @@
 #pragma once
 
-#include "nodes/block.hpp"
-#include "nodes/expression.hpp"
-#include "nodes/function.hpp"
-#include "utils/format.h"
+#include "ast/ast.hpp"
+#include <concepts>
+#include <cstddef>
 #include <format>
 #include <iterator>
+#include <string>
+#include <utils/format.h>
 
 namespace l3::ast {
 
 namespace detail {
 
-constexpr void indent(std::output_iterator<char> auto &out, size_t depth) {
-  for (size_t i = 0; i < depth; ++i) {
+constexpr void indent(std::output_iterator<char> auto &out, std::size_t depth) {
+  for (std::size_t i = 0; i < depth; ++i) {
     std::format_to(out, "▏ ");
   }
 }
@@ -20,7 +21,7 @@ constexpr void indent(std::output_iterator<char> auto &out, size_t depth) {
 template <typename... Args>
 constexpr void format_indented(
     std::output_iterator<char> auto &out,
-    size_t depth,
+    std::size_t depth,
     std::format_string<Args...> fmt,
     Args &&...args
 ) {
@@ -31,7 +32,7 @@ constexpr void format_indented(
 template <typename... Args>
 constexpr void format_indented_line(
     std::output_iterator<char> auto &out,
-    size_t depth,
+    std::size_t depth,
     std::format_string<Args...> fmt,
     Args &&...args
 ) {
@@ -43,57 +44,59 @@ constexpr void format_indented_line(
 } // namespace detail
 
 inline void
-String::print(std::output_iterator<char> auto &out, size_t depth) const {
+String::print(std::output_iterator<char> auto &out, std::size_t depth) const {
   detail::format_indented_line(out, depth, "String \"{}\"", value);
 }
 
 inline void
-Number::print(std::output_iterator<char> auto &out, size_t depth) const {
+Number::print(std::output_iterator<char> auto &out, std::size_t depth) const {
   detail::format_indented_line(out, depth, "Number {}", value);
 }
 
 inline void
-Float::print(std::output_iterator<char> auto &out, size_t depth) const {
+Float::print(std::output_iterator<char> auto &out, std::size_t depth) const {
   detail::format_indented_line(out, depth, "Float {}", value);
 }
 
 inline void
-Boolean::print(std::output_iterator<char> auto &out, size_t depth) const {
+Boolean::print(std::output_iterator<char> auto &out, std::size_t depth) const {
   detail::format_indented_line(out, depth, "Boolean {}", value);
 }
 
 inline void
-Nil::print(std::output_iterator<char> auto &out, size_t depth) const {
+Nil::print(std::output_iterator<char> auto &out, std::size_t depth) const {
   detail::format_indented_line(out, depth, "Nil");
 }
 
 inline void UnaryExpression::print(
-    std::output_iterator<char> auto &out, size_t depth
+    std::output_iterator<char> auto &out, std::size_t depth
 ) const {
   detail::format_indented_line(out, depth, "UnaryExpression {}", op);
   expr->print(out, depth + 1);
 }
 
 inline void BinaryExpression::print(
-    std::output_iterator<char> auto &out, size_t depth
+    std::output_iterator<char> auto &out, std::size_t depth
 ) const {
   detail::format_indented_line(out, depth, "BinaryExpression {}", op);
   lhs->print(out, depth + 1);
   rhs->print(out, depth + 1);
 }
 
-inline void
-Identifier::print(std::output_iterator<char> auto &out, size_t depth) const {
+inline void Identifier::print(
+    std::output_iterator<char> auto &out, std::size_t depth
+) const {
   detail::format_indented_line(out, depth, "Identifier '{}'", id);
 }
 
 inline void
-Variable::print(std::output_iterator<char> auto &out, size_t depth) const {
+Variable::print(std::output_iterator<char> auto &out, std::size_t depth) const {
   detail::format_indented_line(out, depth, "Variable '{}'", id.name());
 }
 
-inline void
-FunctionCall::print(std::output_iterator<char> auto &out, size_t depth) const {
+inline void FunctionCall::print(
+    std::output_iterator<char> auto &out, std::size_t depth
+) const {
   detail::format_indented_line(out, depth, "FunctionCall");
   name.print(out, depth + 1);
   detail::format_indented_line(out, depth + 1, "Arguments");
@@ -102,8 +105,9 @@ FunctionCall::print(std::output_iterator<char> auto &out, size_t depth) const {
   }
 }
 
-inline void
-FunctionBody::print(std::output_iterator<char> auto &out, size_t depth) const {
+inline void FunctionBody::print(
+    std::output_iterator<char> auto &out, std::size_t depth
+) const {
   detail::format_indented_line(out, depth, "Parameters");
   for (const Identifier &parameter : parameters) {
     parameter.print(out, depth + 1);
@@ -111,29 +115,31 @@ FunctionBody::print(std::output_iterator<char> auto &out, size_t depth) const {
   block->print(out, depth);
 }
 
-inline void
-NamedFunction::print(std::output_iterator<char> auto &out, size_t depth) const {
+inline void NamedFunction::print(
+    std::output_iterator<char> auto &out, std::size_t depth
+) const {
   detail::format_indented_line(out, depth, "NamedFunction");
   name.print(out, depth + 1);
   body.print(out, depth + 1);
 }
 
 inline void AnonymousFunction::print(
-    std::output_iterator<char> auto &out, size_t depth
+    std::output_iterator<char> auto &out, std::size_t depth
 ) const {
   detail::format_indented_line(out, depth, "AnonymousFunction");
   body.print(out, depth + 1);
 }
 
 inline void
-IfBase::print(std::output_iterator<char> auto &out, size_t depth) const {
+IfBase::print(std::output_iterator<char> auto &out, std::size_t depth) const {
   detail::format_indented_line(out, depth, "Condition");
   condition->print(out, depth + 1);
   block->print(out, depth);
 }
 
-inline void
-IfExpression::print(std::output_iterator<char> auto &out, size_t depth) const {
+inline void IfExpression::print(
+    std::output_iterator<char> auto &out, std::size_t depth
+) const {
   detail::format_indented_line(out, depth, "IfExpression");
   get_base_if().print(out, depth + 1);
   for (const auto &elseif : get_elseif()) {
@@ -144,8 +150,9 @@ IfExpression::print(std::output_iterator<char> auto &out, size_t depth) const {
   else_block->print(out, depth + 2);
 }
 
-inline void
-IfStatement::print(std::output_iterator<char> auto &out, size_t depth) const {
+inline void IfStatement::print(
+    std::output_iterator<char> auto &out, std::size_t depth
+) const {
   detail::format_indented_line(out, depth, "IfStatement");
   get_base_if().print(out, depth + 1);
   for (const auto &elseif : get_elseif()) {
@@ -158,41 +165,44 @@ IfStatement::print(std::output_iterator<char> auto &out, size_t depth) const {
   }
 }
 
-inline void
-Assignment::print(std::output_iterator<char> auto &out, size_t depth) const {
+inline void Assignment::print(
+    std::output_iterator<char> auto &out, std::size_t depth
+) const {
   detail::format_indented_line(out, depth, "Assignment {}", op);
   var.print(out, depth + 1);
   expr.print(out, depth + 1);
 }
 
-inline void
-Declaration::print(std::output_iterator<char> auto &out, size_t depth) const {
+inline void Declaration::print(
+    std::output_iterator<char> auto &out, std::size_t depth
+) const {
   detail::format_indented_line(out, depth, "Declaration");
   var.print(out, depth + 1);
   expr.print(out, depth + 1);
 }
 
-inline void
-Statement::print(std::output_iterator<char> auto &out, size_t depth) const {
+inline void Statement::print(
+    std::output_iterator<char> auto &out, std::size_t depth
+) const {
   inner.visit([&out, depth](const auto &node) -> void {
     node.print(out, depth);
   });
 }
 
 inline void ContinueStatement::print(
-    std::output_iterator<char> auto &out, size_t depth
+    std::output_iterator<char> auto &out, std::size_t depth
 ) const {
   detail::format_indented_line(out, depth, "Continue");
 }
 
 inline void BreakStatement::print(
-    std::output_iterator<char> auto &out, size_t depth
+    std::output_iterator<char> auto &out, std::size_t depth
 ) const {
   detail::format_indented_line(out, depth, "Break");
 }
 
 inline void ReturnStatement::print(
-    std::output_iterator<char> auto &out, size_t depth
+    std::output_iterator<char> auto &out, std::size_t depth
 ) const {
   detail::format_indented_line(out, depth, "Return");
   if (expr) {
@@ -200,15 +210,16 @@ inline void ReturnStatement::print(
   }
 }
 
-inline void
-LastStatement::print(std::output_iterator<char> auto &out, size_t depth) const {
+inline void LastStatement::print(
+    std::output_iterator<char> auto &out, std::size_t depth
+) const {
   inner.visit([&out, depth](const auto &node) -> void {
     node.print(out, depth + 1);
   });
 }
 
 inline void
-Block::print(std::output_iterator<char> auto &out, size_t depth) const {
+Block::print(std::output_iterator<char> auto &out, std::size_t depth) const {
   detail::format_indented_line(out, depth, "Block");
   for (const Statement &statement : statements) {
     statement.print(out, depth + 1);

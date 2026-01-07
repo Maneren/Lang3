@@ -1,9 +1,15 @@
 #include "vm/function.hpp"
 #include "vm/scope.hpp"
+#include "vm/value.hpp"
 #include "vm/vm.hpp"
-
+#include <ast/nodes/function.hpp>
+#include <ast/nodes/identifier.hpp>
+#include <memory>
+#include <optional>
 #include <ranges>
+#include <span>
 #include <utility>
+#include <vector>
 
 namespace l3::vm {
 
@@ -80,4 +86,6 @@ CowValue Function::operator()(VM &vm, std::span<const CowValue> args) {
   return inner.visit([&vm, &args](auto &func) { return func(vm, args); });
 };
 
+BuiltinFunction::BuiltinFunction(ast::Identifier &&name, Body &&body)
+    : name{std::move(name)}, body{std::move(body)} {}
 } // namespace l3::vm

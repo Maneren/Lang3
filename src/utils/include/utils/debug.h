@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string_view>
+#include <type_traits>
 
 namespace utils::debug {
 
@@ -12,15 +13,15 @@ namespace utils::debug {
  */
 // Source - https://stackoverflow.com/a/66551751
 template <typename T> constexpr auto type_name() -> std::string_view {
-#if defined(__clang__)
+#ifdef __clang__
   constexpr auto function = std::string_view{__PRETTY_FUNCTION__};
   constexpr auto prefix = std::string_view{"[T = "};
   constexpr auto suffix = std::string_view{"]"};
-#elif defined(__GNUC__)
+#elifdef __GNUC__
   constexpr auto function = std::string_view{__PRETTY_FUNCTION__};
   constexpr auto prefix = std::string_view{"with T = "};
   constexpr auto suffix = std::string_view{"; "};
-#elif defined(_MSC_VER)
+#elifdef _MSC_VER
   constexpr auto function = std::string_view{__FUNCSIG__};
   constexpr auto prefix = std::string_view{"type_name<"};
   constexpr auto suffix = std::string_view{">(void)"};

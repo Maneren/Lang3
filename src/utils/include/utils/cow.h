@@ -3,7 +3,9 @@
 #include "format.h"
 #include "match.h"
 #include <format>
+#include <functional>
 #include <memory>
+#include <stdexcept>
 #include <variant>
 
 namespace utils {

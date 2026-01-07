@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <expected>
 #include <format>
 #include <optional>
@@ -51,12 +52,12 @@ public:
     return std::nullopt;
   }
 
-  [[nodiscard]] size_t size() const { return arguments.size(); }
+  [[nodiscard]] std::size_t size() const { return arguments.size(); }
   [[nodiscard]] bool empty() const { return i >= arguments.size(); }
 
 private:
   std::span<const char *const> arguments;
-  size_t i = 0;
+  std::size_t i = 0;
 };
 
 } // namespace

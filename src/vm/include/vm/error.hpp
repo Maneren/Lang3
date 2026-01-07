@@ -3,12 +3,13 @@
 #include "ast/nodes/identifier.hpp"
 #include <format>
 #include <stdexcept>
+#include <string>
 
 namespace l3::vm {
 
 class RuntimeError : public std::runtime_error {
 public:
-  RuntimeError(const std::string &message) : std::runtime_error(message) {}
+  RuntimeError(const std::string &message);
 
   template <typename... Args>
   RuntimeError(const std::format_string<Args...> &message, Args &&...args)
@@ -35,10 +36,8 @@ class UndefinedVariableError : public NameError {
 public:
   using NameError::NameError;
 
-  UndefinedVariableError(const ast::Identifier &id)
-      : NameError("variable '{}' not declared", id.name()) {}
-  UndefinedVariableError(const ast::Variable &id)
-      : NameError("variable '{}' not declared", id.get_identifier().name()) {}
+  UndefinedVariableError(const ast::Identifier &id);
+  UndefinedVariableError(const ast::Variable &id);
 };
 
 } // namespace l3::vm

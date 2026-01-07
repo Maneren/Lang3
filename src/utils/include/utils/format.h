@@ -2,11 +2,15 @@
 
 #include <format>
 #include <memory>
+#include <optional>
+#include <tuple>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
 namespace utils {
+
+#include <concepts>
 
 template <typename T>
 concept formattable = std::semiregular<std::formatter<T>>;

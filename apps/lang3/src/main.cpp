@@ -1,12 +1,11 @@
-#include "ast/printing.hpp"
-#include "cli/cli.hpp"
-#include "lexer/lexer.hpp"
 #include "parser.tab.h"
-#include "vm/vm.hpp"
+#include <cli/cli.hpp>
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
+#include <lexer/lexer.hpp>
 #include <print>
+#include <vm/vm.hpp>
 
 int main(int argc, char *argv[]) {
   cli::Parser cli_parser = cli::Parser{}
@@ -55,6 +54,10 @@ int main(int argc, char *argv[]) {
 
   if (debug_ast) {
     std::print(std::cerr, "{}", program);
+  }
+
+  if (debug_lexer || debug_parser || debug_ast) {
+    return EXIT_SUCCESS;
   }
 
   l3::vm::VM vm{debug_vm};

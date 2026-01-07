@@ -1,8 +1,24 @@
 #include "vm/vm.hpp"
+#include "vm/error.hpp"
 #include "vm/format.hpp"
+#include "vm/value.hpp"
 #include <algorithm>
+#include <ast/ast.hpp>
+#include <cpptrace/from_current.hpp>
+#include <cpptrace/from_current_macros.hpp>
+#include <exception>
+#include <format>
+#include <functional>
+#include <iostream>
+#include <memory>
+#include <optional>
 #include <print>
 #include <ranges>
+#include <span>
+#include <stdexcept>
+#include <utility>
+#include <utils/match.h>
+#include <vector>
 
 namespace l3::vm {
 
@@ -180,11 +196,10 @@ CowValue VM::evaluate(const ast::FunctionCall &function_call) {
       }
   );
 
-  const auto evaluated_arguments =
-      std::views::transform(
-          arguments, [this](const auto &argument) { return evaluate(argument); }
-      ) |
-      std::ranges::to<std::vector>();
+  std::vector<CowValue> evaluated_arguments;
+  for (const auto &argument : arguments) {
+    evaluated_arguments.push_back(evaluate(argument));
+  }
 
   debug_print("Arguments:");
   for (const auto &argument : evaluated_arguments) {
@@ -286,6 +301,7 @@ CowValue VM::evaluate_function_body(
 
   auto original_scopes = std::move(scopes);
 
+  scopes = {};
   for (const auto &capture : captured) {
     scopes.push_back(capture);
   }
@@ -318,9 +334,9 @@ CowValue VM::evaluate(const ast::LastStatement &last_statement) {
   );
 }
 
-[[nodiscard]] CowValue
-VM::evaluate(const ast::AnonymousFunction &anonymous) const {
+CowValue VM::evaluate(const ast::AnonymousFunction &anonymous) const {
   return CowValue{Function{L3Function{scopes, anonymous}}};
 }
 
+Scope &VM::current_scope() { return *scopes.back(); }
 } // namespace l3::vm
