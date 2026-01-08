@@ -1,7 +1,7 @@
 #pragma once
 
-#include "utils/format.h"
 #include "vm/function.hpp"
+#include <utils/format.h>
 
 template <>
 struct std::formatter<l3::vm::Nil> : utils::static_formatter<l3::vm::Nil> {

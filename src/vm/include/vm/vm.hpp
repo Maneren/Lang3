@@ -1,6 +1,5 @@
 #pragma once
 
-#include "vm/function.hpp"
 #include "vm/scope.hpp"
 #include "vm/value.hpp"
 #include <ast/ast.hpp>

@@ -1,7 +1,7 @@
 #pragma once
 
-#include "ast/nodes/function.hpp"
 #include "vm/value.hpp"
+#include <ast/nodes/function.hpp>
 #include <memory>
 #include <optional>
 #include <vector>

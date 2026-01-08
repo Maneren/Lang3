@@ -2,7 +2,7 @@
 %language "c++"
 
 %code requires {
-    #include "ast/ast.hpp"
+    #include <ast/ast.hpp>
 
     namespace l3 {
       class L3Lexer;
@@ -19,7 +19,6 @@
 %define parse.error detailed
 %define parse.trace
 
-%header
 %verbose
 
 %parse-param {L3Lexer &lexer}
@@ -38,8 +37,7 @@
 
 %code {
     #include <string>
-
-    #include "lexer/lexer.hpp"
+    #include <parser/lexer.hpp>
 
     #define yylex lexer.lex
 }

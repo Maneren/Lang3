@@ -1,9 +1,9 @@
-#include "parser.tab.h"
+#include <ast/printing.hpp>
 #include <cli/cli.hpp>
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
-#include <lexer/lexer.hpp>
+#include <parser/lexer.hpp>
 #include <print>
 #include <vm/vm.hpp>
 
