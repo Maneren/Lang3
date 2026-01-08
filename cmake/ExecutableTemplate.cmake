@@ -4,7 +4,7 @@ function(create_executable TARGET SOURCES)
     cmake_parse_arguments(EXE
         "CONSOLE;GUI;TEST"
         "VERSION;OUTPUT_NAME;CXX_STD"
-        "PRIVATE_DEPS;COMPILE_DEFS;INCLUDE_DIRS"
+        "DEPENDS;COMPILE_DEFS;INCLUDE_DIRS"
         ${ARGN}
     )
 
@@ -21,7 +21,7 @@ function(create_executable TARGET SOURCES)
     add_include_directories(${TARGET} PRIVATE "${EXE_INCLUDE_DIRS}")
     set_compiler_and_linker_flags(${TARGET} ${EXE_TEST} ${EXE_CXX_STD})
     target_compile_definitions(${TARGET} PRIVATE "${EXE_COMPILE_DEFS}")
-    link_dependencies(${TARGET} PRIVATE "${EXE_PRIVATE_DEPS}")
+    target_link_libraries(${TARGET} PRIVATE "${EXE_DEPENDS}")
 
     if(EXE_TEST)
         set_output_directories(${TARGET} TEST)

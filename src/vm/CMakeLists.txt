@@ -1,5 +1,7 @@
 get_filename_component(LIB_NAME ${CMAKE_CURRENT_SOURCE_DIR} NAME)
 
 auto_create_library(${LIB_NAME}
-  PUBLIC_DEPS ast utils cpptrace
+  HEADER_DEPS ast_headers utils
+  INTERFACE_DEPS ast
+  PRIVATE_DEPS cpptrace
 )

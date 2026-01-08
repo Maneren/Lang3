@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.25)
 
-set(PROJECT "cmake-project-template")
+set(PROJECT "Lang3")
 project(${PROJECT})
 
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -15,14 +15,16 @@ if(SANITIZERS)
     add_link_options(-fsanitize=address,undefined,leak)
 endif()
 
-option(USE_CCACHE "Use ccache" OFF)
+option(USE_CCACHE "Use ccache" ON)
 if (USE_CCACHE)
     find_program(CCACHE ccache)
     find_program(SCCACHE sccache)
     if (CCACHE)
+        message(STATUS "Found ccache: ${CCACHE}")
         set(CMAKE_C_COMPILER_LAUNCHER ${CCACHE})
         set(CMAKE_CXX_COMPILER_LAUNCHER ${CCACHE})
     elseif (SCCACHE)
+        message(STATUS "Found sccache: ${SCCACHE}")
         set(CMAKE_C_COMPILER_LAUNCHER ${SCCACHE})
         set(CMAKE_CXX_COMPILER_LAUNCHER ${SCCACHE})
     else()
@@ -32,9 +34,6 @@ endif()
 
 include(cmake/ExecutableTemplate.cmake)
 include(cmake/LibraryTemplate.cmake)
-
-find_package(FLEX REQUIRED)
-find_package(BISON REQUIRED)
 
 add_subdirectory(src)
 add_subdirectory(apps)

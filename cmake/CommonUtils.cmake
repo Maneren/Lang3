@@ -38,12 +38,6 @@ function(set_compiler_and_linker_flags TARGET)
     )
 endfunction()
 
-function(link_dependencies TARGET VISIBILITY DEPENDENCIES)
-    if(DEPENDENCIES)
-        target_link_libraries(${TARGET} ${VISIBILITY} ${DEPENDENCIES})
-    endif()
-endfunction()
-
 function(add_include_directories TARGET VISIBILITY DIRS)
     if(DIRS)
         target_include_directories(${TARGET} ${VISIBILITY} ${DIRS})
