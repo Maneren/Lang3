@@ -19,7 +19,7 @@ export CTEST_PARALLEL_LEVEL := "0"
 default:
     @just --list
 
-configure build_system="Ninja Multi-Config" +args="": clean
+configure build_system="Ninja Multi-Config" +args="":
     cmake -B {{ builddir }} -G "{{ build_system }}" {{ args }}
 
 build config="Debug" target="all":
@@ -31,7 +31,7 @@ run config="Debug" +args="": (build config executable)
 test config="Debug": (build config "tests")
 
 clean:
-    rm -rf build
+    rm -rf {{ builddir }}
 
 lint:
     clang-tidy -p {{ builddir }} --quiet $(find src test -type f -name "*.cpp" -or -name "*.h" -not -path "*/external/*")
