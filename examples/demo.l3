@@ -26,18 +26,16 @@ end
 
 let c = add(a, b,)
 
-# let d = curry_add(a)(b)
+let curried = add(5)
 
-let autocurry_add = add(5)
-
-let e = autocurry_add(c)
+let d = curried(c)
 c += 5
 
-if e == c then
+if d == c then
   println("working")
 else
   println("not working")
-  println(e, c)
+  println(d, c)
 end
 
 # let message = if not (0 <= c and c < 10 or not (b == 0 and a == 0)) then
