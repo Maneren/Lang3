@@ -223,7 +223,7 @@ void VM::execute(const ast::Program &program) {
     }
   }
   CPPTRACE_CATCH(const std::exception &e) {
-    std::cerr << "Exception: " << e.what() << '\n';
+    std::println(std::cerr, "Exception: {}", e.what());
     cpptrace::from_current_exception().print();
   }
 }
@@ -278,14 +278,12 @@ bool VM::evaluate_if_branch(const ast::IfBase &if_base) {
 void VM::execute(const ast::NamedFunction &named_function) {
   debug_print("Declaring named function");
   const auto &name = named_function.get_name();
-
-  auto function = L3Function{scopes, named_function};
-  auto value = Value{Function{std::move(function)}};
-
   auto &variable = current_scope().declare_variable(name);
 
+  auto function = L3Function{scopes, named_function};
+  variable = Value{Function{std::move(function)}};
+
   debug_print("Declared function {}", name.name());
-  variable = std::move(value);
 }
 
 CowValue VM::evaluate_function_body(
