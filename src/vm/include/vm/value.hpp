@@ -1,13 +1,9 @@
 #pragma once
 
-#include "vm/error.hpp"
 #include <ast/nodes/identifier.hpp>
 #include <cstddef>
-#include <format>
 #include <functional>
-#include <memory>
 #include <string>
-#include <tuple>
 #include <utility>
 #include <utils/cow.h>
 #include <utils/match.h>
@@ -23,11 +19,10 @@ namespace l3::vm {
 
 struct Nil {};
 
-using PrimitiveType =
-    std::variant<bool, long long, double, std::shared_ptr<std::string>>;
+using PrimitiveType = std::variant<bool, long long, double, std::string>;
 class Primitive : public PrimitiveType {
 public:
-  using string_type = std::shared_ptr<std::string>;
+  using string_type = std::string;
   explicit Primitive(bool value);
   explicit Primitive(long long value);
   explicit Primitive(double value);
@@ -105,26 +100,11 @@ public:
   [[nodiscard]] bool as_bool() const;
 
 private:
-  template <typename Op>
-  [[nodiscard]] Value
-  binary_op(const Value &other, Op op, const std::string &op_name) const {
-    return match::match(
-        std::make_tuple(inner, other.inner),
-        [&op](const Primitive &lhs, const Primitive &rhs) -> Value {
-          return op(lhs, rhs);
-        },
-        [](const Nil & /*lhs*/, const Nil & /*rhs*/) -> Value {
-          throw RuntimeError("cannot perform operation on nil values");
-        },
-        [&op_name](const auto & /*lhs*/, const auto & /*rhs*/) -> Value {
-          throw RuntimeError(
-              "cannot {} function and value, did you mean to call the "
-              "function?",
-              op_name
-          );
-        }
-    );
-  }
+  [[nodiscard]] Value binary_op(
+      const Value &other,
+      const std::function<Value(const Primitive &, const Primitive &)> &op_fn,
+      const std::string &op_name
+  ) const;
 
   std::variant<Nil, Primitive, function_type> inner;
 };

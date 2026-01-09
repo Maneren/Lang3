@@ -78,10 +78,7 @@ public:
   Expression(IfExpression &&clause) : ExpressionVariant(std::move(clause)) {}
   // Expression(Table &&table) : inner(std::move(table)) {}
 
-  void
-  print(std::output_iterator<char> auto &out, std::size_t depth = 0) const {
-    visit([&out, depth](const auto &node) -> void { node.print(out, depth); });
-  }
+  void print(std::output_iterator<char> auto &out, std::size_t depth = 0) const;
 };
 
 } // namespace l3::ast

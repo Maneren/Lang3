@@ -49,9 +49,7 @@ public:
   using Body = std::function<CowValue(VM &vm, std::span<const CowValue> args)>;
   BuiltinFunction(ast::Identifier &&name, Body &&body);
 
-  CowValue operator()(VM &vm, std::span<const CowValue> args) const {
-    return body(vm, args);
-  }
+  CowValue operator()(VM &vm, std::span<const CowValue> args) const;
 
   [[nodiscard]] const ast::Identifier &get_name() const { return name; }
 

@@ -34,11 +34,8 @@ Primitive operator+(const Primitive &lhs, const Primitive &rhs) {
       "addition",
       lhs,
       rhs,
-      [](const bool &lhs, const bool &rhs) -> Primitive {
-        return Primitive{lhs || rhs};
-      },
-      []<typename T, typename U>(const T &lhs, const U &rhs) -> Primitive
-        requires std::is_same_v<T, U> && requires(T lhs, U rhs) { lhs + rhs; }
+      []<typename T>(const T &lhs, const T &rhs) -> Primitive
+        requires(!std::is_same_v<T, bool>)
       { return Primitive{lhs + rhs}; }
       );
 }
@@ -48,11 +45,9 @@ Primitive operator-(const Primitive &lhs, const Primitive &rhs) {
       "subtraction",
       lhs,
       rhs,
-      [](const bool &lhs, const bool &rhs) -> Primitive {
-        return Primitive{lhs && !rhs};
-      },
-      []<typename T, typename U>(const T &lhs, const U &rhs) -> Primitive
-        requires std::is_same_v<T, U> && requires(T lhs, U rhs) { lhs - rhs; }
+      []<typename T>(const T &lhs, const T &rhs) -> Primitive
+        requires requires(T lhs, T rhs) { lhs - rhs; } &&
+                 (!std::is_same_v<T, bool>)
       { return Primitive{lhs - rhs}; }
       );
 }
@@ -62,11 +57,9 @@ Primitive operator*(const Primitive &lhs, const Primitive &rhs) {
       "multiplication",
       lhs,
       rhs,
-      [](const bool &lhs, const bool &rhs) -> Primitive {
-        return Primitive{lhs && rhs};
-      },
-      []<typename T, typename U>(const T &lhs, const U &rhs) -> Primitive
-        requires std::is_same_v<T, U> && requires(T lhs, U rhs) { lhs * rhs; }
+      []<typename T>(const T &lhs, const T &rhs) -> Primitive
+        requires requires(T lhs, T rhs) { lhs * rhs; } &&
+                 (!std::is_same_v<T, bool>)
       { return Primitive{lhs * rhs}; }
       );
 }
@@ -101,35 +94,11 @@ Primitive operator%(const Primitive &lhs, const Primitive &rhs) {
 }
 
 Primitive operator&&(const Primitive &lhs, const Primitive &rhs) {
-  return handle_op(
-      "logical conjunction (and)",
-      lhs,
-      rhs,
-      [](const bool &lhs, const bool &rhs) -> Primitive {
-        return Primitive{lhs && rhs};
-      }
-      // ,
-      // []<typename T, typename U>(const T &lhs, const U &rhs) -> Primitive
-      //   requires std::is_same_v<T, U> && requires(T lhs, U rhs) { lhs &&
-      //   rhs; }
-      // { return Primitive{lhs && rhs}; }
-  );
+  return Primitive{lhs.as_bool() && rhs.as_bool()};
 }
 
 Primitive operator||(const Primitive &lhs, const Primitive &rhs) {
-  return handle_op(
-      "logical disjunction (or)",
-      lhs,
-      rhs,
-      [](const bool &lhs, const bool &rhs) -> Primitive {
-        return Primitive{lhs || rhs};
-      }
-      // ,
-      // []<typename T, typename U>(const T &lhs, const U &rhs) -> Primitive
-      //   requires std::is_same_v<T, U> && requires(T lhs, U rhs) { lhs || rhs;
-      //   }
-      // { return Primitive{lhs || rhs}; }
-  );
+  return Primitive{lhs.as_bool() || rhs.as_bool()};
 }
 
 Primitive operator!(const Primitive &value) {
@@ -141,13 +110,10 @@ Primitive operator==(const Primitive &lhs, const Primitive &rhs) {
       "equality",
       lhs,
       rhs,
-      [](const bool &lhs, const bool &rhs) -> Primitive {
+      []<typename T>(const T &lhs, const T &rhs) -> Primitive {
         return Primitive{lhs == rhs};
-      },
-      []<typename T>(const T &lhs, const T &rhs) -> Primitive
-        requires requires(T lhs, T rhs) { lhs == rhs; }
-      { return Primitive{lhs == rhs}; }
-      );
+      }
+  );
 }
 
 Primitive operator!=(const Primitive &lhs, const Primitive &rhs) {
@@ -155,13 +121,10 @@ Primitive operator!=(const Primitive &lhs, const Primitive &rhs) {
       "inequality",
       lhs,
       rhs,
-      [](const bool &lhs, const bool &rhs) -> Primitive {
+      []<typename T>(const T &lhs, const T &rhs) -> Primitive {
         return Primitive{lhs != rhs};
-      },
-      []<typename T>(const T &lhs, const T &rhs) -> Primitive
-        requires requires(T lhs, T rhs) { lhs != rhs; }
-      { return Primitive{lhs != rhs}; }
-      );
+      }
+  );
 }
 
 Primitive operator<(const Primitive &lhs, const Primitive &rhs) {
@@ -170,8 +133,7 @@ Primitive operator<(const Primitive &lhs, const Primitive &rhs) {
       lhs,
       rhs,
       []<typename T>(const T &lhs, const T &rhs) -> Primitive
-        requires requires(T lhs, T rhs) { lhs < rhs; } &&
-                 (!std::is_same_v<T, bool>)
+        requires(!std::is_same_v<T, bool>)
       { return Primitive{lhs < rhs}; }
       );
 }
@@ -182,8 +144,7 @@ Primitive operator>(const Primitive &lhs, const Primitive &rhs) {
       lhs,
       rhs,
       []<typename T>(const T &lhs, const T &rhs) -> Primitive
-        requires requires(T lhs, T rhs) { lhs > rhs; } &&
-                 (!std::is_same_v<T, bool>)
+        requires(!std::is_same_v<T, bool>)
       { return Primitive{lhs > rhs}; }
       );
 }
@@ -194,8 +155,7 @@ Primitive operator<=(const Primitive &lhs, const Primitive &rhs) {
       lhs,
       rhs,
       []<typename T>(const T &lhs, const T &rhs) -> Primitive
-        requires requires(T lhs, T rhs) { lhs <= rhs; } &&
-                 (!std::is_same_v<T, bool>)
+        requires(!std::is_same_v<T, bool>)
       { return Primitive{lhs <= rhs}; }
       );
 }
@@ -206,8 +166,7 @@ Primitive operator>=(const Primitive &lhs, const Primitive &rhs) {
       lhs,
       rhs,
       []<typename T>(const T &lhs, const T &rhs) -> Primitive
-        requires requires(T lhs, T rhs) { lhs >= rhs; } &&
-                 (!std::is_same_v<T, bool>)
+        requires(!std::is_same_v<T, bool>)
       { return Primitive{lhs >= rhs}; }
       );
 }
@@ -318,7 +277,7 @@ bool Primitive::as_bool() const {
   return visit(
       [](const bool &value) { return value; },
       [](const long long &value) { return value != 0; },
-      [](const string_type &value) { return !value->empty(); },
+      [](const string_type &value) { return !value.empty(); },
       [](const double & /*value*/) -> bool {
         throw RuntimeError("cannot convert a floating point number to bool");
       }
@@ -343,10 +302,8 @@ Value::Value(Function &&function)
 Primitive::Primitive(bool value) : PrimitiveType{value} {}
 Primitive::Primitive(long long value) : PrimitiveType{value} {}
 Primitive::Primitive(double value) : PrimitiveType{value} {}
-Primitive::Primitive(const std::string &value)
-    : PrimitiveType{std::make_shared<std::string>(value)} {}
-Primitive::Primitive(std::string &&value)
-    : PrimitiveType{std::make_shared<std::string>(std::move(value))} {}
+Primitive::Primitive(const std::string &value) : PrimitiveType{value} {}
+Primitive::Primitive(std::string &&value) : PrimitiveType{std::move(value)} {}
 const PrimitiveType &Primitive::get() const { return *this; }
 PrimitiveType &Primitive::get() { return *this; }
 Value::Value() : inner{Nil{}} {}
@@ -359,6 +316,29 @@ bool Value::is_function() const {
 }
 bool Value::is_primitive() const {
   return std::holds_alternative<Primitive>(inner);
+}
+
+Value Value::binary_op(
+    const Value &other,
+    const std::function<Value(const Primitive &, const Primitive &)> &op_fn,
+    const std::string &op_name
+) const {
+  return match::match(
+      std::make_tuple(inner, other.inner),
+      [&op_fn](const Primitive &lhs, const Primitive &rhs) -> Value {
+        return op_fn(lhs, rhs);
+      },
+      [](const Nil & /*lhs*/, const Nil & /*rhs*/) -> Value {
+        throw RuntimeError("cannot perform operation on nil values");
+      },
+      [&op_name](const auto & /*lhs*/, const auto & /*rhs*/) -> Value {
+        throw RuntimeError(
+            "cannot {} function and value, did you mean to call the "
+            "function?",
+            op_name
+        );
+      }
+  );
 }
 
 } // namespace l3::vm

@@ -1,9 +1,11 @@
 #include "vm/function.hpp"
+#include "vm/error.hpp"
 #include "vm/scope.hpp"
 #include "vm/value.hpp"
 #include "vm/vm.hpp"
 #include <ast/nodes/function.hpp>
 #include <ast/nodes/identifier.hpp>
+#include <ast/printing.hpp>
 #include <memory>
 #include <optional>
 #include <ranges>
@@ -88,4 +90,8 @@ CowValue Function::operator()(VM &vm, std::span<const CowValue> args) {
 
 BuiltinFunction::BuiltinFunction(ast::Identifier &&name, Body &&body)
     : name{std::move(name)}, body{std::move(body)} {}
+CowValue
+BuiltinFunction::operator()(VM &vm, std::span<const CowValue> args) const {
+  return body(vm, args);
+}
 } // namespace l3::vm

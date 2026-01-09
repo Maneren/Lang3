@@ -1,6 +1,7 @@
 #pragma once
 
 #include "vm/function.hpp"
+#include <ast/printing.hpp>
 #include <utils/format.h>
 
 template <>
@@ -27,8 +28,8 @@ struct std::formatter<l3::vm::Primitive>
         [&ctx](const double &value) {
           return std::format_to(ctx.out(), "{}", value);
         },
-        [&ctx](const std::shared_ptr<std::string> &value) {
-          return std::format_to(ctx.out(), "\"{}\"", *value);
+        [&ctx](const l3::vm::Primitive::string_type &value) {
+          return std::format_to(ctx.out(), "\"{}\"", value);
         }
     );
   }

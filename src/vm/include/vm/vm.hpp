@@ -3,7 +3,6 @@
 #include "vm/scope.hpp"
 #include "vm/value.hpp"
 #include <ast/ast.hpp>
-#include <ast/printing.hpp>
 #include <format>
 #include <functional>
 #include <iostream>
@@ -22,6 +21,14 @@ public:
   VM(bool debug = false) : debug{debug} {}
 
   void execute(const ast::Program &program);
+
+  CowValue evaluate_function_body(
+      std::span<std::shared_ptr<Scope>> captured,
+      Scope &&arguments,
+      const ast::FunctionBody &body
+  );
+
+private:
   void execute(const ast::Statement &statement);
   void execute(const ast::Declaration &declaration);
   void execute(const ast::Assignment &assignment);
@@ -56,13 +63,6 @@ public:
     );
   }
 
-  CowValue evaluate_function_body(
-      std::span<std::shared_ptr<Scope>> captured,
-      Scope &&arguments,
-      const ast::FunctionBody &body
-  );
-
-private:
   Scope &current_scope();
 
   [[nodiscard]] std::optional<std::reference_wrapper<const Value>>

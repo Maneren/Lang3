@@ -130,6 +130,12 @@ inline void AnonymousFunction::print(
   body.print(out, depth + 1);
 }
 
+inline void Expression::print(
+    std::output_iterator<char> auto &out, std::size_t depth
+) const {
+  visit([&out, depth](const auto &node) -> void { node.print(out, depth); });
+}
+
 inline void
 IfBase::print(std::output_iterator<char> auto &out, std::size_t depth) const {
   detail::format_indented_line(out, depth, "Condition");

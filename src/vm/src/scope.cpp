@@ -1,9 +1,9 @@
 #include "vm/scope.hpp"
+#include "vm/error.hpp"
 #include "vm/format.hpp"
 #include "vm/function.hpp"
 #include "vm/value.hpp"
 #include "vm/vm.hpp"
-#include <ast/nodes/identifier.hpp>
 #include <functional>
 #include <memory>
 #include <optional>
