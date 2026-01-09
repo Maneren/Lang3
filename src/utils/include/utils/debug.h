@@ -1,5 +1,6 @@
 #pragma once
 
+#include <print>
 #include <string_view>
 #include <type_traits>
 
@@ -47,5 +48,35 @@ template <typename T> constexpr auto type_name() -> std::string_view {
 auto type_name(const auto &value) -> std::string_view {
   return type_name<std::decay_t<decltype(value)>>();
 }
+
+struct ConstructorLogger {
+  ConstructorLogger() { std::println("Default constructor"); }
+  ConstructorLogger(std::string_view name) : name(name) {
+    std::println("Default constructor <{}>", name);
+  }
+  ConstructorLogger(const ConstructorLogger &other) : name(other.name) {
+    std::println("Copy constructor <{}>", name);
+  }
+  ConstructorLogger(ConstructorLogger &&other) noexcept
+      : name(other.name) { // NOLINT
+    std::println("Move constructor <{}>", name);
+    other.name += " (moved)";
+  }
+  ConstructorLogger &operator=(const ConstructorLogger &other) {
+    std::println("Copy assignment <{}>", name);
+    name = other.name;
+    return *this;
+  }
+  ConstructorLogger &operator=(ConstructorLogger &&other) noexcept {
+    std::println("Move assignment <{}>", name);
+    name = other.name;
+    other.name += " (moved)";
+    return *this;
+  }
+  ~ConstructorLogger() { std::println("Destructor <{}>", name); }
+
+private:
+  std::string name = "nil";
+};
 
 } // namespace utils::debug
