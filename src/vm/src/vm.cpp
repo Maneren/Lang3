@@ -30,8 +30,8 @@ CowValue VM::evaluate(const ast::BinaryExpression &binary) {
   debug_print("Left: {}", left);
   debug_print("Right: {}", right);
 
-  const auto &left_ref = left.as_ref();
-  const auto &right_ref = right.as_ref();
+  const auto &left_ref = left.as_cref();
+  const auto &right_ref = right.as_cref();
 
   switch (binary.get_op()) {
   case ast::BinaryOperator::Plus: {
@@ -108,7 +108,7 @@ CowValue VM::evaluate(const ast::Expression &expression) {
   debug_print("Evaluating expression");
   return expression.visit([this](const auto &expr) {
     auto result = evaluate(expr);
-    debug_print("Expression result: {}", result.as_ref());
+    debug_print("Expression result: {}", result.as_cref());
     return result;
   });
 }
@@ -122,7 +122,7 @@ void VM::execute(const ast::Assignment &assignment) {
   const auto &expression = assignment.get_expression();
   auto &lhs = value->get();
   const auto rhs = evaluate(expression);
-  const auto &rhs_ref = rhs.as_ref();
+  const auto &rhs_ref = rhs.as_cref();
   switch (assignment.get_operator()) {
   case ast::AssignmentOperator::Assign:
     lhs = rhs_ref;
@@ -185,7 +185,7 @@ CowValue VM::evaluate(const ast::FunctionCall &function_call) {
 
   debug_print("Calling function {}", function.get_identifier());
 
-  auto evaluated_function = evaluate(function);
+  const auto evaluated_function = evaluate(function);
 
   const Value::function_type &function_ptr = evaluated_function->visit(
       [](const Value::function_type &function) -> Value::function_type {
@@ -264,7 +264,7 @@ VM::read_write_variable(const ast::Identifier &id) {
 bool VM::evaluate_if_branch(const ast::IfBase &if_base) {
   debug_print("Evaluating if branch");
   const auto condition_value = evaluate(if_base.get_condition());
-  const auto &condition = condition_value.as_ref();
+  const auto &condition = condition_value.as_cref();
   if (condition.as_bool()) {
     debug_print("Condition is truthy {}", condition_value);
     execute(if_base.get_block());
