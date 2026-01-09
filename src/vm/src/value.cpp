@@ -11,7 +11,7 @@ namespace l3::vm {
 
 namespace {
 
-template <typename... Handlers>
+template <typename Result, typename... Handlers>
 auto handle_op(
     std::string_view name,
     const Primitive &lhs,
@@ -21,7 +21,7 @@ auto handle_op(
   return match::match(
       std::forward_as_tuple(lhs.get(), rhs.get()),
       handlers...,
-      [name](const auto &lhs, const auto &rhs) -> Primitive {
+      [name](const auto &lhs, const auto &rhs) -> Result {
         throw UnsupportedOperation(name, lhs, rhs);
       }
   );
@@ -30,7 +30,7 @@ auto handle_op(
 } // namespace
 
 Primitive operator+(const Primitive &lhs, const Primitive &rhs) {
-  return handle_op(
+  return handle_op<Primitive>(
       "addition",
       lhs,
       rhs,
@@ -41,7 +41,7 @@ Primitive operator+(const Primitive &lhs, const Primitive &rhs) {
 }
 
 Primitive operator-(const Primitive &lhs, const Primitive &rhs) {
-  return handle_op(
+  return handle_op<Primitive>(
       "subtraction",
       lhs,
       rhs,
@@ -53,7 +53,7 @@ Primitive operator-(const Primitive &lhs, const Primitive &rhs) {
 }
 
 Primitive operator*(const Primitive &lhs, const Primitive &rhs) {
-  return handle_op(
+  return handle_op<Primitive>(
       "multiplication",
       lhs,
       rhs,
@@ -65,7 +65,7 @@ Primitive operator*(const Primitive &lhs, const Primitive &rhs) {
 }
 
 Primitive operator/(const Primitive &lhs, const Primitive &rhs) {
-  return handle_op(
+  return handle_op<Primitive>(
       "division",
       lhs,
       rhs,
@@ -82,7 +82,7 @@ Primitive operator/(const Primitive &lhs, const Primitive &rhs) {
 }
 
 Primitive operator%(const Primitive &lhs, const Primitive &rhs) {
-  return handle_op(
+  return handle_op<Primitive>(
       "modulo",
       lhs,
       rhs,
@@ -105,70 +105,50 @@ Primitive operator!(const Primitive &value) {
   return Primitive{!value.as_bool()};
 }
 
-Primitive operator==(const Primitive &lhs, const Primitive &rhs) {
-  return handle_op(
-      "equality",
+namespace {
+int operator<=>(const Primitive &lhs, const Primitive &rhs) {
+  return handle_op<int>(
+      "comparison",
       lhs,
       rhs,
-      []<typename T>(const T &lhs, const T &rhs) -> Primitive {
-        return Primitive{lhs == rhs};
+      []<typename T>(const T &lhs, const T &rhs) -> int
+        requires(!std::is_same_v<T, bool>)
+      {
+        auto result = lhs <=> rhs;
+        if (result < 0) {
+          return -1;
+        }
+        if (result > 0) {
+          return 1;
+        }
+        return 0;
       }
-  );
+      );
 }
+} // namespace
 
 Primitive operator!=(const Primitive &lhs, const Primitive &rhs) {
-  return handle_op(
-      "inequality",
-      lhs,
-      rhs,
-      []<typename T>(const T &lhs, const T &rhs) -> Primitive {
-        return Primitive{lhs != rhs};
-      }
-  );
+  return Primitive{(lhs <=> rhs) != 0};
+}
+
+Primitive operator==(const Primitive &lhs, const Primitive &rhs) {
+  return Primitive{(lhs <=> rhs) == 0};
 }
 
 Primitive operator<(const Primitive &lhs, const Primitive &rhs) {
-  return handle_op(
-      "less than",
-      lhs,
-      rhs,
-      []<typename T>(const T &lhs, const T &rhs) -> Primitive
-        requires(!std::is_same_v<T, bool>)
-      { return Primitive{lhs < rhs}; }
-      );
+  return Primitive{(lhs <=> rhs) < 0};
 }
 
 Primitive operator>(const Primitive &lhs, const Primitive &rhs) {
-  return handle_op(
-      "greater than",
-      lhs,
-      rhs,
-      []<typename T>(const T &lhs, const T &rhs) -> Primitive
-        requires(!std::is_same_v<T, bool>)
-      { return Primitive{lhs > rhs}; }
-      );
+  return Primitive{(lhs <=> rhs) > 0};
 }
 
 Primitive operator<=(const Primitive &lhs, const Primitive &rhs) {
-  return handle_op(
-      "less than or equal to",
-      lhs,
-      rhs,
-      []<typename T>(const T &lhs, const T &rhs) -> Primitive
-        requires(!std::is_same_v<T, bool>)
-      { return Primitive{lhs <= rhs}; }
-      );
+  return Primitive{(lhs <=> rhs) <= 0};
 }
 
 Primitive operator>=(const Primitive &lhs, const Primitive &rhs) {
-  return handle_op(
-      "greater than or equal to",
-      lhs,
-      rhs,
-      []<typename T>(const T &lhs, const T &rhs) -> Primitive
-        requires(!std::is_same_v<T, bool>)
-      { return Primitive{lhs >= rhs}; }
-      );
+  return Primitive{(lhs <=> rhs) >= 0};
 }
 
 Value Value::add(const Value &other) const {
@@ -324,7 +304,7 @@ Value Value::binary_op(
     const std::string &op_name
 ) const {
   return match::match(
-      std::make_tuple(inner, other.inner),
+      std::forward_as_tuple(inner, other.inner),
       [&op_fn](const Primitive &lhs, const Primitive &rhs) -> Value {
         return op_fn(lhs, rhs);
       },
