@@ -4,11 +4,11 @@ let b = a * -3
 
 println(a + b)
 
-function add(a, b)
+fn add(a, b)
   return a + b
 end
 
-function div(a, b)
+fn div(a, b)
   if b == 0 then
     error("cannot divide by zero")
   else
@@ -16,9 +16,9 @@ function div(a, b)
   end
 end
 
-function curry_add(a)
+fn curry_add(a)
   println("curry")
-  return function(b)
+  return fn(b)
     println("curried")
     return a + b
   end
@@ -38,12 +38,14 @@ else
   println(d, c)
 end
 
+div(10, 0)
+
 # let message = if not (0 <= c and c < 10 or not (b == 0 and a == 0)) then
 #   return "valid"
 # else
 #   return "invalid"
 # end
 #
-# println(message)
+println(message)
 #
-# println(map(function(x) return x * x end, array))
+# println(map(fn(x) return x * x end, array))
