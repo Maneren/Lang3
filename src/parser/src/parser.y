@@ -82,6 +82,7 @@
       <ast::Declaration> DECLARATION
       <ast::NamedFunction> FUNCTION_DEFINITION
       <ast::Statement> STATEMENT
+      <ast::Statement> SEMI_STATEMENT
       <ast::ReturnStatement> RETURN
       <ast::LastStatement> LAST_STATEMENT
       <ast::Block> BLOCK
@@ -150,12 +151,11 @@ ARGUMENTS: lparen EXPRESSION_LIST rparen { $$ = std::move($2); }
 
 EXPRESSION: UNARY                    { $$ = ast::Expression(std::move($1)); }
           | BINARY                   { $$ = ast::Expression(std::move($1)); }
-          // | TABLE                     { $$ = ast::Expression($1); }
           | ANONYMOUS_FUNCTION       { $$ = ast::Expression(std::move($1)); }
           | FUNCTION_CALL            { $$ = ast::Expression(std::move($1)); }
           | VAR                      { $$ = ast::Expression(std::move($1)); }
-          | LITERAL                  { $$ = ast::Expression(std::move($1)); }
           | lparen EXPRESSION rparen { $$ = std::move($2); }
+          | LITERAL                  { $$ = ast::Expression(std::move($1)); }
           | IF_EXPRESSION            { $$ = ast::Expression(std::move($1)); }
 
 EXPRESSION_LIST: EXPRESSION comma EXPRESSION_LIST
@@ -209,12 +209,13 @@ LAST_STATEMENT: RETURN    { $$ = ast::LastStatement(std::move($1)); }
               | _continue { $$ = ast::LastStatement(ast::ContinueStatement{}); }
               | _break    { $$ = ast::LastStatement(ast::BreakStatement{}); }
 
-BLOCK: STATEMENT            { $$ = ast::Block{ std::move($1) }; }
-     | STATEMENT semi       { $$ = ast::Block{ std::move($1) }; }
-     | STATEMENT BLOCK      { $$ = std::move($2.with_statement(std::move($1))); }
-     | STATEMENT semi BLOCK { $$ = std::move($3.with_statement(std::move($1))); }
-     | LAST_STATEMENT       { $$ = ast::Block{ std::move($1) }; }
-     | LAST_STATEMENT semi  { $$ = ast::Block{ std::move($1) }; }
+SEMI_STATEMENT: STATEMENT      { $$ =  std::move($1); }
+              | STATEMENT semi { $$ = std::move($1); }
+
+BLOCK: SEMI_STATEMENT       { $$ = std::move($1); }
+     | SEMI_STATEMENT BLOCK { $$ = std::move($2.with_statement(std::move($1))); }
+     | LAST_STATEMENT       { $$ = ast::Block { std::move($1) }; }
+     | LAST_STATEMENT semi  { $$ = ast::Block { std::move($1) }; }
 
 PROGRAM: BLOCK { program = std::move($1); }
 
@@ -224,6 +225,6 @@ namespace l3
 {
     void L3Parser::error(const location_type &location, const std::string &message)
     {
-        std::cerr << "Error at lines " << location << ": " << message << std::endl;
+        std::cerr << "Error at " << location << ": " << message << std::endl;
     }
 }
