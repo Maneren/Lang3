@@ -54,27 +54,39 @@ wrap_native_function(std::string_view name, BuiltinFunction::Body function) {
   return {ast::Identifier{name}, function_ptr};
 }
 
-Scope create_builtins() {
-  return {{wrap_native_function(
-    "print", 
-    [](VM & /*vm*/, std::span<const CowValue> args) {
-      std::print("{}", args[0]);
-      for (const auto &arg : args | std::views::drop(1)) {
-        std::print(" {}", arg);
-      }
-      return CowValue{Value{}};
-    }
-  ), 
-    wrap_native_function("println", [](VM & /*vm*/, std::span<const CowValue> args) {
-      std::print("{}", args[0]);
-      for (const auto &arg : args | std::views::drop(1)) {
-        std::print(" {}", arg);
-      }
-      std::print("\n");
-      return CowValue{Value{}};
-    })
+CowValue print(VM & /*vm*/, std::span<const CowValue> args) {
+  std::print("{}", args[0]);
+  for (const auto &arg : args | std::views::drop(1)) {
+    std::print(" {}", arg);
+  }
+  return CowValue{Value{}};
+}
 
-  }};
+CowValue println(VM &vm, std::span<const CowValue> args) {
+  print(vm, args);
+  std::print("\n");
+  return CowValue{Value{}};
+}
+
+CowValue l3_assert(VM & /*vm*/, std::span<const CowValue> args) {
+  if (args[0]->as_bool()) {
+    return CowValue{Value{}};
+  }
+  throw RuntimeError("{}", args[0]);
+}
+
+Scope create_builtins() {
+  return Scope{
+      {wrap_native_function("print", print),
+       wrap_native_function("println", println),
+       wrap_native_function(
+           "error",
+           [](VM & /*vm*/, std::span<const CowValue> args) -> CowValue {
+             throw RuntimeError("{}", args[0]);
+           }
+       ),
+       wrap_native_function("assert", l3_assert)}
+  };
 }
 
 } // namespace

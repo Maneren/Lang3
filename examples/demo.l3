@@ -10,7 +10,7 @@ end
 
 function div(a, b)
   if b == 0 then
-    return 0
+    error("cannot divide by zero")
   else
     return a / b
   end
