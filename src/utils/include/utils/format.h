@@ -3,6 +3,7 @@
 #include <format>
 #include <memory>
 #include <optional>
+#include <source_location>
 #include <tuple>
 #include <unordered_map>
 #include <unordered_set>
@@ -125,5 +126,29 @@ struct std::formatter<std::shared_ptr<T>>
     : utils::static_formatter<std::optional<T>> {
   static auto format(auto &obj, std::format_context &ctx) {
     return std::format_to(ctx.out(), "{}", *obj);
+  }
+};
+
+template <>
+struct std::formatter<std::source_location>
+    : utils::static_formatter<std::source_location> {
+  static auto format(auto &obj, std::format_context &ctx) {
+    return std::format_to(
+        ctx.out(),
+        "{}({},{}) `{}`",
+        obj.file_name(),
+        obj.line(),
+        obj.column(),
+        obj.function_name()
+    );
+  }
+};
+
+template <typename T>
+  requires(utils::formattable<T>)
+struct std::formatter<std::reference_wrapper<T>>
+    : utils::static_formatter<std::reference_wrapper<T>> {
+  static auto format(auto &obj, std::format_context &ctx) {
+    return std::format_to(ctx.out(), "{}", obj.get());
   }
 };

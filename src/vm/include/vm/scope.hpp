@@ -1,5 +1,6 @@
 #pragma once
 
+#include "vm/storage.hpp"
 #include "vm/value.hpp"
 #include <ast/nodes/identifier.hpp>
 
@@ -7,24 +8,29 @@ namespace l3::vm {
 
 class Scope {
 public:
-  using VariableMap =
+  using Variable = std::reference_wrapper<GCValue>;
+  using VariableMap = std::unordered_map<ast::Identifier, RefValue>;
+  using BuiltinsMap =
       std::unordered_map<ast::Identifier, std::shared_ptr<Value>>;
   Scope() = default;
   Scope(VariableMap &&variables);
 
-  static const Scope &builtins();
+  static const BuiltinsMap &builtins();
 
-  Value &declare_variable(const ast::Identifier &id);
+  void declare_variable(const ast::Identifier &id, GCValue &gc_value);
 
   std::optional<std::reference_wrapper<const Value>>
   get_variable(const ast::Identifier &id) const;
-  std::optional<std::reference_wrapper<Value>>
-  get_variable(const ast::Identifier &id);
+  std::optional<RefValue> get_variable(const ast::Identifier &id);
+
+  bool has_variable(const ast::Identifier &id) const;
 
   const Scope::VariableMap &get_variables() const;
 
+  void mark_gc();
+
 private:
-  static Scope _builtins;
+  static BuiltinsMap _builtins;
   VariableMap variables;
 };
 

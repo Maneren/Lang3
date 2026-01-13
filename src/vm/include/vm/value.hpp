@@ -1,5 +1,7 @@
 #pragma once
 
+#include "utils/debug.h"
+#include "vm/storage.hpp"
 #include <ast/nodes/identifier.hpp>
 #include <cstddef>
 #include <functional>
@@ -62,9 +64,9 @@ public:
   using function_type = std::shared_ptr<Function>;
   Value();
 
-  Value(const Value &) = default;
+  Value(const Value &) = delete;
   Value(Value &&) = default;
-  Value &operator=(const Value &) = default;
+  Value &operator=(const Value &) = delete;
   Value &operator=(Value &&) = default;
   ~Value() = default;
 
@@ -109,6 +111,23 @@ private:
   std::variant<Nil, Primitive, function_type> inner;
 };
 
-using CowValue = utils::Cow<Value>;
+struct RefValue {
+  explicit RefValue(GCValue &gc_value) : gc_value{gc_value} {}
+
+  [[nodiscard]] const Value &get() const { return gc_value.get().get(); }
+  [[nodiscard]] Value &get() { return gc_value.get().get(); }
+
+  [[nodiscard]] const GCValue &get_gc() const { return gc_value.get(); }
+  [[nodiscard]] GCValue &get_gc() { return gc_value.get(); }
+
+  [[nodiscard]] Value &operator*() { return get(); }
+  [[nodiscard]] const Value &operator*() const { return get(); }
+
+  Value *operator->() { return &get(); }
+  const Value *operator->() const { return &get(); }
+
+private:
+  std::reference_wrapper<GCValue> gc_value;
+};
 
 } // namespace l3::vm

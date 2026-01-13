@@ -11,6 +11,8 @@ namespace l3::vm {
 class Scope;
 class VM;
 
+using L3Args = std::span<RefValue>;
+
 class L3Function {
 public:
   L3Function(const L3Function &) = delete;
@@ -32,7 +34,7 @@ public:
   );
   ~L3Function();
 
-  CowValue operator()(VM &vm, std::span<const CowValue> args);
+  RefValue operator()(VM &vm, L3Args args);
 
   [[nodiscard]] const ast::Identifier &get_name() const;
 
@@ -46,10 +48,10 @@ private:
 
 class BuiltinFunction {
 public:
-  using Body = std::function<CowValue(VM &vm, std::span<const CowValue> args)>;
+  using Body = std::function<RefValue(VM &vm, L3Args args)>;
   BuiltinFunction(ast::Identifier &&name, Body &&body);
 
-  CowValue operator()(VM &vm, std::span<const CowValue> args) const;
+  RefValue operator()(VM &vm, std::span<RefValue> args) const;
 
   [[nodiscard]] const ast::Identifier &get_name() const { return name; }
 
@@ -63,7 +65,7 @@ public:
   Function(L3Function &&function);
   Function(BuiltinFunction &&function);
 
-  CowValue operator()(VM &vm, std::span<const CowValue> args);
+  RefValue operator()(VM &vm, L3Args args);
 
   auto visit(auto &&...visitor) const {
     return match::match(inner, std::forward<decltype(visitor)>(visitor)...);

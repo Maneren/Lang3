@@ -22,7 +22,7 @@
 
 namespace l3::vm {
 
-CowValue VM::evaluate(const ast::BinaryExpression &binary) {
+RefValue VM::evaluate(const ast::BinaryExpression &binary) {
   debug_print("Evaluating binary expression {}", binary.get_op());
   const auto left = evaluate(binary.get_lhs());
   const auto right = evaluate(binary.get_rhs());
@@ -30,48 +30,48 @@ CowValue VM::evaluate(const ast::BinaryExpression &binary) {
   debug_print("Left: {}", left);
   debug_print("Right: {}", right);
 
-  const auto &left_ref = left.as_cref();
-  const auto &right_ref = right.as_cref();
+  const auto &left_ref = left.get();
+  const auto &right_ref = right.get();
 
   switch (binary.get_op()) {
   case ast::BinaryOperator::Plus: {
-    return CowValue{left_ref.add(right_ref)};
+    return store_value(left_ref.add(right_ref));
   }
   case ast::BinaryOperator::Minus: {
-    return CowValue{left_ref.sub(right_ref)};
+    return store_value(left_ref.sub(right_ref));
   }
   case ast::BinaryOperator::Multiply: {
-    return CowValue{left_ref.mul(right_ref)};
+    return store_value(left_ref.mul(right_ref));
   }
   case ast::BinaryOperator::Divide: {
-    return CowValue{left_ref.div(right_ref)};
+    return store_value(left_ref.div(right_ref));
   }
   case ast::BinaryOperator::Modulo: {
-    return CowValue{left_ref.mod(right_ref)};
+    return store_value(left_ref.mod(right_ref));
   }
   case ast::BinaryOperator::And: {
-    return CowValue{left_ref.and_op(right_ref)};
+    return store_value(left_ref.and_op(right_ref));
   }
   case ast::BinaryOperator::Or: {
-    return CowValue{left_ref.or_op(right_ref)};
+    return store_value(left_ref.or_op(right_ref));
   }
   case ast::BinaryOperator::Equal: {
-    return CowValue{left_ref.equal(right_ref)};
+    return store_value(left_ref.equal(right_ref));
   }
   case ast::BinaryOperator::NotEqual: {
-    return CowValue{left_ref.not_equal(right_ref)};
+    return store_value(left_ref.not_equal(right_ref));
   }
   case ast::BinaryOperator::Less: {
-    return CowValue{left_ref.less(right_ref)};
+    return store_value(left_ref.less(right_ref));
   }
   case ast::BinaryOperator::LessEqual: {
-    return CowValue{left_ref.less_equal(right_ref)};
+    return store_value(left_ref.less_equal(right_ref));
   }
   case ast::BinaryOperator::Greater: {
-    return CowValue{left_ref.greater(right_ref)};
+    return store_value(left_ref.greater(right_ref));
   }
   case ast::BinaryOperator::GreaterEqual: {
-    return CowValue{left_ref.greater_equal(right_ref)};
+    return store_value(left_ref.greater_equal(right_ref));
   }
   default:
     throw std::runtime_error(
@@ -80,18 +80,18 @@ CowValue VM::evaluate(const ast::BinaryExpression &binary) {
   }
 }
 
-CowValue VM::evaluate(const ast::Identifier &identifier) const {
-  if (auto value = read_variable(identifier)) {
-    return CowValue{*value};
+RefValue VM::evaluate(const ast::Identifier &identifier) {
+  if (auto value = read_write_variable(identifier)) {
+    return RefValue{*value};
   }
   throw UndefinedVariableError(identifier);
 }
 
-CowValue VM::evaluate(const ast::Variable &variable) const {
+RefValue VM::evaluate(const ast::Variable &variable) {
   return evaluate(variable.get_identifier());
 }
 
-CowValue VM::evaluate(const ast::Literal &literal) const {
+RefValue VM::evaluate(const ast::Literal &literal) {
   debug_print("Evaluating literal");
   Value primitive = match::match(
       literal.get(),
@@ -102,13 +102,13 @@ CowValue VM::evaluate(const ast::Literal &literal) const {
   );
   debug_print("Primitive: {}", primitive);
 
-  return CowValue{std::move(primitive)};
+  return store_value(std::move(primitive));
 }
-CowValue VM::evaluate(const ast::Expression &expression) {
+RefValue VM::evaluate(const ast::Expression &expression) {
   debug_print("Evaluating expression");
   return expression.visit([this](const auto &expr) {
     auto result = evaluate(expr);
-    debug_print("Expression result: {}", result.as_cref());
+    debug_print("Expression result: {}", result.get());
     return result;
   });
 }
@@ -120,27 +120,27 @@ void VM::execute(const ast::Assignment &assignment) {
     throw UndefinedVariableError(variable);
   }
   const auto &expression = assignment.get_expression();
-  auto &lhs = value->get();
   const auto rhs = evaluate(expression);
-  const auto &rhs_ref = rhs.as_cref();
+
+  auto &lhs = *value;
   switch (assignment.get_operator()) {
   case ast::AssignmentOperator::Assign:
-    lhs = rhs_ref;
+    lhs = rhs;
     break;
   case ast::AssignmentOperator::Plus:
-    lhs = lhs.add(rhs_ref);
+    lhs = store_value(lhs->add(*rhs));
     break;
   case ast::AssignmentOperator::Minus:
-    lhs = lhs.sub(rhs_ref);
+    lhs = store_value(lhs->sub(*rhs));
     break;
   case ast::AssignmentOperator::Multiply:
-    lhs = lhs.mul(rhs_ref);
+    lhs = store_value(lhs->mul(*rhs));
     break;
   case ast::AssignmentOperator::Divide:
-    lhs = lhs.div(rhs_ref);
+    lhs = store_value(lhs->div(*rhs));
     break;
   case ast::AssignmentOperator::Modulo:
-    lhs = lhs.mod(rhs_ref);
+    lhs = store_value(lhs->mod(*rhs));
     break;
   default:
     throw std::runtime_error(
@@ -153,15 +153,17 @@ void VM::execute(const ast::Declaration &declaration) {
   const auto &variable = declaration.get_variable();
   const auto &expression = declaration.get_expression();
   debug_print("Executing declaration of {}", variable.name());
-  auto &value = current_scope().declare_variable(variable);
-  value = evaluate(expression).into_value();
+  if (current_scope().has_variable(variable)) {
+    throw NameError("variable '{}' already declared", variable.name());
+  }
+  auto value = evaluate(expression);
+  current_scope().declare_variable(variable, value.get_gc());
   debug_print("Declared {} = {}", variable.name(), value);
 }
 void VM::execute(const ast::FunctionCall &function_call) {
   debug_print("Executing function call");
-  const auto &value = evaluate(function_call);
-  if (!value->is_nil()) {
-    throw RuntimeError("Top-value function call returned non-nil value");
+  {
+    auto _ = evaluate(function_call);
   }
 }
 void VM::execute(const ast::IfStatement &if_statement) {
@@ -179,7 +181,7 @@ void VM::execute(const ast::IfStatement &if_statement) {
     execute(else_block->get());
   }
 }
-CowValue VM::evaluate(const ast::FunctionCall &function_call) {
+RefValue VM::evaluate(const ast::FunctionCall &function_call) {
   const auto &function = function_call.get_name();
   const auto &arguments = function_call.get_arguments();
 
@@ -196,7 +198,7 @@ CowValue VM::evaluate(const ast::FunctionCall &function_call) {
       }
   );
 
-  std::vector<CowValue> evaluated_arguments;
+  std::vector<RefValue> evaluated_arguments;
   for (const auto &argument : arguments) {
     evaluated_arguments.push_back(evaluate(argument));
   }
@@ -206,7 +208,9 @@ CowValue VM::evaluate(const ast::FunctionCall &function_call) {
     debug_print("  {}", argument);
   }
 
-  return function_ptr->operator()(*this, evaluated_arguments);
+  auto result = function_ptr->operator()(*this, evaluated_arguments);
+  debug_print("Result: {}", result);
+  return result;
 };
 void VM::execute(const ast::Statement &statement) {
   debug_print("Executing statement");
@@ -228,31 +232,30 @@ void VM::execute(const ast::Program &program) {
   }
 }
 
-CowValue VM::evaluate(const ast::Block &block) {
+void VM::execute(const ast::Block &block) {
   debug_print("Evaluating block");
   for (const auto &statement : block.get_statements()) {
     execute(statement);
   }
 
-  if (const auto &last_statement = block.get_last_statement(); last_statement) {
-    debug_print("Block has last statement");
-    return evaluate(*last_statement);
+  const auto &last_statement = block.get_last_statement();
+
+  if (last_statement) {
+    execute(*last_statement);
   }
-  return CowValue{Value{}};
 }
 
 std::optional<std::reference_wrapper<const Value>>
 VM::read_variable(const ast::Identifier &id) const {
   for (const auto &it : std::views::reverse(scopes)) {
     if (auto value = it->get_variable(id)) {
-      return value;
+      return **value;
     }
   }
-  return Scope::builtins().get_variable(id);
+  return std::nullopt;
 }
 
-std::optional<std::reference_wrapper<Value>>
-VM::read_write_variable(const ast::Identifier &id) {
+std::optional<RefValue> VM::read_write_variable(const ast::Identifier &id) {
   for (auto &it : std::views::reverse(scopes)) {
     if (auto value = it->get_variable(id)) {
       return value;
@@ -264,7 +267,7 @@ VM::read_write_variable(const ast::Identifier &id) {
 bool VM::evaluate_if_branch(const ast::IfBase &if_base) {
   debug_print("Evaluating if branch");
   const auto condition_value = evaluate(if_base.get_condition());
-  const auto &condition = condition_value.as_cref();
+  const auto &condition = condition_value.get();
   if (condition.as_bool()) {
     debug_print("Condition is truthy {}", condition_value);
     execute(if_base.get_block());
@@ -278,20 +281,20 @@ bool VM::evaluate_if_branch(const ast::IfBase &if_base) {
 void VM::execute(const ast::NamedFunction &named_function) {
   debug_print("Declaring named function");
   const auto &name = named_function.get_name();
-  auto &variable = current_scope().declare_variable(name);
+  auto variable = declare_variable(name);
 
   auto function = L3Function{scopes, named_function};
-  variable = Value{Function{std::move(function)}};
+
+  *variable = Value{Function{std::move(function)}};
 
   debug_print("Declared function {}", name.name());
 }
 
-CowValue VM::evaluate_function_body(
+RefValue VM::evaluate_function_body(
     std::span<std::shared_ptr<Scope>> captured,
     Scope &&arguments,
     const ast::FunctionBody &body
 ) {
-  debug_print("entering function body");
   for (const auto &capture : captured) {
     debug_print("captured: {}", capture->get_variables());
   }
@@ -304,37 +307,101 @@ CowValue VM::evaluate_function_body(
     scopes.push_back(capture);
   }
   scopes.push_back(std::make_shared<Scope>(std::move(arguments)));
+  stack.push_frame();
 
-  auto return_value = evaluate(body.get_block());
+  std::optional<RefValue> return_value;
 
+  try {
+    execute(body.get_block());
+  } catch (const BreakFlowException &exception) {
+    return_value = exception.value;
+  }
+
+  stack.pop_frame();
   scopes = std::move(original_scopes);
 
-  return return_value;
+  auto value = stack.push_value(return_value.value_or(store_value(Value{})));
+  run_gc();
+  return value;
 }
 
-CowValue VM::evaluate(const ast::LastStatement &last_statement) {
+void VM::execute(const ast::LastStatement &last_statement) {
   debug_print("Evaluating last statement");
-  return last_statement.visit(
+  last_statement.visit(
       match::Overloaded{
           [this](const ast::ReturnStatement &return_statement) {
-            auto value = return_statement.get_expression()
-                             .transform([this](const auto &expression) {
-                               return evaluate(expression);
-                             })
-                             .value_or(CowValue{Value{}});
+            auto value =
+                return_statement.get_expression()
+                    .transform([this](const ast::Expression &expression) {
+                      return evaluate(expression);
+                    })
+                    .value_or(store_value(Value{}));
             debug_print("Returning {}", value);
-            return value;
+            throw BreakFlowException(value);
           },
-          [](const auto & /*unused*/) -> CowValue {
-            throw std::runtime_error("last statement not implemented");
-          }
+          [](const auto & /*expression*/) { throw BreakFlowException(); }
       }
   );
 }
 
-CowValue VM::evaluate(const ast::AnonymousFunction &anonymous) const {
-  return CowValue{Function{L3Function{scopes, anonymous}}};
+RefValue VM::evaluate(const ast::AnonymousFunction &anonymous) {
+  return store_value(Function{L3Function{scopes, anonymous}});
 }
 
-Scope &VM::current_scope() { return *scopes.back(); }
+Scope &VM::current_scope() {
+  if (scopes.empty()) {
+    throw std::runtime_error("no current scope");
+  }
+  return *scopes.back();
+}
+
+VM::VM(bool debug) : debug{debug}, gc_storage{debug} {
+  auto builtins = Scope::builtins();
+
+  auto &scope = scopes.emplace_back(std::make_shared<Scope>());
+
+  for (const auto &[id, value] : builtins) {
+    auto &gc_value = gc_storage.emplace(value);
+    scope->declare_variable(id, gc_value);
+  }
+}
+
+size_t VM::run_gc() {
+  debug_print("Running GC");
+  for (auto &scope : scopes) {
+    scope->mark_gc();
+  }
+  stack.mark_gc();
+  auto erased = gc_storage.sweep();
+  debug_print("Erased {} values", erased);
+  return erased;
+}
+
+RefValue VM::declare_variable(const ast::Identifier &id) {
+  auto &gc_value = gc_storage.emplace(Value{});
+  current_scope().declare_variable(id, gc_value);
+  return RefValue{gc_value};
+}
+
+RefValue VM::store_value(Value &&value) {
+  auto &gc_value = gc_storage.emplace(std::move(value));
+  auto ref_value = RefValue{gc_value};
+  stack.push_value(ref_value);
+  return ref_value;
+}
+
+std::vector<RefValue> &Stack::top_frame() { return frames.back(); };
+void Stack::push_frame() { frames.emplace_back(); }
+void Stack::pop_frame() { frames.pop_back(); }
+RefValue Stack::push_value(RefValue value) {
+  top_frame().push_back(value);
+  return value;
+}
+void Stack::mark_gc() {
+  for (auto &frame : frames) {
+    for (auto &value : frame) {
+      value.get_gc().mark();
+    }
+  }
+}
 } // namespace l3::vm

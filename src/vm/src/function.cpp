@@ -35,7 +35,7 @@ L3Function::L3Function(
     : capture_scopes{std::move(active_scopes)}, body{std::move(body)},
       name{std::move(name)} {};
 
-CowValue L3Function::operator()(VM &vm, std::span<const CowValue> args) {
+RefValue L3Function::operator()(VM &vm, L3Args args) {
   const auto &parameters = body.get_parameters();
   if (args.size() > parameters.size()) {
     throw RuntimeError{
@@ -47,8 +47,8 @@ CowValue L3Function::operator()(VM &vm, std::span<const CowValue> args) {
   }
 
   auto arguments = Scope{};
-  for (const auto &[parameter, arg] : std::views::zip(parameters, args)) {
-    arguments.declare_variable(parameter) = arg.to_value<Value>();
+  for (auto [parameter, arg] : std::views::zip(parameters, args)) {
+    arguments.declare_variable(parameter, arg.get_gc());
   }
 
   if (args.size() < parameters.size()) {
@@ -60,9 +60,9 @@ CowValue L3Function::operator()(VM &vm, std::span<const CowValue> args) {
             std::ranges::to<ast::NameList>(),
         body.get_block_ptr()
     };
-    return CowValue{
-        Value{L3Function{std::move(new_scopes), std::move(new_body), name}}
-    };
+    return vm.store_value(
+        {L3Function{std::move(new_scopes), std::move(new_body), name}}
+    );
   }
 
   return vm.evaluate_function_body(capture_scopes, std::move(arguments), body);
@@ -84,14 +84,13 @@ ast::Identifier L3Function::anonymous_function_name{
 Function::Function(L3Function &&function) : inner{std::move(function)} {}
 Function::Function(BuiltinFunction &&function) : inner{std::move(function)} {}
 
-CowValue Function::operator()(VM &vm, std::span<const CowValue> args) {
+RefValue Function::operator()(VM &vm, L3Args args) {
   return inner.visit([&vm, &args](auto &func) { return func(vm, args); });
 };
 
 BuiltinFunction::BuiltinFunction(ast::Identifier &&name, Body &&body)
     : name{std::move(name)}, body{std::move(body)} {}
-CowValue
-BuiltinFunction::operator()(VM &vm, std::span<const CowValue> args) const {
+RefValue BuiltinFunction::operator()(VM &vm, L3Args args) const {
   return body(vm, args);
 }
 } // namespace l3::vm

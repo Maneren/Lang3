@@ -29,4 +29,10 @@ public:
   }
 };
 
+class Program : public Block {
+public:
+  Program() = default;
+  Program(Block &&block) : Block(std::move(block)) {}
+};
+
 } // namespace l3::ast

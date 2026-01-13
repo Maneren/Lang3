@@ -1,6 +1,7 @@
 #pragma once
 
 #include "vm/function.hpp"
+#include "vm/storage.hpp"
 #include <ast/printing.hpp>
 #include <utils/format.h>
 
@@ -80,5 +81,24 @@ struct std::formatter<l3::vm::Value> : utils::static_formatter<l3::vm::Value> {
           return std::format_to(ctx.out(), "{}", *function);
         }
     );
+  }
+};
+
+template <>
+struct std::formatter<l3::vm::RefValue>
+    : utils::static_formatter<l3::vm::RefValue> {
+  static constexpr auto format(const auto &value, std::format_context &ctx) {
+    return std::format_to(ctx.out(), "{}", *value);
+  }
+};
+
+template <>
+struct std::formatter<l3::vm::GCValue>
+    : utils::static_formatter<l3::vm::GCValue> {
+  static constexpr auto format(const auto &value, std::format_context &ctx) {
+    if (value.marked) {
+      return std::format_to(ctx.out(), "{}*", value.value);
+    }
+    return std::format_to(ctx.out(), "{}", value.value);
   }
 };

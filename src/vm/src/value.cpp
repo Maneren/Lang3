@@ -276,9 +276,6 @@ bool Value::as_bool() const {
   );
 }
 
-Value::Value(Function &&function)
-    : inner{std::make_shared<Function>(std::move(function))} {}
-
 Primitive::Primitive(bool value) : PrimitiveType{value} {}
 Primitive::Primitive(long long value) : PrimitiveType{value} {}
 Primitive::Primitive(double value) : PrimitiveType{value} {}
@@ -290,6 +287,9 @@ Value::Value() : inner{Nil{}} {}
 Value::Value(Nil /*unused*/) : inner{Nil{}} {}
 Value::Value(Primitive &&primitive) : inner{std::move(primitive)} {}
 Value::Value(function_type function) : inner{std::move(function)} {}
+Value::Value(Function &&function)
+    : inner{std::make_shared<Function>(std::move(function))} {}
+
 bool Value::is_nil() const { return std::holds_alternative<Nil>(inner); }
 bool Value::is_function() const {
   return std::holds_alternative<function_type>(inner);
