@@ -15,7 +15,7 @@ namespace l3::ast {
 
 class Assignment {
   Variable var;
-  AssignmentOperator op;
+  AssignmentOperator op = AssignmentOperator::Assign;
   Expression expr;
 
 public:
@@ -33,16 +33,18 @@ public:
 class Declaration {
   Identifier var;
   Expression expr;
+  bool const_ = false;
 
 public:
   Declaration() = default;
-  Declaration(Identifier &&var, Expression &&expr)
-      : var(std::move(var)), expr(std::move(expr)) {}
+  Declaration(Identifier &&var, Expression &&expr, bool is_const = false)
+      : var(std::move(var)), expr(std::move(expr)), const_(is_const) {}
 
   void print(std::output_iterator<char> auto &out, std::size_t depth = 0) const;
 
   [[nodiscard]] const Identifier &get_variable() const { return var; }
   [[nodiscard]] const Expression &get_expression() const { return expr; }
+  [[nodiscard]] bool is_const() const { return const_; }
 };
 
 class Statement {

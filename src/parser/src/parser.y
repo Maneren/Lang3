@@ -54,7 +54,7 @@
 %token _if _else _while _break _continue _return _for in _do _true _false then
        end nil function let equal _not lparen rparen lbrace rbrace lbracket
        rbracket comma semi dot concat colon plus_equal minus_equal mul_equal
-       div_equal mod_equal pow_equal concat_equal elif
+       div_equal mod_equal pow_equal concat_equal elif mut
        <std::string> id
        <std::string> string
        <long long> num
@@ -192,7 +192,9 @@ ASSIGNMENT: VAR ASSIGNMENT_OPERATOR EXPRESSION
             { $$ = ast::Assignment(std::move($1), $2, std::move($3)); }
 
 DECLARATION: let IDENTIFIER equal EXPRESSION
-             { $$ = ast::Declaration(std::move($2), std::move($4)); }
+             { $$ = ast::Declaration(std::move($2), std::move($4), true); }
+           | let mut IDENTIFIER equal EXPRESSION
+             { $$ = ast::Declaration(std::move($3), std::move($5), false); }
 
 FUNCTION_DEFINITION: function IDENTIFIER FUNCTION_BODY
                      { $$ = ast::NamedFunction(std::move($2), std::move($3)); }
