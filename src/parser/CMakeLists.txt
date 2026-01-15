@@ -24,6 +24,7 @@ add_custom_command(
   OUTPUT ${PARSER_CPP} ${PARSER_HEADER}
   COMMAND ${BISON}
           -Wcounterexamples
+          --report=all
           --defines=${PARSER_HEADER}
           -o ${PARSER_CPP}
           ${CMAKE_CURRENT_SOURCE_DIR}/src/parser.y
