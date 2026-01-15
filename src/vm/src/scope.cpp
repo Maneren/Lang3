@@ -10,6 +10,8 @@
 #include <print>
 #include <ranges>
 #include <span>
+#include <sstream>
+#include <string>
 #include <string_view>
 #include <utility>
 
@@ -50,11 +52,15 @@ wrap_native_function(std::string_view name, BuiltinFunction::Body function) {
   return {ast::Identifier{name}, function_ptr};
 }
 
-RefValue print(VM &vm, L3Args args) {
-  std::print("{}", args[0].get());
+void format_args(const std::output_iterator<char> auto &out, L3Args args) {
+  std::format_to(out, "{}", args[0].get());
   for (const auto &arg : args | std::views::drop(1)) {
-    std::print(" {}", arg.get());
+    std::format_to(out, " {}", arg.get());
   }
+}
+
+RefValue print(VM &vm, L3Args args) {
+  format_args(std::ostream_iterator<char>(std::cout), args);
   return vm.store_value(Value{});
 }
 
@@ -76,20 +82,33 @@ RefValue l3_assert(VM &vm, L3Args args) {
   if (args[0]->as_bool()) {
     return vm.store_value(Value{});
   }
-  throw RuntimeError("{}", args[0]);
+  std::string result;
+  format_args(std::back_inserter(result), args.subspan(1));
+  throw RuntimeError("{}", result);
+}
+
+RefValue error(VM & /*vm*/, L3Args args) {
+  std::string result;
+  format_args(std::back_inserter(result), args);
+  throw RuntimeError("{}", result);
+}
+
+RefValue input(VM &vm, L3Args args) {
+  if (args.size() > 0) {
+    println(vm, args);
+  }
+  std::string input;
+  std::getline(std::cin, input);
+  return vm.store_value(Value{Primitive{std::move(input)}});
 }
 
 Scope::BuiltinsMap create_builtins() {
   return {
       wrap_native_function("print", print),
       wrap_native_function("println", println),
-      wrap_native_function(
-          "error",
-          [](VM & /*vm*/, L3Args args) -> RefValue {
-            throw RuntimeError("{}", args[0]);
-          }
-      ),
+      wrap_native_function("error", error),
       wrap_native_function("assert", l3_assert),
+      wrap_native_function("input", input),
       wrap_native_function("__trigger_gc", trigger_gc)
   };
 }
