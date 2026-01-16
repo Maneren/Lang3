@@ -19,6 +19,8 @@ namespace l3::vm {
 
 class Stack {
 public:
+  Stack(bool debug = false) : debug(debug) {}
+
   std::vector<RefValue> &top_frame();
   void push_frame();
   void pop_frame();
@@ -26,7 +28,15 @@ public:
 
   void mark_gc();
 
+  template <typename... Ts>
+  void debug_print(std::format_string<Ts...> message, Ts &&...args) const {
+    if (debug) {
+      std::println(std::cerr, message, std::forward<Ts>(args)...);
+    }
+  }
+
 private:
+  bool debug;
   std::vector<std::vector<RefValue>> frames{{}};
 };
 
@@ -43,6 +53,7 @@ public:
   );
 
   RefValue store_value(Value &&value);
+  RefValue store_new_value(NewValue &&value);
   RefValue declare_variable(const ast::Identifier &id);
 
   size_t run_gc();
@@ -69,6 +80,7 @@ private:
   [[nodiscard]] RefValue evaluate(const ast::Literal &literal);
   [[nodiscard]] RefValue evaluate(const ast::Variable &variable);
   [[nodiscard]] RefValue evaluate(const ast::BinaryExpression &binary);
+  [[nodiscard]] RefValue evaluate(const ast::IndexExpression &index_ex);
   [[nodiscard]] RefValue evaluate(const ast::Identifier &identifier);
   [[nodiscard]] RefValue evaluate(const ast::AnonymousFunction &anonymous);
   [[nodiscard]] RefValue evaluate(const ast::FunctionCall &function_call);
@@ -85,7 +97,7 @@ private:
 
   [[nodiscard]] std::optional<std::reference_wrapper<const Value>>
   read_variable(const ast::Identifier &id) const;
-  [[nodiscard]] std::optional<RefValue>
+  [[nodiscard]] std::optional<std::reference_wrapper<RefValue>>
   read_write_variable(const ast::Identifier &id);
 
   bool evaluate_if_branch(const ast::IfBase &if_base);

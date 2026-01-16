@@ -23,7 +23,7 @@ struct std::formatter<l3::vm::Primitive>
         [&ctx](const bool &value) {
           return std::format_to(ctx.out(), "{}", value);
         },
-        [&ctx](const long long &value) {
+        [&ctx](const std::int64_t &value) {
           return std::format_to(ctx.out(), "{}", value);
         },
         [&ctx](const double &value) {
@@ -68,6 +68,14 @@ struct std::formatter<l3::vm::Function>
 };
 
 template <>
+struct std::formatter<l3::vm::RefValue>
+    : utils::static_formatter<l3::vm::RefValue> {
+  static constexpr auto format(const auto &value, std::format_context &ctx) {
+    return std::format_to(ctx.out(), "{}", *value);
+  }
+};
+
+template <>
 struct std::formatter<l3::vm::Value> : utils::static_formatter<l3::vm::Value> {
   static constexpr auto format(const auto &value, std::format_context &ctx) {
     return value.visit(
@@ -77,18 +85,13 @@ struct std::formatter<l3::vm::Value> : utils::static_formatter<l3::vm::Value> {
         [&ctx](const l3::vm::Primitive &primitive) {
           return std::format_to(ctx.out(), "{}", primitive);
         },
-        [&ctx](const std::shared_ptr<l3::vm::Function> &function) {
+        [&ctx](const l3::vm::Value::function_type &function) {
           return std::format_to(ctx.out(), "{}", *function);
+        },
+        [&ctx](const l3::vm::Value::vector_type &vector) {
+          return std::format_to(ctx.out(), "{}", vector);
         }
     );
-  }
-};
-
-template <>
-struct std::formatter<l3::vm::RefValue>
-    : utils::static_formatter<l3::vm::RefValue> {
-  static constexpr auto format(const auto &value, std::format_context &ctx) {
-    return std::format_to(ctx.out(), "{}", *value);
   }
 };
 

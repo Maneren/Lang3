@@ -28,9 +28,9 @@ char decode_escape(char c) {
 Boolean::Boolean(bool value) : value(value) {}
 [[nodiscard]] const bool &Boolean::get() const { return value; }
 bool &Boolean::get() { return value; }
-Number::Number(long long value) : value(value) {}
-[[nodiscard]] const long long &Number::get() const { return value; }
-long long &Number::get() { return value; }
+Number::Number(std::int64_t value) : value(value) {}
+[[nodiscard]] const std::int64_t &Number::get() const { return value; }
+std::int64_t &Number::get() { return value; }
 Float::Float(double value) : value(value) {}
 [[nodiscard]] const double &Float::get() const { return value; }
 double &Float::get() { return value; }
@@ -81,6 +81,11 @@ NameList &NameList::with_name(Identifier &&ident) {
   emplace_front(std::move(ident));
   return *this;
 }
+
+IndexExpression::IndexExpression() = default;
+IndexExpression::IndexExpression(Expression &&base, Expression &&index)
+    : base(std::make_unique<Expression>(std::move(base))),
+      index(std::make_unique<Expression>(std::move(index))) {};
 
 ExpressionList::ExpressionList(Expression &&expr) {
   emplace_front(std::move(expr));

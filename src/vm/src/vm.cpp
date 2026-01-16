@@ -93,16 +93,16 @@ RefValue VM::evaluate(const ast::Variable &variable) {
 
 RefValue VM::evaluate(const ast::Literal &literal) {
   debug_print("Evaluating literal");
-  Value primitive = match::match(
+  Value value = match::match(
       literal.get(),
       [](const ast::Nil & /*unused*/) -> Value { return {Nil{}}; },
       [](const auto &literal_value) -> Value {
         return Primitive{literal_value.get()};
       }
   );
-  debug_print("Primitive: {}", primitive);
+  debug_print("Literal: {}", value);
 
-  return store_value(std::move(primitive));
+  return store_value(std::move(value));
 }
 RefValue VM::evaluate(const ast::Expression &expression) {
   debug_print("Evaluating expression");
@@ -122,7 +122,7 @@ void VM::execute(const ast::Assignment &assignment) {
   const auto &expression = assignment.get_expression();
   const auto rhs = evaluate(expression);
 
-  auto &lhs = *value;
+  auto &lhs = value->get();
   switch (assignment.get_operator()) {
   case ast::AssignmentOperator::Assign:
     lhs = rhs;
@@ -223,7 +223,7 @@ void VM::execute(const ast::Program &program) {
         execute(statement);
       }
     } catch (const RuntimeError &error) {
-      std::println(std::cerr, "{}", error.what());
+      std::println(std::cerr, "{}: {}", error.type(), error.what());
     }
   }
   CPPTRACE_CATCH(const std::exception &e) {
@@ -234,6 +234,8 @@ void VM::execute(const ast::Program &program) {
 
 void VM::execute(const ast::Block &block) {
   debug_print("Evaluating block");
+  stack.push_frame();
+  scopes.push_back(std::make_shared<Scope>());
   for (const auto &statement : block.get_statements()) {
     execute(statement);
   }
@@ -243,19 +245,23 @@ void VM::execute(const ast::Block &block) {
   if (last_statement) {
     execute(*last_statement);
   }
+  stack.pop_frame();
+  scopes.pop_back();
 }
 
 std::optional<std::reference_wrapper<const Value>>
 VM::read_variable(const ast::Identifier &id) const {
   for (const auto &it : std::views::reverse(scopes)) {
-    if (auto value = it->get_variable(id)) {
-      return **value;
+    const auto &scope = *it;
+    if (auto value = scope.get_variable(id)) {
+      return value;
     }
   }
   return std::nullopt;
 }
 
-std::optional<RefValue> VM::read_write_variable(const ast::Identifier &id) {
+std::optional<std::reference_wrapper<RefValue>>
+VM::read_write_variable(const ast::Identifier &id) {
   for (auto &it : std::views::reverse(scopes)) {
     if (auto value = it->get_variable(id)) {
       return value;
@@ -268,7 +274,7 @@ bool VM::evaluate_if_branch(const ast::IfBase &if_base) {
   debug_print("Evaluating if branch");
   const auto condition_value = evaluate(if_base.get_condition());
   const auto &condition = condition_value.get();
-  if (condition.as_bool()) {
+  if (condition.is_truthy()) {
     debug_print("Condition is truthy {}", condition_value);
     execute(if_base.get_block());
     return true;
@@ -348,6 +354,12 @@ RefValue VM::evaluate(const ast::AnonymousFunction &anonymous) {
   return store_value(Function{L3Function{scopes, anonymous}});
 }
 
+[[nodiscard]] RefValue VM::evaluate(const ast::IndexExpression &index_ex) {
+  auto base = evaluate(index_ex.get_base());
+  auto index = evaluate(index_ex.get_index());
+  return store_new_value(base->index(*index));
+}
+
 Scope &VM::current_scope() {
   if (scopes.empty()) {
     throw std::runtime_error("no current scope");
@@ -355,7 +367,7 @@ Scope &VM::current_scope() {
   return *scopes.back();
 }
 
-VM::VM(bool debug) : debug{debug}, gc_storage{debug} {
+VM::VM(bool debug) : debug{debug}, stack{debug}, gc_storage{debug} {
   auto builtins = Scope::builtins();
 
   auto &scope = scopes.emplace_back(std::make_shared<Scope>());
@@ -390,10 +402,25 @@ RefValue VM::store_value(Value &&value) {
   return ref_value;
 }
 
+RefValue VM::store_new_value(NewValue &&value) {
+  return match::match(
+      std::move(value),
+      [this](Value &&value) { return store_value(std::move(value)); },
+      [](RefValue value) { return value; }
+  );
+}
+
 std::vector<RefValue> &Stack::top_frame() { return frames.back(); };
-void Stack::push_frame() { frames.emplace_back(); }
-void Stack::pop_frame() { frames.pop_back(); }
+void Stack::push_frame() {
+  debug_print("Pushing frame");
+  frames.emplace_back();
+}
+void Stack::pop_frame() {
+  debug_print("Popping frame");
+  frames.pop_back();
+}
 RefValue Stack::push_value(RefValue value) {
+  debug_print("Pushing value {} on stack", value);
   top_frame().push_back(value);
   return value;
 }
@@ -404,4 +431,5 @@ void Stack::mark_gc() {
     }
   }
 }
+
 } // namespace l3::vm

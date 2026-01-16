@@ -10,7 +10,6 @@
 #include <print>
 #include <ranges>
 #include <span>
-#include <sstream>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -25,12 +24,13 @@ Scope::get_variable(const ast::Identifier &id) const {
   }
   return std::optional{std::cref(present->second.get())};
 }
-std::optional<RefValue> Scope::get_variable(const ast::Identifier &id) {
+std::optional<std::reference_wrapper<RefValue>>
+Scope::get_variable(const ast::Identifier &id) {
   auto present = variables.find(id);
   if (present == variables.end()) {
     return std::nullopt;
   }
-  return std::optional{present->second};
+  return std::optional{std::ref(present->second)};
 }
 
 void Scope::declare_variable(const ast::Identifier &id, GCValue &gc_value) {
@@ -79,7 +79,7 @@ RefValue trigger_gc(VM &vm, L3Args args) {
 }
 
 RefValue l3_assert(VM &vm, L3Args args) {
-  if (args[0]->as_bool()) {
+  if (args[0]->is_truthy()) {
     return vm.store_value(Value{});
   }
   std::string result;
@@ -102,6 +102,77 @@ RefValue input(VM &vm, L3Args args) {
   return vm.store_value(Value{Primitive{std::move(input)}});
 }
 
+RefValue to_int(VM &vm, L3Args args) {
+  if (args.empty()) {
+    throw RuntimeError("to_int takes at least one arguments");
+  }
+
+  auto primitive = args[0]->as_primitive();
+  if (!primitive) {
+    throw RuntimeError("to_int takes only primitive values");
+  }
+
+  if (args.size() > 2) {
+    throw RuntimeError("to_int takes at most two arguments");
+  }
+
+  auto base_value =
+      args.size() == 2 ? std::make_optional(args[1]) : std::nullopt;
+
+  int base = 0;
+  if (!base_value) {
+    base = 10;
+  } else {
+    auto base_primitive =
+        base_value.value()->as_primitive().and_then(&Primitive::as_integer);
+
+    if (!base_primitive) {
+      throw RuntimeError("to_int takes only an integer as a base argument");
+    }
+
+    if (*base_primitive < 2 || *base_primitive > 36) {
+      throw RuntimeError("to_int takes a base between 2 and 36");
+    }
+
+    base = static_cast<int>(*base_primitive);
+  }
+
+  auto value = primitive->visit(
+      [](const std::int64_t &integer) { return integer; },
+      [base](const std::string &string) {
+        std::int64_t value = 0;
+
+        if (auto result =
+                std::from_chars(string.data(), &*string.end(), value, base)) {
+          return value;
+        }
+
+        throw RuntimeError(
+            "invalid integer literal '{}' in base {}", string, base
+        );
+      },
+      [](const auto &value) { return static_cast<std::int64_t>(value); }
+  );
+
+  return vm.store_value(Value{Primitive{value}});
+}
+
+RefValue head(VM &vm, L3Args args) {
+  if (args.empty()) {
+    throw RuntimeError("head takes at least one arguments");
+  }
+  return vm.store_new_value(args[0]->index(0));
+}
+
+RefValue tail(VM &vm, L3Args args) {
+  if (args.empty()) {
+    throw RuntimeError("tail takes at least one arguments");
+  }
+  return vm.store_new_value(
+      args[0]->slice(Slice{.start = 1, .end = std::nullopt})
+  );
+}
+
 Scope::BuiltinsMap create_builtins() {
   return {
       wrap_native_function("print", print),
@@ -109,7 +180,10 @@ Scope::BuiltinsMap create_builtins() {
       wrap_native_function("error", error),
       wrap_native_function("assert", l3_assert),
       wrap_native_function("input", input),
-      wrap_native_function("__trigger_gc", trigger_gc)
+      wrap_native_function("__trigger_gc", trigger_gc),
+      wrap_native_function("int", to_int),
+      wrap_native_function("head", head),
+      wrap_native_function("tail", tail)
   };
 }
 

@@ -83,6 +83,14 @@ inline void BinaryExpression::print(
   rhs->print(out, depth + 1);
 }
 
+inline void IndexExpression::print(
+    std::output_iterator<char> auto &out, std::size_t depth
+) const {
+  detail::format_indented_line(out, depth, "IndexExpression");
+  base->print(out, depth + 1);
+  index->print(out, depth + 1);
+};
+
 inline void Identifier::print(
     std::output_iterator<char> auto &out, std::size_t depth
 ) const {

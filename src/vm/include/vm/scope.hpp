@@ -21,7 +21,8 @@ public:
 
   std::optional<std::reference_wrapper<const Value>>
   get_variable(const ast::Identifier &id) const;
-  std::optional<RefValue> get_variable(const ast::Identifier &id);
+  std::optional<std::reference_wrapper<RefValue>>
+  get_variable(const ast::Identifier &id);
 
   bool has_variable(const ast::Identifier &id) const;
 

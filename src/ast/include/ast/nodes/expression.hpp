@@ -15,8 +15,6 @@ namespace l3::ast {
 
 class Expression;
 
-using PrefixExpression =
-    std::variant<Variable, std::unique_ptr<Expression>, FunctionCall>;
 
 class UnaryExpression {
   UnaryOperator op = UnaryOperator::Plus;
@@ -42,11 +40,21 @@ public:
 
   [[nodiscard]] const auto &get_lhs() const { return *lhs; }
   [[nodiscard]] const auto &get_rhs() const { return *rhs; }
-
-  auto &get_lhs() { return *lhs; }
-  auto &get_rhs() { return *rhs; }
-
   [[nodiscard]] BinaryOperator get_op() const { return op; }
+};
+
+class IndexExpression {
+  std::unique_ptr<Expression> base;
+  std::unique_ptr<Expression> index;
+
+public:
+  IndexExpression();
+  IndexExpression(Expression &&base, Expression &&index);
+
+  void print(std::output_iterator<char> auto &out, std::size_t depth = 0) const;
+
+  [[nodiscard]] const auto &get_base() const { return *base; }
+  [[nodiscard]] const auto &get_index() const { return *index; }
 };
 
 using ExpressionVariant = std::variant<
@@ -55,7 +63,7 @@ using ExpressionVariant = std::variant<
     BinaryExpression,
     Variable,
     FunctionCall,
-    // PrefixExpression,
+    IndexExpression,
     AnonymousFunction,
     IfExpression
     // Table
@@ -72,7 +80,7 @@ public:
       : ExpressionVariant(std::move(expression)) {}
   Expression(Variable &&var) : ExpressionVariant(std::move(var)) {}
   Expression(FunctionCall &&call) : ExpressionVariant(std::move(call)) {}
-  // Expression(PrefixExpression &&expression) : inner(std::move(expression)) {}
+  Expression(IndexExpression &&index) : ExpressionVariant(std::move(index)) {}
   Expression(AnonymousFunction &&function)
       : ExpressionVariant(std::move(function)) {}
   Expression(IfExpression &&clause) : ExpressionVariant(std::move(clause)) {}

@@ -14,6 +14,10 @@ public:
   template <typename... Args>
   RuntimeError(const std::format_string<Args...> &message, Args &&...args)
       : std::runtime_error(std::format(message, std::forward<Args>(args)...)) {}
+
+  [[nodiscard]] constexpr virtual std::string_view type() const {
+    return "RuntimeError";
+  }
 };
 
 class UnsupportedOperation : public RuntimeError {
@@ -25,11 +29,37 @@ public:
       : RuntimeError(
             "{} between '{}' and '{}' not supported", operation, lhs, rhs
         ) {}
+
+  [[nodiscard]] constexpr std::string_view type() const override {
+    return "UnsupportedOperation";
+  }
+};
+
+class ValueError : public RuntimeError {
+public:
+  using RuntimeError::RuntimeError;
+
+  [[nodiscard]] constexpr std::string_view type() const override {
+    return "ValueError";
+  }
+};
+
+class TypeError : public RuntimeError {
+public:
+  using RuntimeError::RuntimeError;
+
+  [[nodiscard]] constexpr std::string_view type() const override {
+    return "TypeError";
+  }
 };
 
 class NameError : public RuntimeError {
 public:
   using RuntimeError::RuntimeError;
+
+  [[nodiscard]] constexpr std::string_view type() const override {
+    return "NameError";
+  }
 };
 
 class UndefinedVariableError : public NameError {
@@ -38,6 +68,10 @@ public:
 
   UndefinedVariableError(const ast::Identifier &id);
   UndefinedVariableError(const ast::Variable &id);
+
+  [[nodiscard]] constexpr std::string_view type() const override {
+    return "UndefinedVariableError";
+  }
 };
 
 } // namespace l3::vm

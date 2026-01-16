@@ -24,14 +24,14 @@ public:
 };
 
 class Number {
-  long long value;
+  std::int64_t value;
 
 public:
-  Number(long long value);
+  Number(std::int64_t value);
   void print(std::output_iterator<char> auto &out, std::size_t depth = 0) const;
 
-  [[nodiscard]] const long long &get() const;
-  long long &get();
+  [[nodiscard]] const std::int64_t &get() const;
+  std::int64_t &get();
 };
 
 class Float {

@@ -42,6 +42,7 @@
     #define yylex lexer.lex
 }
 
+%right lbracket
 %right equal
 %left  _or
 %left  _and
@@ -57,7 +58,7 @@
        div_equal mod_equal pow_equal concat_equal elif mut
        <std::string> id
        <std::string> string
-       <long long> num
+       <std::int64_t> num
        <double> fnum
 
 %type <ast::UnaryExpression> UNARY
@@ -69,6 +70,7 @@
       <ast::FunctionCall> FUNCTION_CALL
       <ast::FunctionBody> FUNCTION_BODY
       <ast::AnonymousFunction> ANONYMOUS_FUNCTION
+      <ast::Expression> PREFIX_EXPRESSION
       <ast::Expression> EXPRESSION
       <ast::ExpressionList> EXPRESSION_LIST
       <ast::Identifier> IDENTIFIER
@@ -144,6 +146,10 @@ FUNCTION_BODY: PARAMETERS BLOCK end
 
 ANONYMOUS_FUNCTION: function FUNCTION_BODY { $$ = ast::AnonymousFunction(std::move($2)); }
 
+PREFIX_EXPRESSION: lparen EXPRESSION rparen                 { $$ = std::move($2); }
+                 | EXPRESSION lbracket EXPRESSION rbracket
+                   { $$ = ast::Expression(ast::IndexExpression(std::move($1), std::move($3))); }
+
 FUNCTION_CALL: VAR ARGUMENTS
                { $$ = ast::FunctionCall(std::move($1), std::move($2)); }
 
@@ -154,7 +160,7 @@ EXPRESSION: UNARY                    { $$ = ast::Expression(std::move($1)); }
           | ANONYMOUS_FUNCTION       { $$ = ast::Expression(std::move($1)); }
           | FUNCTION_CALL            { $$ = ast::Expression(std::move($1)); }
           | VAR                      { $$ = ast::Expression(std::move($1)); }
-          | lparen EXPRESSION rparen { $$ = std::move($2); }
+          | PREFIX_EXPRESSION        { $$ = ast::Expression(std::move($1)); }
           | LITERAL                  { $$ = ast::Expression(std::move($1)); }
           | IF_EXPRESSION            { $$ = ast::Expression(std::move($1)); }
 

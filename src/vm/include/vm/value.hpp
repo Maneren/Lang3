@@ -21,15 +21,26 @@ namespace l3::vm {
 
 struct Nil {};
 
-using PrimitiveType = std::variant<bool, long long, double, std::string>;
+using PrimitiveType = std::variant<bool, std::int64_t, double, std::string>;
 class Primitive : public PrimitiveType {
 public:
   using string_type = std::string;
   explicit Primitive(bool value);
-  explicit Primitive(long long value);
+  explicit Primitive(std::int64_t value);
   explicit Primitive(double value);
   explicit Primitive(const std::string &value);
   explicit Primitive(std::string &&value);
+
+  [[nodiscard]] bool is_bool() const;
+  [[nodiscard]] bool is_integer() const;
+  [[nodiscard]] bool is_double() const;
+  [[nodiscard]] bool is_string() const;
+
+  [[nodiscard]] std::optional<bool> as_bool() const;
+  [[nodiscard]] std::optional<std::int64_t> as_integer() const;
+  [[nodiscard]] std::optional<double> as_double() const;
+  [[nodiscard]] std::optional<std::reference_wrapper<const string_type>>
+  as_string() const;
 
   auto visit(auto &&...visitor) const {
     return match::match(*this, std::forward<decltype(visitor)>(visitor)...);
@@ -38,7 +49,9 @@ public:
   [[nodiscard]] const PrimitiveType &get() const;
   [[nodiscard]] PrimitiveType &get();
 
-  [[nodiscard]] bool as_bool() const;
+  [[nodiscard]] bool is_truthy() const;
+
+  [[nodiscard]] constexpr std::string_view type_name() const;
 };
 
 Primitive operator+(const Primitive &lhs, const Primitive &rhs);
@@ -58,10 +71,17 @@ Primitive operator!(const Primitive &value);
 
 class Function;
 
+using NewValue = std::variant<RefValue, Value>;
+
+struct Slice {
+  std::optional<std::int64_t> start, end;
+};
+
 class Value {
 
 public:
   using function_type = std::shared_ptr<Function>;
+  using vector_type = std::vector<RefValue>;
   Value();
 
   Value(const Value &) = delete;
@@ -74,6 +94,7 @@ public:
   Value(Primitive &&primitive);
   Value(Function &&function);
   Value(function_type function);
+  Value(vector_type &&vector);
 
   [[nodiscard]] Value add(const Value &other) const;
   [[nodiscard]] Value sub(const Value &other) const;
@@ -98,8 +119,21 @@ public:
   [[nodiscard]] bool is_nil() const;
   [[nodiscard]] bool is_function() const;
   [[nodiscard]] bool is_primitive() const;
+  [[nodiscard]] bool is_vector() const;
 
-  [[nodiscard]] bool as_bool() const;
+  [[nodiscard]] std::optional<Primitive> as_primitive() const;
+  [[nodiscard]] std::optional<function_type> as_function() const;
+  [[nodiscard]] std::optional<std::reference_wrapper<const vector_type>>
+  as_vector() const;
+
+  [[nodiscard]] bool is_truthy() const;
+
+  [[nodiscard]] NewValue index(const Value &index) const;
+  [[nodiscard]] NewValue index(size_t index) const;
+
+  [[nodiscard]] Value slice(Slice slice) const;
+
+  [[nodiscard]] constexpr std::string_view type_name() const;
 
 private:
   [[nodiscard]] Value binary_op(
@@ -108,26 +142,7 @@ private:
       const std::string &op_name
   ) const;
 
-  std::variant<Nil, Primitive, function_type> inner;
-};
-
-struct RefValue {
-  explicit RefValue(GCValue &gc_value) : gc_value{gc_value} {}
-
-  [[nodiscard]] const Value &get() const { return gc_value.get().get(); }
-  [[nodiscard]] Value &get() { return gc_value.get().get(); }
-
-  [[nodiscard]] const GCValue &get_gc() const { return gc_value.get(); }
-  [[nodiscard]] GCValue &get_gc() { return gc_value.get(); }
-
-  [[nodiscard]] Value &operator*() { return get(); }
-  [[nodiscard]] const Value &operator*() const { return get(); }
-
-  Value *operator->() { return &get(); }
-  const Value *operator->() const { return &get(); }
-
-private:
-  std::reference_wrapper<GCValue> gc_value;
+  std::variant<Nil, Primitive, function_type, vector_type> inner;
 };
 
 } // namespace l3::vm

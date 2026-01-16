@@ -27,6 +27,25 @@ private:
   std::shared_ptr<Value> value;
 };
 
+struct RefValue {
+  explicit RefValue(GCValue &gc_value) : gc_value{gc_value} {}
+
+  [[nodiscard]] const Value &get() const { return gc_value.get().get(); }
+  [[nodiscard]] Value &get() { return gc_value.get().get(); }
+
+  [[nodiscard]] const GCValue &get_gc() const { return gc_value.get(); }
+  [[nodiscard]] GCValue &get_gc() { return gc_value.get(); }
+
+  [[nodiscard]] Value &operator*() { return get(); }
+  [[nodiscard]] const Value &operator*() const { return get(); }
+
+  Value *operator->() { return &get(); }
+  const Value *operator->() const { return &get(); }
+
+private:
+  std::reference_wrapper<GCValue> gc_value;
+};
+
 class GCStorage {
 public:
   GCStorage(bool debug = false) : debug{debug} {}
