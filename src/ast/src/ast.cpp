@@ -164,4 +164,9 @@ IfStatement::get_else_block() const {
   });
 }
 
+Array::Array() = default;
+Array::Array(std::vector<Expression> &&elements)
+    : elements(std::move(elements)) {}
+const std::vector<Expression> &Array::get() const { return elements; }
+
 } // namespace l3::ast

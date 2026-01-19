@@ -96,6 +96,14 @@ RefValue VM::evaluate(const ast::Literal &literal) {
   Value value = match::match(
       literal.get(),
       [](const ast::Nil & /*unused*/) -> Value { return {Nil{}}; },
+      [this](const ast::Array &array) -> Value {
+        std::vector<RefValue> values;
+        values.reserve(array.get().size());
+        for (const auto &element : array.get()) {
+          values.emplace_back(evaluate(element));
+        }
+        return Value{std::move(values)};
+      },
       [](const auto &literal_value) -> Value {
         return Primitive{literal_value.get()};
       }

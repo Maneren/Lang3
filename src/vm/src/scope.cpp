@@ -173,6 +173,32 @@ RefValue tail(VM &vm, L3Args args) {
   );
 }
 
+RefValue len(VM &vm, L3Args args) {
+  if (args.size() != 1) {
+    throw RuntimeError("len takes exactly one arguments");
+  }
+  return args[0].get().visit(
+      [&vm](const Value::vector_type &vector) -> RefValue {
+        return vm.store_value(
+            Value{Primitive{static_cast<std::int64_t>(vector.size())}}
+        );
+      },
+      [&vm](const Primitive &primitive) -> RefValue {
+        if (const auto &string = primitive.as_string()) {
+          return vm.store_value(
+              Value{Primitive{static_cast<std::int64_t>(string->get().size())}}
+          );
+        }
+        throw TypeError(
+            "len does not support {} values", primitive.type_name()
+        );
+      },
+      [](const auto &) -> RefValue {
+        throw TypeError("len does not support {} values");
+      }
+  );
+}
+
 Scope::BuiltinsMap create_builtins() {
   return {
       wrap_native_function("print", print),

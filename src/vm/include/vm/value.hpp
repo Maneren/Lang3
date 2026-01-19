@@ -51,7 +51,15 @@ public:
 
   [[nodiscard]] bool is_truthy() const;
 
-  [[nodiscard]] constexpr std::string_view type_name() const;
+  [[nodiscard]] constexpr std::string_view type_name() const {
+    using std::string_view_literals::operator""sv;
+    return visit(
+        [](const bool & /*value*/) { return "bool"sv; },
+        [](const std::int64_t & /*value*/) { return "integer"sv; },
+        [](const double & /*value*/) { return "double"sv; },
+        [](const std::string & /*value*/) { return "string"sv; }
+    );
+  }
 };
 
 Primitive operator+(const Primitive &lhs, const Primitive &rhs);
@@ -133,7 +141,15 @@ public:
 
   [[nodiscard]] Value slice(Slice slice) const;
 
-  [[nodiscard]] constexpr std::string_view type_name() const;
+  [[nodiscard]] constexpr std::string_view type_name() const {
+    using std::string_view_literals::operator""sv;
+    return visit(
+        [](const Primitive &primitive) { return primitive.type_name(); },
+        [](const Nil & /*value*/) { return "nil"sv; },
+        [](const function_type & /*value*/) { return "function"sv; },
+        [](const Value::vector_type & /*value*/) { return "vector"sv; }
+    );
+  }
 
 private:
   [[nodiscard]] Value binary_op(

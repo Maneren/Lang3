@@ -64,6 +64,7 @@
 %type <ast::UnaryExpression> UNARY
       <ast::BinaryExpression> BINARY
       <ast::Literal> LITERAL
+      <ast::Array> ARRAY
       <ast::NameList> NAME_LIST
       <ast::NameList> PARAMETERS
       <ast::ExpressionList> ARGUMENTS
@@ -131,6 +132,9 @@ LITERAL: nil    { $$ = ast::Literal(ast::Nil()); }
        | num    { $$ = ast::Literal(ast::Number($1)); }
        | fnum   { $$ = ast::Literal(ast::Float($1)); }
        | string { $$ = ast::Literal(ast::String($1)); }
+       | ARRAY  { $$ = ast::Literal(std::move($1)); }
+
+ARRAY: lbracket EXPRESSION_LIST rbracket { $$ = ast::Array{ std::move($2) }; }
 
 IDENTIFIER: id { $$ = ast::Identifier(std::move($1)); }
 

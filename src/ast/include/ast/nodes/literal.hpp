@@ -1,10 +1,11 @@
 #pragma once
 
+#include "ast/nodes/expression_list.hpp"
 #include <cstddef>
 #include <iterator>
 #include <string>
-#include <utility>
 #include <variant>
+#include <vector>
 
 namespace l3::ast {
 
@@ -56,8 +57,20 @@ public:
   std::string &get();
 };
 
+class Array {
+  ExpressionList elements;
+
+public:
+  Array();
+  Array(ExpressionList &&elements);
+
+  void print(std::output_iterator<char> auto &out, std::size_t depth = 0) const;
+
+  [[nodiscard]] const ExpressionList &get() const;
+};
+
 class Literal {
-  std::variant<Nil, Boolean, Number, Float, String> inner;
+  std::variant<Nil, Boolean, Number, Float, String, Array> inner;
 
 public:
   Literal() = default;
@@ -66,6 +79,7 @@ public:
   Literal(Number num);
   Literal(Float num);
   Literal(String &&string);
+  Literal(Array &&array);
 
   void
   print(std::output_iterator<char> auto &out, std::size_t depth = 0) const {

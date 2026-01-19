@@ -1,22 +1,13 @@
 #pragma once
 
+#include "ast/nodes/expression_list.hpp"
 #include "identifier.hpp"
 #include <cstddef>
-#include <deque>
 #include <iterator>
 #include <memory>
 #include <utility>
 
 namespace l3::ast {
-
-class Expression;
-
-class ExpressionList : public std::deque<Expression> {
-public:
-  ExpressionList() = default;
-  ExpressionList(Expression &&expr);
-  ExpressionList &with_expression(Expression &&);
-};
 
 using Arguments = ExpressionList;
 

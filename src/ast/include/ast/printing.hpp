@@ -244,6 +244,14 @@ Block::print(std::output_iterator<char> auto &out, std::size_t depth) const {
   }
 }
 
+inline void
+Array::print(std::output_iterator<char> auto &out, std::size_t depth) const {
+  detail::format_indented_line(out, depth, "Array");
+  for (const Expression &element : elements) {
+    element.print(out, depth + 1);
+  }
+}
+
 } // namespace l3::ast
 
 template <typename Node>
