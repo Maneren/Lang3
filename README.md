@@ -7,7 +7,6 @@ a better support for functional style of programming.
 
 - Syntax similar to Lua with hints of Python and Rust
 - Strong dynamic typing
-- First-class functions
-- Automatically managed memory
-- First-class function currying
+- First-class functions and currying
+- Automatically managed memory with garbage collection
 - JIT optimization
