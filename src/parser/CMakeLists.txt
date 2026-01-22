@@ -9,6 +9,9 @@ set(LEXER_CPP ${CMAKE_CURRENT_BINARY_DIR}/src/lexer.yy.cpp)
 set(PARSER_CPP ${CMAKE_CURRENT_BINARY_DIR}/src/parser.tab.cpp)
 set(PARSER_HEADER ${CMAKE_CURRENT_BINARY_DIR}/include/parser/parser.tab.h)
 
+file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/include/parser)
+file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/src)
+
 add_custom_command(
   OUTPUT ${LEXER_CPP}
   COMMAND ${FLEX}
