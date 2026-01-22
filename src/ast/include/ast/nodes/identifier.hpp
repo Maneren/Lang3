@@ -41,6 +41,8 @@ public:
   NameList() = default;
   NameList(Identifier &&ident);
   NameList &with_name(Identifier &&ident);
+
+  void print(std::output_iterator<char> auto &out, std::size_t depth = 0) const;
 };
 
 } // namespace l3::ast

@@ -59,6 +59,7 @@ Literal::Literal(Boolean boolean) : inner(boolean) {}
 Literal::Literal(Number num) : inner(num) {}
 Literal::Literal(Float num) : inner(num) {}
 Literal::Literal(String &&string) : inner(std::move(string)) {}
+Literal::Literal(Array &&array) : inner(std::move(array)) {}
 
 UnaryExpression::UnaryExpression(UnaryOperator op, Expression &&expr)
     : op(op), expr(std::make_unique<Expression>(std::move(expr))) {}
@@ -165,8 +166,7 @@ IfStatement::get_else_block() const {
 }
 
 Array::Array() = default;
-Array::Array(std::vector<Expression> &&elements)
-    : elements(std::move(elements)) {}
-const std::vector<Expression> &Array::get() const { return elements; }
+Array::Array(ExpressionList &&elements) : elements(std::move(elements)) {}
+const ExpressionList &Array::get() const { return elements; }
 
 } // namespace l3::ast

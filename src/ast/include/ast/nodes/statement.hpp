@@ -5,6 +5,7 @@
 #include "identifier.hpp"
 #include "if_else.hpp"
 #include "operator.hpp"
+#include "utils/match.h"
 #include <cstddef>
 #include <iterator>
 #include <optional>
@@ -13,14 +14,14 @@
 
 namespace l3::ast {
 
-class Assignment {
+class OperatorAssignment {
   Variable var;
   AssignmentOperator op = AssignmentOperator::Assign;
   Expression expr;
 
 public:
-  Assignment() = default;
-  Assignment(Variable &&var, AssignmentOperator op, Expression &&expr)
+  OperatorAssignment() = default;
+  OperatorAssignment(Variable &&var, AssignmentOperator op, Expression &&expr)
       : var(std::move(var)), op(op), expr(std::move(expr)) {}
 
   void print(std::output_iterator<char> auto &out, std::size_t depth = 0) const;
@@ -30,27 +31,52 @@ public:
   [[nodiscard]] const Expression &get_expression() const { return expr; }
 };
 
-class Declaration {
-  Identifier var;
+class NameAssignment {
+  NameList names;
   Expression expr;
+
+public:
+  NameAssignment() = default;
+  NameAssignment(NameList &&names, Expression &&expr)
+      : names(std::move(names)), expr(std::move(expr)) {}
+
+  void print(std::output_iterator<char> auto &out, std::size_t depth = 0) const;
+
+  [[nodiscard]] const NameList &get_names() const { return names; }
+  [[nodiscard]] const Expression &get_expression() const { return expr; }
+};
+
+using Assignment = std::variant<OperatorAssignment, NameAssignment>;
+
+class Declaration {
+  NameAssignment name_assignment;
   bool const_ = false;
 
 public:
   Declaration() = default;
-  Declaration(Identifier &&var, Expression &&expr, bool is_const = false)
-      : var(std::move(var)), expr(std::move(expr)), const_(is_const) {}
+  Declaration(NameAssignment &&name_assignment, bool is_const = false)
+      : name_assignment(std::move(name_assignment)), const_(is_const) {}
 
   void print(std::output_iterator<char> auto &out, std::size_t depth = 0) const;
 
-  [[nodiscard]] const Identifier &get_variable() const { return var; }
-  [[nodiscard]] const Expression &get_expression() const { return expr; }
+  [[nodiscard]] const NameList &get_names() const {
+    return name_assignment.get_names();
+  }
+  [[nodiscard]] const Expression &get_expression() const {
+    return name_assignment.get_expression();
+  }
   [[nodiscard]] bool is_const() const { return const_; }
 };
 
 class Statement {
-  std::
-      variant<Assignment, Declaration, FunctionCall, IfStatement, NamedFunction>
-          inner;
+  std::variant<
+      OperatorAssignment,
+      NameAssignment,
+      Declaration,
+      FunctionCall,
+      IfStatement,
+      NamedFunction>
+      inner;
 
 public:
   Statement() = default;
@@ -60,7 +86,13 @@ public:
   Statement &operator=(Statement &&) = default;
   ~Statement() = default;
 
-  Statement(Assignment &&assignment) : inner(std::move(assignment)) {}
+  Statement(OperatorAssignment &&assignment) : inner(std::move(assignment)) {}
+  Statement(NameAssignment &&assignment) : inner(std::move(assignment)) {}
+  Statement(Assignment &&assignment) {
+    match::match(std::move(assignment), [this](auto &&assignment) {
+      inner = std::forward<decltype(assignment)>(assignment);
+    });
+  }
   Statement(Declaration &&declaration) : inner(std::move(declaration)) {}
   Statement(FunctionCall &&call) : inner(std::move(call)) {}
   Statement(IfStatement &&clause) : inner(std::move(clause)) {}

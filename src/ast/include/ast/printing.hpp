@@ -179,7 +179,14 @@ inline void IfStatement::print(
   }
 }
 
-inline void Assignment::print(
+inline void
+NameList::print(std::output_iterator<char> auto &out, std::size_t depth) const {
+  for (const auto &name : *this) {
+    name.print(out, depth);
+  }
+}
+
+inline void OperatorAssignment::print(
     std::output_iterator<char> auto &out, std::size_t depth
 ) const {
   detail::format_indented_line(out, depth, "Assignment {}", op);
@@ -187,12 +194,24 @@ inline void Assignment::print(
   expr.print(out, depth + 1);
 }
 
+inline void NameAssignment::print(
+    std::output_iterator<char> auto &out, std::size_t depth
+) const {
+  detail::format_indented_line(out, depth, "Assignment");
+  detail::format_indented_line(out, depth + 1, "Names");
+  get_names().print(out, depth + 2);
+  detail::format_indented_line(out, depth + 1, "Expression");
+  get_expression().print(out, depth + 2);
+}
+
 inline void Declaration::print(
     std::output_iterator<char> auto &out, std::size_t depth
 ) const {
   detail::format_indented_line(out, depth, "Declaration");
-  var.print(out, depth + 1);
-  expr.print(out, depth + 1);
+  detail::format_indented_line(out, depth + 1, "Names");
+  get_names().print(out, depth + 2);
+  detail::format_indented_line(out, depth + 1, "Expression");
+  get_expression().print(out, depth + 2);
 }
 
 inline void Statement::print(

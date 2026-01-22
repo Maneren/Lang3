@@ -82,6 +82,7 @@
       <ast::ElseIfList> IF_ELSE
       <ast::AssignmentOperator> ASSIGNMENT_OPERATOR
       <ast::Assignment> ASSIGNMENT
+      <ast::NameAssignment> NAME_ASSIGNMENT
       <ast::Declaration> DECLARATION
       <ast::NamedFunction> FUNCTION_DEFINITION
       <ast::Statement> STATEMENT
@@ -190,21 +191,25 @@ IF_ELSE: elif EXPRESSION then BLOCK IF_ELSE
          { $5.emplace_back(ast::IfBase{ std::move($2), std::move($4) }); $$ = std::move($5); }
        | %empty { $$ = ast::ElseIfList{}; }
 
-ASSIGNMENT_OPERATOR: equal       { $$ = ast::AssignmentOperator::Assign; }
-                   | plus_equal  { $$ = ast::AssignmentOperator::Plus; }
+ASSIGNMENT_OPERATOR: plus_equal  { $$ = ast::AssignmentOperator::Plus; }
                    | minus_equal { $$ = ast::AssignmentOperator::Minus; }
                    | mul_equal   { $$ = ast::AssignmentOperator::Multiply; }
                    | div_equal   { $$ = ast::AssignmentOperator::Divide; }
                    | mod_equal   { $$ = ast::AssignmentOperator::Modulo; }
                    | pow_equal   { $$ = ast::AssignmentOperator::Power; }
 
-ASSIGNMENT: VAR ASSIGNMENT_OPERATOR EXPRESSION
-            { $$ = ast::Assignment(std::move($1), $2, std::move($3)); }
+NAME_ASSIGNMENT: NAME_LIST equal EXPRESSION
+                 { $$ = ast::NameAssignment(std::move($1), std::move($3)); }
 
-DECLARATION: let IDENTIFIER equal EXPRESSION
-             { $$ = ast::Declaration(std::move($2), std::move($4), true); }
-           | let mut IDENTIFIER equal EXPRESSION
-             { $$ = ast::Declaration(std::move($3), std::move($5), false); }
+ASSIGNMENT: VAR ASSIGNMENT_OPERATOR EXPRESSION
+            { $$ = ast::OperatorAssignment(std::move($1), $2, std::move($3)); }
+          | NAME_LIST equal EXPRESSION
+            { $$ = ast::NameAssignment(std::move($1), std::move($3)); }
+
+DECLARATION: let NAME_ASSIGNMENT
+             { $$ = ast::Declaration(std::move($2), true); }
+           | let mut NAME_ASSIGNMENT
+             { $$ = ast::Declaration(std::move($3), false); }
 
 FUNCTION_DEFINITION: function IDENTIFIER FUNCTION_BODY
                      { $$ = ast::NamedFunction(std::move($2), std::move($3)); }

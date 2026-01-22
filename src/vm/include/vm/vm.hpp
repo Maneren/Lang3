@@ -63,7 +63,7 @@ private:
   void execute(const ast::Statement &statement);
   void execute(const ast::LastStatement &last_statement);
   void execute(const ast::Declaration &declaration);
-  void execute(const ast::Assignment &assignment);
+  void execute(const ast::OperatorAssignment &assignment);
   void execute(const ast::FunctionCall &function_call);
   void execute(const ast::IfStatement &if_statement);
   void execute(const ast::NamedFunction &named_function);

@@ -120,7 +120,7 @@ RefValue VM::evaluate(const ast::Expression &expression) {
     return result;
   });
 }
-void VM::execute(const ast::Assignment &assignment) {
+void VM::execute(const ast::OperatorAssignment &assignment) {
   const auto &variable = assignment.get_variable();
   debug_print("Executing assignment to {}", variable.get_identifier().name());
   auto value = read_write_variable(variable.get_identifier());
@@ -158,7 +158,8 @@ void VM::execute(const ast::Assignment &assignment) {
   debug_print("Assigned: {}", value->get());
 }
 void VM::execute(const ast::Declaration &declaration) {
-  const auto &variable = declaration.get_variable();
+  const auto &names = declaration.get_names();
+  const auto &variable = names[0]; // FIXME: support multiple names
   const auto &expression = declaration.get_expression();
   debug_print("Executing declaration of {}", variable.name());
   if (current_scope().has_variable(variable)) {
