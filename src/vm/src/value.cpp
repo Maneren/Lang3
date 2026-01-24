@@ -487,10 +487,18 @@ Value Value::slice(Slice slice) const {
         if (start > end) {
           throw ValueError("start index must be less than end index");
         }
-        if (end > vector.size()) {
+
+        if (start < 0) {
+          start += static_cast<std::int64_t>(vector.size());
+        }
+        if (end < 0) {
+          end += static_cast<std::int64_t>(vector.size());
+        }
+
+        if (static_cast<std::size_t>(end) > vector.size()) {
           throw ValueError("end index out of bounds");
         }
-        if (start > vector.size()) {
+        if (static_cast<std::size_t>(start) > vector.size()) {
           throw ValueError("start index out of bounds");
         }
         return Value{vector_type(vector.begin() + start, vector.begin() + end)};
