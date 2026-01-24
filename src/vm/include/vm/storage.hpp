@@ -14,7 +14,7 @@ struct GCValue {
   GCValue(const std::shared_ptr<Value> &value) : value{value} {}
   GCValue(std::shared_ptr<Value> &&value) : value{std::move(value)} {}
 
-  void mark() { marked = true; }
+  void mark();
   void unmark() { marked = false; }
 
   [[nodiscard]] bool is_marked() const { return marked; }

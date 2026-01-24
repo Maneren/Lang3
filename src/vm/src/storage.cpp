@@ -48,4 +48,14 @@ size_t GCStorage::sweep() {
   return erased;
 }
 
+void GCValue::mark() {
+  marked = true;
+
+  if (auto vec = value.get()->as_mut_vector()) {
+    for (auto &item : vec->get()) {
+      item.get_gc().mark();
+    }
+  }
+}
+
 } // namespace l3::vm

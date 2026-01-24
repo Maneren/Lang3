@@ -124,6 +124,10 @@ public:
     return match::match(inner, std::forward<decltype(visitor)>(visitor)...);
   }
 
+  auto visit(auto &&...visitor) {
+    return match::match(inner, std::forward<decltype(visitor)>(visitor)...);
+  }
+
   [[nodiscard]] bool is_nil() const;
   [[nodiscard]] bool is_function() const;
   [[nodiscard]] bool is_primitive() const;
@@ -133,6 +137,8 @@ public:
   [[nodiscard]] std::optional<function_type> as_function() const;
   [[nodiscard]] std::optional<std::reference_wrapper<const vector_type>>
   as_vector() const;
+  [[nodiscard]] std::optional<std::reference_wrapper<vector_type>>
+  as_mut_vector();
 
   [[nodiscard]] bool is_truthy() const;
 
