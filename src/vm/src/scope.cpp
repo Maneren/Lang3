@@ -209,7 +209,8 @@ Scope::BuiltinsMap create_builtins() {
       wrap_native_function("__trigger_gc", trigger_gc),
       wrap_native_function("int", to_int),
       wrap_native_function("head", head),
-      wrap_native_function("tail", tail)
+      wrap_native_function("tail", tail),
+      wrap_native_function("len", len)
   };
 }
 
