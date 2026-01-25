@@ -469,27 +469,32 @@ NewValue Value::index(size_t index) const {
   );
 }
 
-[[nodiscard]] std::optional<Primitive> Value::as_primitive() const {
+using copt_primitive_type =
+    std::optional<std::reference_wrapper<const Primitive>>;
+
+copt_primitive_type Value::as_primitive() const {
   return visit(
-      [](const Primitive &primitive) -> std::optional<Primitive> {
+      [](const Primitive &primitive) -> copt_primitive_type {
         return primitive;
       },
-      [](const auto &) -> std::optional<Primitive> { return std::nullopt; }
+      [](const auto &) -> copt_primitive_type { return std::nullopt; }
   );
 }
-[[nodiscard]] std::optional<Value::function_type> Value::as_function() const {
+
+using copt_function_type =
+    std::optional<std::reference_wrapper<const Value::function_type>>;
+
+copt_function_type Value::as_function() const {
   return visit(
-      [](const function_type &function) -> std::optional<Value::function_type> {
+      [](const function_type &function) -> copt_function_type {
         return function;
       },
-      [](const auto &) -> std::optional<Value::function_type> {
-        return std::nullopt;
-      }
+      [](const auto &) -> copt_function_type { return std::nullopt; }
   );
 }
 using copt_vector_type =
     std::optional<std::reference_wrapper<const Value::vector_type>>;
-[[nodiscard]] copt_vector_type Value::as_vector() const {
+copt_vector_type Value::as_vector() const {
   return visit(
       [](const Value::vector_type &vector) -> copt_vector_type {
         return vector;
@@ -499,7 +504,7 @@ using copt_vector_type =
 }
 using opt_vector_type =
     std::optional<std::reference_wrapper<Value::vector_type>>;
-[[nodiscard]] opt_vector_type Value::as_mut_vector() {
+opt_vector_type Value::as_mut_vector() {
   return visit(
       [](Value::vector_type &vector) -> opt_vector_type { return vector; },
       [](auto &) -> opt_vector_type { return std::nullopt; }

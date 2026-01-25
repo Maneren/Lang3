@@ -58,9 +58,9 @@ void format_args(const std::output_iterator<char> auto &out, L3Args args) {
   if (args.empty()) {
     return;
   }
-  std::format_to(out, "{}", args[0].get());
+  std::format_to(out, "{}", ValuePrettyPrinter(args[0].get()));
   for (const auto &arg : args | std::views::drop(1)) {
-    std::format_to(out, " {}", arg.get());
+    std::format_to(out, " {}", ValuePrettyPrinter(arg.get()));
   }
 }
 
@@ -142,7 +142,7 @@ RefValue to_int(VM &vm, L3Args args) {
     base = static_cast<int>(*base_primitive);
   }
 
-  auto value = primitive->visit(
+  auto value = primitive->get().visit(
       [](const std::int64_t &integer) { return integer; },
       [base](const std::string &string) {
         std::int64_t value = 0;
@@ -170,7 +170,7 @@ RefValue head(VM &vm, L3Args args) {
   auto argument = args[0];
 
   if (const auto &vector_opt = argument->as_vector()) {
-    auto vector = vector_opt->get();
+    const auto &vector = vector_opt->get();
 
     if (vector.empty()) {
       throw RuntimeError("head takes a non-empty vector");
@@ -184,16 +184,63 @@ RefValue head(VM &vm, L3Args args) {
     return vm.store_new_value(Value{Value::vector_type{head, rest}});
   }
 
-  throw TypeError("head takes only vector values");
+  if (const auto &string_opt =
+          argument->as_primitive().and_then(&Primitive::as_string);
+      string_opt.has_value()) {
+    const auto &string = string_opt->get();
+
+    if (string.empty()) {
+      throw RuntimeError("head takes a non-empty string");
+    }
+
+    auto head = vm.store_new_value({Primitive{std::string{string.front()}}});
+    auto rest = vm.store_new_value({Primitive{string.substr(1)}});
+
+    return vm.store_new_value({Value::vector_type{head, rest}});
+  }
+
+  throw TypeError("head takes only vector and string values");
 }
 
 RefValue tail(VM &vm, L3Args args) {
   if (args.empty()) {
     throw RuntimeError("tail takes at least one arguments");
   }
-  return vm.store_new_value(
-      args[0]->slice(Slice{.start = 1, .end = std::nullopt})
-  );
+
+  auto argument = args[0];
+
+  if (const auto &vector_opt = argument->as_vector()) {
+    const auto &vector = vector_opt->get();
+
+    if (vector.empty()) {
+      throw RuntimeError("tail takes a non-empty vector");
+    }
+
+    auto tail = vector.back();
+    auto rest = vm.store_new_value(
+        Value{Value::vector_type{vector.begin(), vector.end() - 1}}
+    );
+
+    return vm.store_new_value(Value{Value::vector_type{rest, tail}});
+  }
+
+  if (const auto &string_opt =
+          argument->as_primitive().and_then(&Primitive::as_string);
+      string_opt.has_value()) {
+    const auto &string = string_opt->get();
+
+    if (string.empty()) {
+      throw RuntimeError("tail takes a non-empty string");
+    }
+
+    auto tail = vm.store_new_value({Primitive{std::string{string.back()}}});
+    auto rest =
+        vm.store_new_value({Primitive{string.substr(0, string.size() - 1)}});
+
+    return vm.store_new_value({Value::vector_type{rest, tail}});
+  }
+
+  throw TypeError("tail takes only vector and string values");
 }
 
 RefValue len(VM &vm, L3Args args) {

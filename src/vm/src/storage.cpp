@@ -51,7 +51,7 @@ size_t GCStorage::sweep() {
 void GCValue::mark() {
   marked = true;
 
-  if (auto vec = value.get()->as_mut_vector()) {
+  if (auto vec = get().as_mut_vector()) {
     for (auto &item : vec->get()) {
       item.get_gc().mark();
     }

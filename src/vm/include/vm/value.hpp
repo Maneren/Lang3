@@ -136,8 +136,10 @@ public:
   [[nodiscard]] bool is_primitive() const;
   [[nodiscard]] bool is_vector() const;
 
-  [[nodiscard]] std::optional<Primitive> as_primitive() const;
-  [[nodiscard]] std::optional<function_type> as_function() const;
+  [[nodiscard]] std::optional<std::reference_wrapper<const Primitive>>
+  as_primitive() const;
+  [[nodiscard]] std::optional<std::reference_wrapper<const function_type>>
+  as_function() const;
   [[nodiscard]] std::optional<std::reference_wrapper<const vector_type>>
   as_vector() const;
   [[nodiscard]] std::optional<std::reference_wrapper<vector_type>>

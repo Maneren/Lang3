@@ -13,6 +13,15 @@ struct std::formatter<l3::vm::Nil> : utils::static_formatter<l3::vm::Nil> {
   }
 };
 
+namespace l3::vm {
+struct PrimitivePrettyPrinter {
+  const Primitive &primitive;
+};
+struct ValuePrettyPrinter {
+  const Value &value;
+};
+} // namespace l3::vm
+
 template <>
 struct std::formatter<l3::vm::Primitive>
     : utils::static_formatter<l3::vm::Primitive> {
@@ -20,6 +29,28 @@ struct std::formatter<l3::vm::Primitive>
   format(const auto &primitive, std::format_context &ctx) {
     return match::match(
         primitive,
+        [&ctx](const bool &value) {
+          return std::format_to(ctx.out(), "{}", value);
+        },
+        [&ctx](const std::int64_t &value) {
+          return std::format_to(ctx.out(), "{}", value);
+        },
+        [&ctx](const double &value) {
+          return std::format_to(ctx.out(), "{}", value);
+        },
+        [&ctx](const l3::vm::Primitive::string_type &value) {
+          return std::format_to(ctx.out(), "\"{}\"", value);
+        }
+    );
+  }
+};
+
+template <>
+struct std::formatter<l3::vm::PrimitivePrettyPrinter>
+    : utils::static_formatter<l3::vm::PrimitivePrettyPrinter> {
+  static constexpr auto
+  format(const auto &primitive_pp, std::format_context &ctx) {
+    return primitive_pp.primitive.visit(
         [&ctx](const bool &value) {
           return std::format_to(ctx.out(), "{}", value);
         },
@@ -84,6 +115,29 @@ struct std::formatter<l3::vm::Value> : utils::static_formatter<l3::vm::Value> {
         },
         [&ctx](const l3::vm::Primitive &primitive) {
           return std::format_to(ctx.out(), "{}", primitive);
+        },
+        [&ctx](const l3::vm::Value::function_type &function) {
+          return std::format_to(ctx.out(), "{}", *function);
+        },
+        [&ctx](const l3::vm::Value::vector_type &vector) {
+          return std::format_to(ctx.out(), "{}", vector);
+        }
+    );
+  }
+};
+
+template <>
+struct std::formatter<l3::vm::ValuePrettyPrinter>
+    : utils::static_formatter<l3::vm::ValuePrettyPrinter> {
+  static constexpr auto format(const auto &value_pp, std::format_context &ctx) {
+    return value_pp.value.visit(
+        [&ctx](const l3::vm::Nil &value) {
+          return std::format_to(ctx.out(), "{}", value);
+        },
+        [&ctx](const l3::vm::Primitive &primitive) {
+          return std::format_to(
+              ctx.out(), "{}", l3::vm::PrimitivePrettyPrinter{primitive}
+          );
         },
         [&ctx](const l3::vm::Value::function_type &function) {
           return std::format_to(ctx.out(), "{}", *function);
