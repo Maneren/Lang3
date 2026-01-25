@@ -3,21 +3,29 @@
 #include <cli/cli.hpp>
 #include <cstdlib>
 #include <fstream>
+#include <functional>
 #include <iostream>
 #include <parser/lexer.hpp>
 #include <print>
 #include <vm/vm.hpp>
 
-int main(int argc, char *argv[]) {
-  cli::Parser cli_parser = cli::Parser{}
-                               .flag("d", "debug")
-                               .long_flag("debug-lexer")
-                               .long_flag("debug-parser")
-                               .long_flag("debug-ast")
-                               .long_flag("debug-vm")
-                               .long_flag("timings");
+namespace {
 
-  const auto args = cli_parser.parse(argc, argv);
+cli::Parser cli_parser() {
+  return cli::Parser{}
+      .flag("d", "debug")
+      .flag("O", "optimize")
+      .long_flag("debug-lexer")
+      .long_flag("debug-parser")
+      .long_flag("debug-ast")
+      .long_flag("debug-vm")
+      .long_flag("timings");
+}
+
+} // namespace
+
+int main(int argc, char *argv[]) {
+  const auto args = cli_parser().parse(argc, argv);
 
   if (!args) {
     std::println(std::cerr, "{}", args.error().what());
@@ -46,6 +54,13 @@ int main(int argc, char *argv[]) {
 
   auto start_time = std::chrono::steady_clock::now();
 
+  if (debug_lexer && debug_parser) {
+    std::println(std::cerr, "=== Lexer + Parser ===");
+  } else if (debug_lexer) {
+    std::println(std::cerr, "=== Lexer ===");
+  } else if (debug_parser) {
+    std::println(std::cerr, "=== Parser ===");
+  }
   l3::L3Lexer lexer(*input, debug_lexer);
 
   auto program = l3::ast::Program{};
@@ -67,11 +82,16 @@ int main(int argc, char *argv[]) {
   }
 
   if (debug_ast) {
+    std::println(std::cerr, "=== AST ===");
     std::print(std::cerr, "{}", program);
   }
 
-  if (debug_lexer || debug_parser || debug_ast) {
+  if ((debug_lexer || debug_parser || debug_ast) && !debug_vm) {
     return EXIT_SUCCESS;
+  }
+
+  if (debug_vm) {
+    std::println(std::cerr, "=== VM ===");
   }
 
   l3::vm::VM vm{debug_vm};
