@@ -33,12 +33,14 @@ Scope::get_variable(const ast::Identifier &id) {
   return std::optional{std::ref(present->second)};
 }
 
-void Scope::declare_variable(const ast::Identifier &id, GCValue &gc_value) {
+RefValue &
+Scope::declare_variable(const ast::Identifier &id, GCValue &gc_value) {
   const auto present = variables.find(id);
   if (present != variables.end()) {
     throw NameError("variable '{}' already declared", id.name());
   }
-  variables.emplace_hint(present, id, std::ref(gc_value));
+  auto &[_, value] = *variables.emplace_hint(present, id, std::ref(gc_value));
+  return value;
 }
 
 namespace {
@@ -59,15 +61,15 @@ void format_args(const std::output_iterator<char> auto &out, L3Args args) {
   }
 }
 
-RefValue print(VM &vm, L3Args args) {
+RefValue print(VM & /*vm*/, L3Args args) {
   format_args(std::ostream_iterator<char>(std::cout), args);
-  return vm.store_value(Value{});
+  return VM::nil();
 }
 
 RefValue println(VM &vm, L3Args args) {
   print(vm, args);
   std::print("\n");
-  return vm.store_value(Value{});
+  return VM::nil();
 }
 
 RefValue trigger_gc(VM &vm, L3Args args) {
@@ -75,12 +77,12 @@ RefValue trigger_gc(VM &vm, L3Args args) {
     throw RuntimeError("trigger_gc takes no arguments");
   }
   vm.run_gc();
-  return vm.store_value(Value{});
+  return VM::nil();
 }
 
-RefValue l3_assert(VM &vm, L3Args args) {
+RefValue l3_assert(VM & /*vm*/, L3Args args) {
   if (args[0]->is_truthy()) {
-    return vm.store_value(Value{});
+    return VM::nil();
   }
   std::string result;
   format_args(std::back_inserter(result), args.subspan(1));

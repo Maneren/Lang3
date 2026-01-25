@@ -54,6 +54,8 @@ public:
   GCValue &emplace(Value &&value);
   GCValue &emplace(const std::shared_ptr<Value> &value);
 
+  static GCValue &nil() { return NIL; }
+
 private:
   template <typename... Ts>
   void debug_print(std::format_string<Ts...> message, Ts &&...args) const {
@@ -64,6 +66,8 @@ private:
 
   bool debug;
   std::forward_list<GCValue> backing_store;
+
+  static GCValue NIL;
 };
 
 } // namespace l3::vm

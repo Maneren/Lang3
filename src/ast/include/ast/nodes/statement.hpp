@@ -65,6 +65,9 @@ public:
   [[nodiscard]] const Expression &get_expression() const {
     return name_assignment.get_expression();
   }
+  [[nodiscard]] const NameAssignment &get_name_assignment() const {
+    return name_assignment;
+  }
   [[nodiscard]] bool is_const() const { return const_; }
 };
 

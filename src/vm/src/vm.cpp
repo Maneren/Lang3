@@ -158,22 +158,18 @@ void VM::execute(const ast::OperatorAssignment &assignment) {
   debug_print("Assigned: {}", value->get());
 }
 void VM::execute(const ast::Declaration &declaration) {
+  debug_print("Executing declaration of {}", declaration.get_names());
   const auto &names = declaration.get_names();
-  const auto &variable = names[0]; // FIXME: support multiple names
-  const auto &expression = declaration.get_expression();
-  debug_print("Executing declaration of {}", variable.name());
-  if (current_scope().has_variable(variable)) {
-    throw NameError("variable '{}' already declared", variable.name());
+
+  for (const auto &name : names) {
+    declare_variable(name);
   }
-  auto value = evaluate(expression);
-  current_scope().declare_variable(variable, value.get_gc());
-  debug_print("Declared {} = {}", variable.name(), value);
+
+  execute(declaration.get_name_assignment());
 }
 void VM::execute(const ast::FunctionCall &function_call) {
   debug_print("Executing function call");
-  {
-    auto _ = evaluate(function_call);
-  }
+  auto _ = evaluate(function_call);
 }
 void VM::execute(const ast::IfStatement &if_statement) {
   debug_print("Evaluating if statement");
@@ -296,11 +292,9 @@ bool VM::evaluate_if_branch(const ast::IfBase &if_base) {
 void VM::execute(const ast::NamedFunction &named_function) {
   debug_print("Declaring named function");
   const auto &name = named_function.get_name();
-  auto variable = declare_variable(name);
+  auto &variable = declare_variable(name);
 
-  auto function = L3Function{scopes, named_function};
-
-  *variable = Value{Function{std::move(function)}};
+  variable = store_value({Function{L3Function{scopes, named_function}}});
 
   debug_print("Declared function {}", name.name());
 }
@@ -335,7 +329,7 @@ RefValue VM::evaluate_function_body(
   stack.pop_frame();
   scopes = std::move(original_scopes);
 
-  auto value = stack.push_value(return_value.value_or(store_value(Value{})));
+  auto value = stack.push_value(return_value.value_or(nil()));
   run_gc();
   return value;
 }
@@ -369,21 +363,11 @@ RefValue VM::evaluate(const ast::AnonymousFunction &anonymous) {
   return store_new_value(base->index(*index));
 }
 
-Scope &VM::current_scope() {
-  if (scopes.empty()) {
-    throw std::runtime_error("no current scope");
-  }
-  return *scopes.back();
-}
-
 VM::VM(bool debug) : debug{debug}, stack{debug}, gc_storage{debug} {
-  auto builtins = Scope::builtins();
-
   auto &scope = scopes.emplace_back(std::make_shared<Scope>());
 
-  for (const auto &[id, value] : builtins) {
-    auto &gc_value = gc_storage.emplace(value);
-    scope->declare_variable(id, gc_value);
+  for (const auto &[id, value] : Scope::builtins()) {
+    scope->declare_variable(id, gc_storage.emplace(value));
   }
 }
 
@@ -398,10 +382,9 @@ size_t VM::run_gc() {
   return erased;
 }
 
-RefValue VM::declare_variable(const ast::Identifier &id) {
-  auto &gc_value = gc_storage.emplace(Value{});
-  current_scope().declare_variable(id, gc_value);
-  return RefValue{gc_value};
+RefValue &VM::declare_variable(const ast::Identifier &id) {
+  auto &gc_value = GCStorage::nil();
+  return scopes.back()->declare_variable(id, gc_value);
 }
 
 RefValue VM::store_value(Value &&value) {
@@ -441,4 +424,45 @@ void Stack::mark_gc() {
   }
 }
 
+void VM::execute(const ast::NameAssignment &assignment) {
+  const auto &names = assignment.get_names();
+  const auto value = evaluate(assignment.get_expression());
+  debug_print("Executing name assignment {} = {}", names, value);
+
+  if (names.size() == 1) {
+    assign_variable(names.front(), value);
+    return;
+  }
+
+  const auto value_vector_opt = value->as_vector();
+
+  if (!value_vector_opt) {
+    throw ValueError("Destructuring assignment only works with vectors");
+  }
+
+  const auto &value_vector = value_vector_opt->get();
+
+  if (value_vector.size() != names.size()) {
+    throw ValueError(
+        "Destructuring assignment expected {} names but got {}",
+        names.size(),
+        value_vector.size()
+    );
+  }
+
+  for (const auto [name, value] : std::views::zip(names, value_vector)) {
+    assign_variable(name, value);
+  }
+}
+
+RefValue VM::nil() { return RefValue{GCStorage::nil()}; }
+
+void VM::assign_variable(const ast::Identifier &name, const RefValue &val) {
+  if (auto var = read_write_variable(name)) {
+    debug_print("Assigning {} to {}", val, name);
+    var->get() = val;
+    return;
+  }
+  throw UndefinedVariableError(name);
+}
 } // namespace l3::vm

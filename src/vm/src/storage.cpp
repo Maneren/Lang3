@@ -58,4 +58,6 @@ void GCValue::mark() {
   }
 }
 
+GCValue GCStorage::NIL{std::make_shared<Value>()};
+
 } // namespace l3::vm

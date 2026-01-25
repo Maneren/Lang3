@@ -5,6 +5,11 @@ let b = a * 2
 println(a)
 println(b)
 
+let first, second = [1, 2]
+
+println(first)
+println(second)
+
 __trigger_gc()
 
 fn factorial(a, n)

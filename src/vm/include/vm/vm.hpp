@@ -54,7 +54,8 @@ public:
 
   RefValue store_value(Value &&value);
   RefValue store_new_value(NewValue &&value);
-  RefValue declare_variable(const ast::Identifier &id);
+  RefValue &declare_variable(const ast::Identifier &id);
+  static RefValue nil();
 
   size_t run_gc();
 
@@ -64,6 +65,7 @@ private:
   void execute(const ast::LastStatement &last_statement);
   void execute(const ast::Declaration &declaration);
   void execute(const ast::OperatorAssignment &assignment);
+  void execute(const ast::NameAssignment &assignment);
   void execute(const ast::FunctionCall &function_call);
   void execute(const ast::IfStatement &if_statement);
   void execute(const ast::NamedFunction &named_function);
@@ -93,12 +95,12 @@ private:
     );
   }
 
-  Scope &current_scope();
-
   [[nodiscard]] std::optional<std::reference_wrapper<const Value>>
   read_variable(const ast::Identifier &id) const;
   [[nodiscard]] std::optional<std::reference_wrapper<RefValue>>
   read_write_variable(const ast::Identifier &id);
+
+  void assign_variable(const ast::Identifier &name, const RefValue &val);
 
   bool evaluate_if_branch(const ast::IfBase &if_base);
 

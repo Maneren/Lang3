@@ -17,7 +17,7 @@ public:
 
   static const BuiltinsMap &builtins();
 
-  void declare_variable(const ast::Identifier &id, GCValue &gc_value);
+  RefValue &declare_variable(const ast::Identifier &id, GCValue &gc_value);
 
   std::optional<std::reference_wrapper<const Value>>
   get_variable(const ast::Identifier &id) const;
