@@ -68,6 +68,7 @@ private:
   void execute(const ast::NameAssignment &assignment);
   void execute(const ast::FunctionCall &function_call);
   void execute(const ast::IfStatement &if_statement);
+  void execute(const ast::IfElseBase &if_else_base);
   void execute(const ast::NamedFunction &named_function);
 
   void execute(const auto &node) {
@@ -87,6 +88,7 @@ private:
   [[nodiscard]] RefValue evaluate(const ast::Identifier &identifier);
   [[nodiscard]] RefValue evaluate(const ast::AnonymousFunction &anonymous);
   [[nodiscard]] RefValue evaluate(const ast::FunctionCall &function_call);
+  [[nodiscard]] RefValue evaluate(const ast::IfExpression &if_expr);
 
   RefValue evaluate(const auto &node) const {
     throw std::runtime_error(

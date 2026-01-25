@@ -65,6 +65,8 @@ public:
 
   IfExpression &&with_elseif(IfBase &&elseif);
 
+  [[nodiscard]] const Block &get_else_block() const { return *else_block; }
+
   void print(std::output_iterator<char> auto &out, std::size_t depth = 0) const;
 };
 

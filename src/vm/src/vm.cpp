@@ -209,6 +209,15 @@ void VM::execute(const ast::IfStatement &if_statement) {
     execute(else_block->get());
   }
 }
+void VM::execute(const ast::IfElseBase &if_else_base) {
+  if (evaluate_if_branch(if_else_base.get_base_if()) ||
+      std::ranges::any_of(
+          if_else_base.get_elseif(),
+          std::bind_front(&VM::evaluate_if_branch, this)
+      )) {
+    return;
+  }
+}
 RefValue VM::evaluate(const ast::FunctionCall &function_call) {
   const auto &function = function_call.get_name();
   const auto &arguments = function_call.get_arguments();
@@ -494,6 +503,24 @@ void VM::assign_variable(const ast::Identifier &name, const RefValue &val) {
     return;
   }
   throw UndefinedVariableError(name);
+}
+
+RefValue VM::evaluate(const ast::IfExpression &if_expr) {
+  std::optional<RefValue> result;
+
+  try {
+    execute(static_cast<const ast::IfElseBase &>(if_expr));
+    const auto &else_expr = if_expr.get_else_block();
+    execute(else_expr);
+  } catch (const BreakFlowException &e) {
+    result = e.value;
+  }
+
+  if (result) {
+    return *result;
+  }
+
+  throw RuntimeError("if expression did not return a value");
 }
 
 } // namespace l3::vm
