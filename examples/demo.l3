@@ -1,13 +1,39 @@
 # This is a comment
+
+# Variable declaration
 let a = 1 + 2 + 2 * -3
 let b = a * -3
 
+# Function calls
 println(a + b)
 
+# Function declaration
 fn add(a, b)
   return a + b
 end
 
+# Trailing commas
+let c = add(a, b,)
+
+# First-class functions
+fn curry_add(a)
+  return fn(b) return a + b end
+end
+let add_three = curry_add(3)
+println(add_three(4)) # 7
+
+# Auto-currying
+let curried = add(a)
+let d = curried(b)
+
+# Control flow
+if d == c then
+  println("currying works")
+else
+  println("currying doesn't work")
+end
+
+# Error handling via abort
 fn div(a, b)
   if b == 0 then
     error("cannot divide by zero")
@@ -16,36 +42,13 @@ fn div(a, b)
   end
 end
 
-fn curry_add(a)
-  println("curry")
-  return fn(b)
-    println("curried")
-    return a + b
-  end
-end
-
-let c = add(a, b,)
-
-let curried = add(5)
-
-let d = curried(c)
-c += 5
-
-if d == c then
-  println("working")
-else
-  println("not working")
-  println(d, c)
-end
-
 div(10, 0)
 
-# let message = if not (0 <= c and c < 10 or not (b == 0 and a == 0)) then
-#   return "valid"
-# else
-#   return "invalid"
-# end
-#
+# Conditional expression
+let message = if not (0 <= c and c < 10 or not (b == 0 and a == 0)) then
+  return "valid"
+else
+  return "invalid"
+end
+
 println(message)
-#
-# println(map(fn(x) return x * x end, array))
