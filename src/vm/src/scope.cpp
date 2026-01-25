@@ -37,7 +37,7 @@ RefValue &
 Scope::declare_variable(const ast::Identifier &id, GCValue &gc_value) {
   const auto present = variables.find(id);
   if (present != variables.end()) {
-    throw NameError("variable '{}' already declared", id.name());
+    throw NameError("variable '{}' already declared", id.get_name());
   }
   auto &[_, value] = *variables.emplace_hint(present, id, std::ref(gc_value));
   return value;

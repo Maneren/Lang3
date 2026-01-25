@@ -99,7 +99,7 @@ inline void Identifier::print(
 
 inline void
 Variable::print(std::output_iterator<char> auto &out, std::size_t depth) const {
-  detail::format_indented_line(out, depth, "Variable '{}'", id.name());
+  detail::format_indented_line(out, depth, "Variable '{}'", id.get_name());
 }
 
 inline void FunctionCall::print(
@@ -292,6 +292,6 @@ struct std::formatter<l3::ast::Identifier>
     : utils::static_formatter<l3::ast::Identifier> {
   static constexpr auto
   format(l3::ast::Identifier const &id, std::format_context &ctx) {
-    return std::format_to(ctx.out(), "{}", id.name());
+    return std::format_to(ctx.out(), "{}", id.get_name());
   }
 };

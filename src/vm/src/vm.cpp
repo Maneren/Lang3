@@ -140,7 +140,9 @@ RefValue VM::evaluate(const ast::Expression &expression) {
 }
 void VM::execute(const ast::OperatorAssignment &assignment) {
   const auto &variable = assignment.get_variable();
-  debug_print("Executing assignment to {}", variable.get_identifier().name());
+  debug_print(
+      "Executing assignment to {}", variable.get_identifier().get_name()
+  );
   auto value = read_write_variable(variable.get_identifier());
   if (!value) {
     throw UndefinedVariableError(variable);
@@ -179,9 +181,8 @@ void VM::execute(const ast::Declaration &declaration) {
   const auto &names = declaration.get_names();
   debug_print(
       "Executing declaration of {}",
-      std::views::transform(names, [](const auto &ident) {
-        return ident.name();
-      }) | std::ranges::to<std::vector>()
+      std::views::transform(names, &ast::Identifier::get_name) |
+          std::ranges::to<std::vector>()
   );
 
   for (const auto &name : names) {
@@ -329,7 +330,7 @@ void VM::execute(const ast::NamedFunction &named_function) {
 
   variable = store_value({Function{L3Function{scopes, named_function}}});
 
-  debug_print("Declared function {}", name.name());
+  debug_print("Declared function {}", name.get_name());
 }
 
 RefValue VM::evaluate_function_body(
@@ -463,9 +464,8 @@ void VM::execute(const ast::NameAssignment &assignment) {
   const auto value = evaluate(assignment.get_expression());
   debug_print(
       "Executing name assignment {} = {}",
-      std::views::transform(
-          names, [](const auto &ident) { return ident.name(); }
-      ) | std::ranges::to<std::vector>(),
+      std::views::transform(names, &ast::Identifier::get_name) |
+          std::ranges::to<std::vector>(),
       value
   );
 

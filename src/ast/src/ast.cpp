@@ -72,7 +72,7 @@ BinaryExpression::BinaryExpression(
 
 Identifier::Identifier(std::string &&id) : id(std::move(id)) {}
 Identifier::Identifier(std::string_view id) : id(id) {}
-[[nodiscard]] const std::string &Identifier::name() const { return id; }
+[[nodiscard]] const std::string &Identifier::get_name() const { return id; }
 [[nodiscard]] const Identifier &Variable::get_identifier() const { return id; }
 Variable::Variable(Identifier &&id) : id(std::move(id)) {}
 

@@ -24,7 +24,13 @@ public:
   [[nodiscard]] const std::deque<Statement> &get_statements() const {
     return statements;
   }
+  [[nodiscard]] std::deque<Statement> &get_statements_mut() {
+    return statements;
+  }
   [[nodiscard]] const std::optional<LastStatement> &get_last_statement() const {
+    return lastStatement;
+  }
+  [[nodiscard]] std::optional<LastStatement> &get_last_statement_mut() {
     return lastStatement;
   }
 };

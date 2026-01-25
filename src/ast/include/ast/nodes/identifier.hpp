@@ -17,7 +17,8 @@ public:
   Identifier(std::string &&id);
   Identifier(std::string_view id);
 
-  [[nodiscard]] const std::string &name() const;
+  [[nodiscard]] const std::string &get_name() const;
+  [[nodiscard]] std::string &get_name_mut() { return id; }
 
   void print(std::output_iterator<char> auto &out, std::size_t depth = 0) const;
 
@@ -34,6 +35,7 @@ public:
   void print(std::output_iterator<char> auto &out, std::size_t depth = 0) const;
 
   [[nodiscard]] const Identifier &get_identifier() const;
+  Identifier &get_identifier_mut() { return id; }
 };
 
 class NameList : public std::deque<Identifier> {

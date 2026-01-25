@@ -27,8 +27,11 @@ public:
   void print(std::output_iterator<char> auto &out, std::size_t depth = 0) const;
 
   [[nodiscard]] const Variable &get_variable() const { return var; }
+  Variable &get_variable_mut() { return var; }
   [[nodiscard]] AssignmentOperator get_operator() const { return op; }
+  AssignmentOperator &get_operator_mut() { return op; }
   [[nodiscard]] const Expression &get_expression() const { return expr; }
+  Expression &get_expression_mut() { return expr; }
 };
 
 class NameAssignment {
@@ -43,7 +46,9 @@ public:
   void print(std::output_iterator<char> auto &out, std::size_t depth = 0) const;
 
   [[nodiscard]] const NameList &get_names() const { return names; }
+  NameList &get_names_mut() { return names; }
   [[nodiscard]] const Expression &get_expression() const { return expr; }
+  Expression &get_expression_mut() { return expr; }
 };
 
 using Assignment = std::variant<OperatorAssignment, NameAssignment>;
@@ -62,12 +67,17 @@ public:
   [[nodiscard]] const NameList &get_names() const {
     return name_assignment.get_names();
   }
+  NameList &get_names_mut() { return name_assignment.get_names_mut(); }
   [[nodiscard]] const Expression &get_expression() const {
     return name_assignment.get_expression();
+  }
+  Expression &get_expression_mut() {
+    return name_assignment.get_expression_mut();
   }
   [[nodiscard]] const NameAssignment &get_name_assignment() const {
     return name_assignment;
   }
+  NameAssignment &get_name_assignment_mut() { return name_assignment; }
   [[nodiscard]] bool is_const() const { return const_; }
 };
 
@@ -119,6 +129,7 @@ public:
   void print(std::output_iterator<char> auto &out, std::size_t depth = 0) const;
 
   [[nodiscard]] const auto &get_expression() const { return expr; }
+  auto &get_expression_mut() { return expr; }
 };
 
 struct BreakStatement {

@@ -13,7 +13,7 @@
 
 template <> struct std::hash<l3::ast::Identifier> {
   std::size_t operator()(const l3::ast::Identifier &id) const {
-    return std::hash<std::string>{}(id.name());
+    return std::hash<std::string>{}(id.get_name());
   }
 };
 
