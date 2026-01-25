@@ -30,7 +30,7 @@ struct std::formatter<l3::vm::Primitive>
           return std::format_to(ctx.out(), "{}", value);
         },
         [&ctx](const l3::vm::Primitive::string_type &value) {
-          return std::format_to(ctx.out(), "\"{}\"", value);
+          return std::format_to(ctx.out(), "{}", value);
         }
     );
   }

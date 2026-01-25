@@ -55,6 +55,9 @@ wrap_native_function(std::string_view name, BuiltinFunction::Body function) {
 }
 
 void format_args(const std::output_iterator<char> auto &out, L3Args args) {
+  if (args.empty()) {
+    return;
+  }
   std::format_to(out, "{}", args[0].get());
   for (const auto &arg : args | std::views::drop(1)) {
     std::format_to(out, " {}", arg.get());
@@ -163,7 +166,25 @@ RefValue head(VM &vm, L3Args args) {
   if (args.empty()) {
     throw RuntimeError("head takes at least one arguments");
   }
-  return vm.store_new_value(args[0]->index(0));
+
+  auto argument = args[0];
+
+  if (const auto &vector_opt = argument->as_vector()) {
+    auto vector = vector_opt->get();
+
+    if (vector.empty()) {
+      throw RuntimeError("head takes a non-empty vector");
+    }
+
+    auto head = vector.front();
+    auto rest = vm.store_new_value(
+        Value{Value::vector_type{vector.begin() + 1, vector.end()}}
+    );
+
+    return vm.store_new_value(Value{Value::vector_type{head, rest}});
+  }
+
+  throw TypeError("head takes only vector values");
 }
 
 RefValue tail(VM &vm, L3Args args) {

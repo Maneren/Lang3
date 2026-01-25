@@ -12,16 +12,16 @@ println(second)
 
 __trigger_gc()
 
-fn factorial(a, n)
+fn factorial(n)
   if n == 0 then
     return 1
   end
 
-  return n * factorial(a, n - 1)
+  return n * factorial(n - 1)
 end
 
 fn main()
-  println(factorial("a", 20))
+  println(factorial(20))
 end
 
 main()
@@ -31,3 +31,23 @@ if a then println("a is truthy")
 elif b then println("b is truthy")
 else println("neither a or b is truthy")
 end
+
+let arr = [1,2,3,4]
+
+fn print_array(arr)
+  if not arr then
+    return
+  end
+
+  let x, xs = head(arr)
+  print(x)
+
+  if xs then
+    print(", ")
+    print_array(xs)
+  else
+    println()
+  end
+end
+
+print_array(arr)

@@ -221,6 +221,7 @@ STATEMENT: ASSIGNMENT           { $$ = ast::Statement(std::move($1)); }
          | FUNCTION_DEFINITION  { $$ = ast::Statement(std::move($1)); }
 
 RETURN: _return EXPRESSION { $$ = ast::ReturnStatement{ std::move($2) }; }
+      | _return            { $$ = ast::ReturnStatement{}; }
 
 LAST_STATEMENT: RETURN    { $$ = ast::LastStatement(std::move($1)); }
               | _continue { $$ = ast::LastStatement(ast::ContinueStatement{}); }
