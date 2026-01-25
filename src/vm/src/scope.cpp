@@ -16,7 +16,7 @@
 
 namespace l3::vm {
 
-std::optional<std::reference_wrapper<const Value>>
+utils::optional_cref<Value>
 Scope::get_variable(const ast::Identifier &id) const {
   auto present = variables.find(id);
   if (present == variables.end()) {
@@ -24,7 +24,7 @@ Scope::get_variable(const ast::Identifier &id) const {
   }
   return std::optional{std::cref(present->second.get())};
 }
-std::optional<std::reference_wrapper<RefValue>>
+utils::optional_ref<RefValue>
 Scope::get_variable(const ast::Identifier &id) {
   auto present = variables.find(id);
   if (present == variables.end()) {

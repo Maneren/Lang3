@@ -1,6 +1,5 @@
 #pragma once
 
-#include "utils/debug.h"
 #include "vm/storage.hpp"
 #include <ast/nodes/identifier.hpp>
 #include <cstddef>
@@ -8,7 +7,9 @@
 #include <string>
 #include <utility>
 #include <utils/cow.h>
+#include <utils/debug.h>
 #include <utils/match.h>
+#include <utils/types.h>
 #include <variant>
 
 template <> struct std::hash<l3::ast::Identifier> {
@@ -39,8 +40,7 @@ public:
   [[nodiscard]] std::optional<bool> as_bool() const;
   [[nodiscard]] std::optional<std::int64_t> as_integer() const;
   [[nodiscard]] std::optional<double> as_double() const;
-  [[nodiscard]] std::optional<std::reference_wrapper<const string_type>>
-  as_string() const;
+  [[nodiscard]] utils::optional_cref<string_type> as_string() const;
 
   auto visit(auto &&...visitor) const {
     return match::match(*this, std::forward<decltype(visitor)>(visitor)...);
@@ -136,14 +136,10 @@ public:
   [[nodiscard]] bool is_primitive() const;
   [[nodiscard]] bool is_vector() const;
 
-  [[nodiscard]] std::optional<std::reference_wrapper<const Primitive>>
-  as_primitive() const;
-  [[nodiscard]] std::optional<std::reference_wrapper<const function_type>>
-  as_function() const;
-  [[nodiscard]] std::optional<std::reference_wrapper<const vector_type>>
-  as_vector() const;
-  [[nodiscard]] std::optional<std::reference_wrapper<vector_type>>
-  as_mut_vector();
+  [[nodiscard]] utils::optional_cref<Primitive> as_primitive() const;
+  [[nodiscard]] utils::optional_cref<function_type> as_function() const;
+  [[nodiscard]] utils::optional_cref<vector_type> as_vector() const;
+  [[nodiscard]] utils::optional_ref<vector_type> as_mut_vector();
 
   [[nodiscard]] bool is_truthy() const;
 

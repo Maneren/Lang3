@@ -158,8 +158,7 @@ Block &Block::with_statement(Statement &&statement) {
   return *this;
 }
 
-std::optional<std::reference_wrapper<const Block>>
-IfStatement::get_else_block() const {
+utils::optional_cref<Block> IfStatement::get_else_block() const {
   return else_block.transform([](const auto &block) {
     return std::cref(*block);
   });

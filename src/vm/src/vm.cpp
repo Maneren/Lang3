@@ -369,12 +369,11 @@ void VM::execute(const ast::LastStatement &last_statement) {
   last_statement.visit(
       match::Overloaded{
           [this](const ast::ReturnStatement &return_statement) {
-            auto value =
-                return_statement.get_expression()
-                    .transform([this](const ast::Expression &expression) {
-                      return evaluate(expression);
-                    })
-                    .value_or(VM::nil());
+            const auto value = return_statement.get_expression()
+                                   .transform([this](const auto &expr) {
+                                     return evaluate(expr);
+                                   })
+                                   .value_or(VM::nil());
             debug_print("Returning {}", value);
             throw BreakFlowException(value);
           },

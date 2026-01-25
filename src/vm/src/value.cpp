@@ -324,11 +324,11 @@ bool Value::is_truthy() const {
 Primitive::as_string() const {
   return visit(
       [](const string_type &value)
-          -> std::optional<std::reference_wrapper<const string_type>> {
+          -> utils::optional_cref<string_type> {
         return std::cref(value);
       },
       [](const auto &)
-          -> std::optional<std::reference_wrapper<const string_type>> {
+          -> utils::optional_cref<string_type> {
         return std::nullopt;
       }
   );
@@ -470,7 +470,7 @@ NewValue Value::index(size_t index) const {
 }
 
 using copt_primitive_type =
-    std::optional<std::reference_wrapper<const Primitive>>;
+    utils::optional_cref<Primitive>;
 
 copt_primitive_type Value::as_primitive() const {
   return visit(
@@ -482,7 +482,7 @@ copt_primitive_type Value::as_primitive() const {
 }
 
 using copt_function_type =
-    std::optional<std::reference_wrapper<const Value::function_type>>;
+    utils::optional_cref<Value::function_type>;
 
 copt_function_type Value::as_function() const {
   return visit(
@@ -493,7 +493,7 @@ copt_function_type Value::as_function() const {
   );
 }
 using copt_vector_type =
-    std::optional<std::reference_wrapper<const Value::vector_type>>;
+    utils::optional_cref<Value::vector_type>;
 copt_vector_type Value::as_vector() const {
   return visit(
       [](const Value::vector_type &vector) -> copt_vector_type {
@@ -503,7 +503,7 @@ copt_vector_type Value::as_vector() const {
   );
 }
 using opt_vector_type =
-    std::optional<std::reference_wrapper<Value::vector_type>>;
+    utils::optional_ref<Value::vector_type>;
 opt_vector_type Value::as_mut_vector() {
   return visit(
       [](Value::vector_type &vector) -> opt_vector_type { return vector; },

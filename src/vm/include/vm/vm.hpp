@@ -98,9 +98,9 @@ private:
     );
   }
 
-  [[nodiscard]] std::optional<std::reference_wrapper<const Value>>
+  [[nodiscard]] utils::optional_cref<Value>
   read_variable(const ast::Identifier &id) const;
-  [[nodiscard]] std::optional<std::reference_wrapper<RefValue>>
+  [[nodiscard]] utils::optional_ref<RefValue>
   read_write_variable(const ast::Identifier &id);
 
   void assign_variable(const ast::Identifier &name, const RefValue &val);

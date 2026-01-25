@@ -19,9 +19,9 @@ public:
 
   RefValue &declare_variable(const ast::Identifier &id, GCValue &gc_value);
 
-  std::optional<std::reference_wrapper<const Value>>
+  utils::optional_cref<Value>
   get_variable(const ast::Identifier &id) const;
-  std::optional<std::reference_wrapper<RefValue>>
+  utils::optional_ref<RefValue>
   get_variable(const ast::Identifier &id);
 
   bool has_variable(const ast::Identifier &id) const;
