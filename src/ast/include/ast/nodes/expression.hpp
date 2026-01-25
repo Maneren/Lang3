@@ -15,7 +15,6 @@ namespace l3::ast {
 
 class Expression;
 
-
 class UnaryExpression {
   UnaryOperator op = UnaryOperator::Plus;
   std::unique_ptr<Expression> expr;
@@ -25,6 +24,9 @@ public:
   UnaryExpression(UnaryOperator op, Expression &&expr);
 
   void print(std::output_iterator<char> auto &out, std::size_t depth = 0) const;
+
+  [[nodiscard]] UnaryOperator get_op() const { return op; }
+  [[nodiscard]] const auto &get_expr() const { return *expr; }
 };
 
 class BinaryExpression {

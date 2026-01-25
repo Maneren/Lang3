@@ -76,6 +76,8 @@ Primitive operator>=(const Primitive &lhs, const Primitive &rhs);
 Primitive operator<(const Primitive &lhs, const Primitive &rhs);
 Primitive operator<=(const Primitive &lhs, const Primitive &rhs);
 Primitive operator!(const Primitive &value);
+Primitive operator-(const Primitive &value);
+Primitive operator+(const Primitive &value);
 
 class Function;
 
@@ -119,6 +121,7 @@ public:
   [[nodiscard]] Value less_equal(const Value &other) const;
 
   [[nodiscard]] Value not_op() const;
+  [[nodiscard]] Value negative() const;
 
   auto visit(auto &&...visitor) const {
     return match::match(inner, std::forward<decltype(visitor)>(visitor)...);

@@ -22,6 +22,24 @@
 
 namespace l3::vm {
 
+RefValue VM::evaluate(const ast::UnaryExpression &unary) {
+  debug_print("Evaluating unary expression {}", unary.get_op());
+  const auto argument = evaluate(unary.get_expr());
+  const auto &argument_ref = argument.get();
+  switch (unary.get_op()) {
+  case ast::UnaryOperator::Minus: {
+    return store_value(argument_ref.not_op());
+  }
+  case ast::UnaryOperator::Plus: {
+    return argument;
+  }
+  case ast::UnaryOperator::Not: {
+    return store_value(argument_ref.not_op());
+  }
+  }
+  throw std::runtime_error("unreachable");
+}
+
 RefValue VM::evaluate(const ast::BinaryExpression &binary) {
   debug_print("Evaluating binary expression {}", binary.get_op());
   const auto left = evaluate(binary.get_lhs());
@@ -465,4 +483,5 @@ void VM::assign_variable(const ast::Identifier &name, const RefValue &val) {
   }
   throw UndefinedVariableError(name);
 }
+
 } // namespace l3::vm

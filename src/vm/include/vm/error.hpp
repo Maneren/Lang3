@@ -30,6 +30,10 @@ public:
             "{} between '{}' and '{}' not supported", operation, lhs, rhs
         ) {}
 
+  template <typename T>
+  UnsupportedOperation(std::string_view operation, T value)
+      : RuntimeError("unary {} of {} not supported", operation, value) {}
+
   [[nodiscard]] constexpr std::string_view type() const override {
     return "UnsupportedOperation";
   }

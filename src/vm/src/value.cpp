@@ -12,7 +12,7 @@ namespace l3::vm {
 namespace {
 
 template <typename Result, typename... Handlers>
-auto handle_op(
+auto handle_bin_op(
     std::string_view name,
     const Primitive &lhs,
     const Primitive &rhs,
@@ -27,10 +27,19 @@ auto handle_op(
   );
 }
 
+template <typename Result, typename... Handlers>
+auto handle_un_op(
+    std::string_view name, const Primitive &value, Handlers... handlers
+) {
+  return match::match(value, handlers..., [name](const auto &value) -> Result {
+    throw UnsupportedOperation(name, value);
+  });
+}
+
 } // namespace
 
 Primitive operator+(const Primitive &lhs, const Primitive &rhs) {
-  return handle_op<Primitive>(
+  return handle_bin_op<Primitive>(
       "addition",
       lhs,
       rhs,
@@ -41,7 +50,7 @@ Primitive operator+(const Primitive &lhs, const Primitive &rhs) {
 }
 
 Primitive operator-(const Primitive &lhs, const Primitive &rhs) {
-  return handle_op<Primitive>(
+  return handle_bin_op<Primitive>(
       "subtraction",
       lhs,
       rhs,
@@ -53,7 +62,7 @@ Primitive operator-(const Primitive &lhs, const Primitive &rhs) {
 }
 
 Primitive operator*(const Primitive &lhs, const Primitive &rhs) {
-  return handle_op<Primitive>(
+  return handle_bin_op<Primitive>(
       "multiplication",
       lhs,
       rhs,
@@ -78,7 +87,7 @@ Primitive operator*(const Primitive &lhs, const Primitive &rhs) {
 }
 
 Primitive operator/(const Primitive &lhs, const Primitive &rhs) {
-  return handle_op<Primitive>(
+  return handle_bin_op<Primitive>(
       "division",
       lhs,
       rhs,
@@ -95,7 +104,7 @@ Primitive operator/(const Primitive &lhs, const Primitive &rhs) {
 }
 
 Primitive operator%(const Primitive &lhs, const Primitive &rhs) {
-  return handle_op<Primitive>(
+  return handle_bin_op<Primitive>(
       "modulo",
       lhs,
       rhs,
@@ -118,9 +127,29 @@ Primitive operator!(const Primitive &value) {
   return Primitive{!value.is_truthy()};
 }
 
+Primitive operator-(const Primitive &value) {
+  return handle_un_op<Primitive>(
+      "minus",
+      value,
+      []<typename T>(const T &value) -> Primitive
+        requires requires(T value) { -value; } && (!std::is_same_v<T, bool>)
+      { return Primitive{-value}; }
+      );
+}
+
+Primitive operator+(const Primitive &value) {
+  return handle_un_op<Primitive>(
+      "plus",
+      value,
+      []<typename T>(const T &value) -> Primitive
+        requires requires(T value) { +value; } && (!std::is_same_v<T, bool>)
+      { return Primitive{+value}; }
+      );
+}
+
 namespace {
 int operator<=>(const Primitive &lhs, const Primitive &rhs) {
-  return handle_op<int>(
+  return handle_bin_op<int>(
       "comparison",
       lhs,
       rhs,
@@ -512,19 +541,50 @@ Value Value::slice(Slice slice) const {
           if (start > end) {
             throw ValueError("start index must be less than end index");
           }
-          if (end > string.size()) {
+
+          if (start < 0) {
+            start += static_cast<std::int64_t>(string.size());
+          }
+          if (end < 0) {
+            end += static_cast<std::int64_t>(string.size());
+          }
+
+          if (static_cast<std::size_t>(end) > string.size()) {
             throw ValueError("end index out of bounds");
           }
-          if (start > string.size()) {
+          if (static_cast<std::size_t>(start) > string.size()) {
             throw ValueError("start index out of bounds");
           }
-          return Primitive{string.substr(start, end - start)};
+          return Primitive{string.substr(
+              static_cast<std::size_t>(start),
+              static_cast<std::size_t>(end - start)
+          )};
         }
 
         throw TypeError("cannot slice a {} value", type_name());
       },
       [this](const auto & /*value*/) -> Value {
         throw TypeError("cannot slice a {} value", type_name());
+      }
+  );
+}
+
+[[nodiscard]] Value Value::not_op() const {
+  return visit(
+      [](const Primitive &primitive) -> Value { return Value{!primitive}; },
+      [this](const auto & /*value*/) -> Value {
+        return Value{Primitive{!is_truthy()}};
+      }
+  );
+}
+
+// [[nodiscard]] Value Value::positive() const {}
+
+[[nodiscard]] Value Value::negative() const {
+  return visit(
+      [](const Primitive &primitive) -> Value { return Value{-primitive}; },
+      [this](const auto & /*value*/) -> Value {
+        throw UnsupportedOperation("cannot negate a {} value", type_name());
       }
   );
 }

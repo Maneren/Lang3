@@ -5,7 +5,6 @@
 #include <iterator>
 #include <string>
 #include <variant>
-#include <vector>
 
 namespace l3::ast {
 
