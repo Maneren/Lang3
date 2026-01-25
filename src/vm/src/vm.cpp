@@ -327,7 +327,7 @@ RefValue VM::evaluate_function_body(
   }
   debug_print("arguments: {}", arguments.get_variables());
 
-  auto original_scopes = std::move(scopes);
+  unused_scopes.emplace_back(std::move(scopes));
 
   scopes = {};
   for (const auto &capture : captured) {
@@ -345,7 +345,9 @@ RefValue VM::evaluate_function_body(
   }
 
   stack.pop_frame();
-  scopes = std::move(original_scopes);
+
+  scopes = std::move(unused_scopes.back());
+  unused_scopes.pop_back();
 
   auto value = stack.push_value(return_value.value_or(nil()));
   run_gc();
@@ -393,6 +395,11 @@ size_t VM::run_gc() {
   debug_print("Running GC");
   for (auto &scope : scopes) {
     scope->mark_gc();
+  }
+  for (auto &scope_group : unused_scopes) {
+    for (auto &scope : scope_group) {
+      scope->mark_gc();
+    }
   }
   stack.mark_gc();
   auto erased = gc_storage.sweep();

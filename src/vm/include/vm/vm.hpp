@@ -107,6 +107,7 @@ private:
 
   bool debug;
   std::vector<std::shared_ptr<Scope>> scopes;
+  std::vector<std::vector<std::shared_ptr<Scope>>> unused_scopes;
   Stack stack;
   GCStorage gc_storage;
 
