@@ -334,12 +334,8 @@ RefValue VM::evaluate_function_body(
 
   unused_scopes.emplace_back(std::move(scopes));
 
-  scopes = {};
-  for (const auto &capture : captured) {
-    scopes.push_back(capture);
-  }
+  scopes = captured | std::ranges::to<std::vector>();
   scopes.push_back(std::make_shared<Scope>(std::move(arguments)));
-  stack.push_frame();
 
   std::optional<RefValue> return_value;
 
@@ -348,8 +344,6 @@ RefValue VM::evaluate_function_body(
   } catch (const BreakFlowException &exception) {
     return_value = exception.value;
   }
-
-  stack.pop_frame();
 
   scopes = std::move(unused_scopes.back());
   unused_scopes.pop_back();
