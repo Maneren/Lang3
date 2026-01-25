@@ -1,3 +1,5 @@
+#!/bin/env lang3
+
 let a = 8 / 2 + 20
 a += 10
 let b = a * 2

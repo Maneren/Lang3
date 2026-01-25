@@ -1,4 +1,6 @@
-# This is a comment
+#!/bin/env lang3
+
+# Demonstation of the language
 
 # Variable declaration
 let a = 1 + 2 + 2 * -3

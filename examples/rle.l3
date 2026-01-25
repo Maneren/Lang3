@@ -1,3 +1,13 @@
+#!/bin/env lang3
+# Run-length encoding decoder
+#
+# Reads a run-length encoded string from stdin and prints the decoded string to
+# stdout
+#
+# Example:
+#    $ echo "2[a2[bc]]3[cd]ef" | rle.l3
+#    abcbcabcbccdcdcdef
+
 fn load_brackets_inner(depth, acc, data)
   if not data then
     error("invalid input")
