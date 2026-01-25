@@ -5,7 +5,7 @@ function(create_test_executable TARGET)
     cmake_parse_arguments(TEST
         "GTEST;CUSTOM"
         "FRAMEWORK;CXX_STD"
-        "SOURCES;PRIVATE_DEPS;COMPILE_DEFS;INCLUDE_DIRS"
+        "SOURCES;DEPENDS;COMPILE_DEFS;INCLUDE_DIRS"
         ${ARGN}
     )
 
@@ -20,7 +20,7 @@ function(create_test_executable TARGET)
         "${TEST_SOURCES}"
         TEST
         CXX_STD ${TEST_CXX_STD}
-        PRIVATE_DEPS ${TEST_PRIVATE_DEPS}
+        DEPENDS ${TEST_DEPENDS}
         COMPILE_DEFS ${TEST_COMPILE_DEFS}
             TESTING_ENABLED=1 $<$<CONFIG:Debug>:DEBUG_TESTS=1>
         INCLUDE_DIRS ${TEST_INCLUDE_DIRS}
