@@ -284,6 +284,7 @@ void VM::execute(const ast::Block &block) {
   }
   stack.pop_frame();
   scopes.pop_back();
+  run_gc();
 }
 
 std::optional<std::reference_wrapper<const Value>>
