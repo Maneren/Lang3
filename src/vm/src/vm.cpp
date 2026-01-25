@@ -45,8 +45,8 @@ RefValue VM::evaluate(const ast::BinaryExpression &binary) {
   const auto left = evaluate(binary.get_lhs());
   const auto right = evaluate(binary.get_rhs());
 
-  debug_print("Left: {}", left);
-  debug_print("Right: {}", right);
+  debug_print("  Left: {}", left);
+  debug_print("  Right: {}", right);
 
   const auto &left_ref = left.get();
   const auto &right_ref = right.get();
@@ -176,8 +176,13 @@ void VM::execute(const ast::OperatorAssignment &assignment) {
   debug_print("Assigned: {}", value->get());
 }
 void VM::execute(const ast::Declaration &declaration) {
-  debug_print("Executing declaration of {}", declaration.get_names());
   const auto &names = declaration.get_names();
+  debug_print(
+      "Executing declaration of {}",
+      std::views::transform(names, [](const auto &ident) {
+        return ident.name();
+      }) | std::ranges::to<std::vector>()
+  );
 
   for (const auto &name : names) {
     declare_variable(name);
@@ -364,7 +369,7 @@ void VM::execute(const ast::LastStatement &last_statement) {
                     .transform([this](const ast::Expression &expression) {
                       return evaluate(expression);
                     })
-                    .value_or(store_value(Value{}));
+                    .value_or(VM::nil());
             debug_print("Returning {}", value);
             throw BreakFlowException(value);
           },
@@ -437,7 +442,7 @@ void Stack::pop_frame() {
   frames.pop_back();
 }
 RefValue Stack::push_value(RefValue value) {
-  debug_print("Pushing value {} on stack", value);
+  debug_print("Pushing value '{}' on stack", value);
   top_frame().push_back(value);
   return value;
 }
@@ -452,7 +457,13 @@ void Stack::mark_gc() {
 void VM::execute(const ast::NameAssignment &assignment) {
   const auto &names = assignment.get_names();
   const auto value = evaluate(assignment.get_expression());
-  debug_print("Executing name assignment {} = {}", names, value);
+  debug_print(
+      "Executing name assignment {} = {}",
+      std::views::transform(
+          names, [](const auto &ident) { return ident.name(); }
+      ) | std::ranges::to<std::vector>(),
+      value
+  );
 
   if (names.size() == 1) {
     assign_variable(names.front(), value);
