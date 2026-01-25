@@ -1,0 +1,57 @@
+fn load_brackets_inner(depth, str, acc)
+  if not str then
+    error("invalid input")
+  end
+
+  let x, xs = head(str)
+  
+  if x == "[" then
+    depth += 1
+  elif x == "]" then
+    if depth == 0 then
+      return [acc, xs]
+    end
+
+    depth -= 1
+  end
+
+  return load_brackets_inner(depth, xs, acc + x)
+end
+
+fn load_brackets(str)
+  # println("load_brackets(", str, ")")
+  let x, xs = head(str)
+  assert(x == "[")
+  return load_brackets_inner(0, xs, "")
+end
+
+fn rle_decoder(str)
+  # println("rle_decoder(", str, ")")
+  if not str then
+    return str
+  end
+
+  let x, xs = head(str)
+
+  if "0" <= x and x <= "9" then
+    if not xs then
+      error("invalid input")
+    end
+
+    let count = int(x)
+    let y, ys = head(xs)
+
+    if y == "[" then
+      y, ys = load_brackets(xs)
+    end
+
+    return count * rle_decoder(y) + rle_decoder(ys)
+  elif x == "[" then
+    let y, ys = load_brackets(str)
+    return rle_decoder(y) + rle_decoder(ys)
+  end
+
+  return x + rle_decoder(xs)
+end
+
+println(rle_decoder(input()))
