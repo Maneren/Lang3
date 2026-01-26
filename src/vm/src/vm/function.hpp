@@ -1,5 +1,6 @@
 #pragma once
 
+#include "utils/accessor.h"
 #include "vm/value.hpp"
 #include <ast/nodes/function.hpp>
 #include <memory>
@@ -36,6 +37,7 @@ public:
 
   RefValue operator()(VM &vm, L3Args args);
 
+  DEFINE_ACCESSOR(body, ast::FunctionBody, body)
   [[nodiscard]] const ast::Identifier &get_name() const;
 
 private:
@@ -53,7 +55,8 @@ public:
 
   RefValue operator()(VM &vm, std::span<RefValue> args) const;
 
-  [[nodiscard]] const ast::Identifier &get_name() const { return name; }
+  DEFINE_ACCESSOR(name, ast::Identifier, name)
+  DEFINE_ACCESSOR(body, Body, body)
 
 private:
   ast::Identifier name;

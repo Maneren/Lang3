@@ -39,54 +39,51 @@ RefValue VM::evaluate(const ast::UnaryExpression &unary) {
 
 RefValue VM::evaluate(const ast::BinaryExpression &binary) {
   debug_print("Evaluating binary expression {}", binary.get_op());
-  const auto left = evaluate(binary.get_lhs());
-  const auto right = evaluate(binary.get_rhs());
+  const auto &left = *evaluate(binary.get_lhs());
+  const auto &right = *evaluate(binary.get_rhs());
 
   debug_print("  Left: {}", left);
   debug_print("  Right: {}", right);
 
-  const auto &left_ref = left.get();
-  const auto &right_ref = right.get();
-
   switch (binary.get_op()) {
   case ast::BinaryOperator::Plus: {
-    return store_value(left_ref.add(right_ref));
+    return store_value(left.add(right));
   }
   case ast::BinaryOperator::Minus: {
-    return store_value(left_ref.sub(right_ref));
+    return store_value(left.sub(right));
   }
   case ast::BinaryOperator::Multiply: {
-    return store_value(left_ref.mul(right_ref));
+    return store_value(left.mul(right));
   }
   case ast::BinaryOperator::Divide: {
-    return store_value(left_ref.div(right_ref));
+    return store_value(left.div(right));
   }
   case ast::BinaryOperator::Modulo: {
-    return store_value(left_ref.mod(right_ref));
+    return store_value(left.mod(right));
   }
   case ast::BinaryOperator::And: {
-    return store_value(left_ref.and_op(right_ref));
+    return store_value(left.and_op(right));
   }
   case ast::BinaryOperator::Or: {
-    return store_value(left_ref.or_op(right_ref));
+    return store_value(left.or_op(right));
   }
   case ast::BinaryOperator::Equal: {
-    return store_value(left_ref.equal(right_ref));
+    return store_value(left.equal(right));
   }
   case ast::BinaryOperator::NotEqual: {
-    return store_value(left_ref.not_equal(right_ref));
+    return store_value(left.not_equal(right));
   }
   case ast::BinaryOperator::Less: {
-    return store_value(left_ref.less(right_ref));
+    return store_value(left.less(right));
   }
   case ast::BinaryOperator::LessEqual: {
-    return store_value(left_ref.less_equal(right_ref));
+    return store_value(left.less_equal(right));
   }
   case ast::BinaryOperator::Greater: {
-    return store_value(left_ref.greater(right_ref));
+    return store_value(left.greater(right));
   }
   case ast::BinaryOperator::GreaterEqual: {
-    return store_value(left_ref.greater_equal(right_ref));
+    return store_value(left.greater_equal(right));
   }
   default:
     throw std::runtime_error(
@@ -108,19 +105,21 @@ RefValue VM::evaluate(const ast::Variable &variable) {
 
 RefValue VM::evaluate(const ast::Literal &literal) {
   debug_print("Evaluating literal");
-  Value value = match::match(
-      literal.get(),
+  Value value = literal.visit(
       [](const ast::Nil & /*unused*/) -> Value { return {Nil{}}; },
       [this](const ast::Array &array) -> Value {
-        std::vector<RefValue> values;
-        values.reserve(array.get().size());
-        for (const auto &element : array.get()) {
-          values.emplace_back(evaluate(element));
-        }
-        return Value{std::move(values)};
+        return {
+            std::views::transform(
+                array.get_elements(),
+                [this](const auto &element) -> RefValue {
+                  return evaluate(element);
+                }
+            ) |
+            std::ranges::to<std::vector>()
+        };
       },
       [](const auto &literal_value) -> Value {
-        return Primitive{literal_value.get()};
+        return Primitive{literal_value.get_value()};
       }
   );
   debug_print("Literal: {}", value);
@@ -175,7 +174,8 @@ void VM::execute(const ast::OperatorAssignment &assignment) {
   debug_print("Assigned: {}", value->get());
 }
 void VM::execute(const ast::Declaration &declaration) {
-  const auto &names = declaration.get_names();
+  const auto &assignment = declaration.get_name_assignment();
+  const auto &names = assignment.get_names();
   debug_print(
       "Executing declaration of {}",
       std::views::transform(names, &ast::Identifier::get_name) |
@@ -186,7 +186,7 @@ void VM::execute(const ast::Declaration &declaration) {
     declare_variable(name);
   }
 
-  execute(declaration.get_name_assignment());
+  execute(assignment);
 }
 void VM::execute(const ast::FunctionCall &function_call) {
   debug_print("Executing function call");
@@ -194,7 +194,7 @@ void VM::execute(const ast::FunctionCall &function_call) {
 }
 bool VM::execute(const ast::ElseIfList &elseif_list) {
   return std::ranges::any_of(
-      elseif_list.get_inner(), std::bind_front(&VM::evaluate_if_branch, this)
+      elseif_list.get_elseifs(), std::bind_front(&VM::evaluate_if_branch, this)
   );
 }
 void VM::execute(const ast::IfStatement &if_statement) {
@@ -232,10 +232,10 @@ RefValue VM::evaluate(const ast::FunctionCall &function_call) {
       }
   );
 
-  std::vector<RefValue> evaluated_arguments;
-  for (const auto &argument : arguments) {
-    evaluated_arguments.push_back(evaluate(argument));
-  }
+  auto evaluated_arguments =
+      arguments |
+      std::views::transform([this](const auto &arg) { return evaluate(arg); }) |
+      std::ranges::to<std::vector>();
 
   debug_print("Arguments:");
   for (const auto &argument : evaluated_arguments) {

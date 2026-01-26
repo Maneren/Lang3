@@ -1,6 +1,7 @@
 #pragma once
 
 #include "statement.hpp"
+#include "utils/accessor.h"
 #include <cstddef>
 #include <deque>
 #include <iterator>
@@ -10,7 +11,7 @@ namespace l3::ast {
 
 class Block {
   std::deque<Statement> statements;
-  std::optional<LastStatement> lastStatement;
+  std::optional<LastStatement> last_statement;
 
 public:
   Block() = default;
@@ -21,18 +22,8 @@ public:
 
   void print(std::output_iterator<char> auto &out, std::size_t depth = 0) const;
 
-  [[nodiscard]] const std::deque<Statement> &get_statements() const {
-    return statements;
-  }
-  [[nodiscard]] std::deque<Statement> &get_statements_mut() {
-    return statements;
-  }
-  [[nodiscard]] const std::optional<LastStatement> &get_last_statement() const {
-    return lastStatement;
-  }
-  [[nodiscard]] std::optional<LastStatement> &get_last_statement_mut() {
-    return lastStatement;
-  }
+  DEFINE_ACCESSOR(statements, std::deque<Statement>, statements)
+  DEFINE_ACCESSOR(last_statement, std::optional<LastStatement>, last_statement)
 };
 
 class Program : public Block {

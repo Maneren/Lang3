@@ -68,6 +68,11 @@ Nil::print(std::output_iterator<char> auto &out, std::size_t depth) const {
   detail::format_indented_line(out, depth, "Nil");
 }
 
+inline void
+Literal::print(std::output_iterator<char> auto &out, std::size_t depth) const {
+  visit([&out, depth](const auto &node) -> void { node.print(out, depth); });
+}
+
 inline void UnaryExpression::print(
     std::output_iterator<char> auto &out, std::size_t depth
 ) const {
@@ -155,7 +160,7 @@ inline void ElseIfList::print(
     std::output_iterator<char> auto &out, std::size_t depth
 ) const {
   detail::format_indented_line(out, depth, "ElseIfList");
-  for (const auto &elseif : get_inner()) {
+  for (const auto &elseif : get_elseifs()) {
     detail::format_indented_line(out, depth + 1, "ElseIf");
     elseif.print(out, depth + 2);
   }
@@ -212,10 +217,7 @@ inline void Declaration::print(
     std::output_iterator<char> auto &out, std::size_t depth
 ) const {
   detail::format_indented_line(out, depth, "Declaration");
-  detail::format_indented_line(out, depth + 1, "Names");
-  get_names().print(out, depth + 2);
-  detail::format_indented_line(out, depth + 1, "Expression");
-  get_expression().print(out, depth + 2);
+  get_name_assignment().print(out, depth + 1);
 }
 
 inline void Statement::print(
@@ -261,9 +263,9 @@ Block::print(std::output_iterator<char> auto &out, std::size_t depth) const {
   for (const Statement &statement : statements) {
     statement.print(out, depth + 1);
   }
-  if (lastStatement) {
+  if (last_statement) {
     detail::format_indented_line(out, depth + 0, "LastStatement");
-    lastStatement->print(out, depth + 1);
+    last_statement->print(out, depth + 1);
   }
 }
 
@@ -297,5 +299,82 @@ struct std::formatter<l3::ast::Identifier>
   static constexpr auto
   format(l3::ast::Identifier const &id, std::format_context &ctx) {
     return std::format_to(ctx.out(), "{}", id.get_name());
+  }
+};
+
+template <> struct std::formatter<l3::ast::UnaryOperator> {
+  static constexpr auto parse(format_parse_context &ctx) { return ctx.begin(); }
+  static constexpr auto format(l3::ast::UnaryOperator op, format_context &ctx) {
+    using namespace l3::ast;
+    switch (op) {
+    case UnaryOperator::Plus:
+      return std::format_to(ctx.out(), "Plus");
+    case UnaryOperator::Minus:
+      return std::format_to(ctx.out(), "Minus");
+    case UnaryOperator::Not:
+      return std::format_to(ctx.out(), "Not");
+    }
+  }
+};
+
+template <> struct std::formatter<l3::ast::BinaryOperator> {
+  static constexpr auto parse(format_parse_context &ctx) { return ctx.begin(); }
+  static constexpr auto
+  format(l3::ast::BinaryOperator op, format_context &ctx) {
+    using namespace l3::ast;
+    switch (op) {
+    case BinaryOperator::Plus:
+      return std::format_to(ctx.out(), "Plus");
+    case BinaryOperator::Minus:
+      return std::format_to(ctx.out(), "Minus");
+    case BinaryOperator::Multiply:
+      return std::format_to(ctx.out(), "Multiply");
+    case BinaryOperator::Divide:
+      return std::format_to(ctx.out(), "Divide");
+    case BinaryOperator::Modulo:
+      return std::format_to(ctx.out(), "Modulo");
+    case BinaryOperator::Power:
+      return std::format_to(ctx.out(), "Power");
+    case BinaryOperator::Equal:
+      return std::format_to(ctx.out(), "Equal");
+    case BinaryOperator::NotEqual:
+      return std::format_to(ctx.out(), "NotEqual");
+    case BinaryOperator::Less:
+      return std::format_to(ctx.out(), "Less");
+    case BinaryOperator::LessEqual:
+      return std::format_to(ctx.out(), "LessEqual");
+    case BinaryOperator::Greater:
+      return std::format_to(ctx.out(), "Greater");
+    case BinaryOperator::GreaterEqual:
+      return std::format_to(ctx.out(), "GreaterEqual");
+    case BinaryOperator::And:
+      return std::format_to(ctx.out(), "And");
+    case BinaryOperator::Or:
+      return std::format_to(ctx.out(), "Or");
+    }
+  }
+};
+
+template <> struct std::formatter<l3::ast::AssignmentOperator> {
+  static constexpr auto parse(format_parse_context &ctx) { return ctx.begin(); }
+  static constexpr auto
+  format(l3::ast::AssignmentOperator op, format_context &ctx) {
+    using namespace l3::ast;
+    switch (op) {
+    case AssignmentOperator::Assign:
+      return std::format_to(ctx.out(), "Assign");
+    case AssignmentOperator::Plus:
+      return std::format_to(ctx.out(), "Plus");
+    case AssignmentOperator::Minus:
+      return std::format_to(ctx.out(), "Minus");
+    case AssignmentOperator::Multiply:
+      return std::format_to(ctx.out(), "Multiply");
+    case AssignmentOperator::Divide:
+      return std::format_to(ctx.out(), "Divide");
+    case AssignmentOperator::Modulo:
+      return std::format_to(ctx.out(), "Modulo");
+    case AssignmentOperator::Power:
+      return std::format_to(ctx.out(), "Power");
+    }
   }
 };

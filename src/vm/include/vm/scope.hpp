@@ -1,5 +1,6 @@
 #pragma once
 
+#include "utils/accessor.h"
 #include "vm/storage.hpp"
 #include "vm/value.hpp"
 #include <ast/nodes/identifier.hpp>
@@ -19,14 +20,12 @@ public:
 
   RefValue &declare_variable(const ast::Identifier &id, GCValue &gc_value);
 
-  utils::optional_cref<Value>
-  get_variable(const ast::Identifier &id) const;
-  utils::optional_ref<RefValue>
-  get_variable(const ast::Identifier &id);
+  utils::optional_cref<Value> get_variable(const ast::Identifier &id) const;
+  utils::optional_ref<RefValue> get_variable(const ast::Identifier &id);
 
   bool has_variable(const ast::Identifier &id) const;
 
-  const Scope::VariableMap &get_variables() const;
+  DEFINE_ACCESSOR(variables, VariableMap, variables);
 
   void mark_gc();
 

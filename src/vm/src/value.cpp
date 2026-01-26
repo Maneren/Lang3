@@ -19,7 +19,7 @@ auto handle_bin_op(
     Handlers... handlers
 ) {
   return match::match(
-      std::forward_as_tuple(lhs.get(), rhs.get()),
+      std::forward_as_tuple(lhs.get_inner(), rhs.get_inner()),
       handlers...,
       [name](const auto &lhs, const auto &rhs) -> Result {
         throw UnsupportedOperation(name, lhs, rhs);
@@ -356,8 +356,6 @@ Primitive::Primitive(std::int64_t value) : inner{value} {}
 Primitive::Primitive(double value) : inner{value} {}
 Primitive::Primitive(const std::string &value) : inner{value} {}
 Primitive::Primitive(std::string &&value) : inner{std::move(value)} {}
-const decltype(Primitive::inner) &Primitive::get() const { return inner; }
-decltype(Primitive::inner) &Primitive::get() { return inner; }
 Value::Value() : inner{Nil{}} {}
 Value::Value(Nil /*unused*/) : inner{Nil{}} {}
 Value::Value(Primitive &&primitive) : inner{std::move(primitive)} {}
@@ -584,6 +582,26 @@ Value Value::negative() const {
       [this](const auto & /*value*/) -> Value {
         throw UnsupportedOperation("cannot negate a {} value", type_name());
       }
+  );
+}
+
+[[nodiscard]] std::string_view Primitive::type_name() const {
+  using std::string_view_literals::operator""sv;
+  return visit(
+      [](const bool & /*value*/) { return "bool"sv; },
+      [](const std::int64_t & /*value*/) { return "integer"sv; },
+      [](const double & /*value*/) { return "double"sv; },
+      [](const std::string & /*value*/) { return "string"sv; }
+  );
+}
+
+[[nodiscard]] std::string_view Value::type_name() const {
+  using std::string_view_literals::operator""sv;
+  return visit(
+      [](const Primitive &primitive) { return primitive.type_name(); },
+      [](const Nil & /*value*/) { return "nil"sv; },
+      [](const function_type & /*value*/) { return "function"sv; },
+      [](const Value::vector_type & /*value*/) { return "vector"sv; }
   );
 }
 

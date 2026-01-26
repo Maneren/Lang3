@@ -5,6 +5,7 @@
 #include "identifier.hpp"
 #include "if_else.hpp"
 #include "operator.hpp"
+#include "utils/accessor.h"
 #include "utils/match.h"
 #include <cstddef>
 #include <iterator>
@@ -26,12 +27,9 @@ public:
 
   void print(std::output_iterator<char> auto &out, std::size_t depth = 0) const;
 
-  [[nodiscard]] const Variable &get_variable() const { return var; }
-  Variable &get_variable_mut() { return var; }
-  [[nodiscard]] AssignmentOperator get_operator() const { return op; }
-  AssignmentOperator &get_operator_mut() { return op; }
-  [[nodiscard]] const Expression &get_expression() const { return expr; }
-  Expression &get_expression_mut() { return expr; }
+  DEFINE_ACCESSOR(variable, Variable, var)
+  DEFINE_VALUE_ACCESSOR(operator, AssignmentOperator, op)
+  DEFINE_ACCESSOR(expression, Expression, expr)
 };
 
 class NameAssignment {
@@ -45,10 +43,8 @@ public:
 
   void print(std::output_iterator<char> auto &out, std::size_t depth = 0) const;
 
-  [[nodiscard]] const NameList &get_names() const { return names; }
-  NameList &get_names_mut() { return names; }
-  [[nodiscard]] const Expression &get_expression() const { return expr; }
-  Expression &get_expression_mut() { return expr; }
+  DEFINE_ACCESSOR(names, NameList, names)
+  DEFINE_ACCESSOR(expression, Expression, expr)
 };
 
 using Assignment = std::variant<OperatorAssignment, NameAssignment>;
@@ -64,20 +60,7 @@ public:
 
   void print(std::output_iterator<char> auto &out, std::size_t depth = 0) const;
 
-  [[nodiscard]] const NameList &get_names() const {
-    return name_assignment.get_names();
-  }
-  NameList &get_names_mut() { return name_assignment.get_names_mut(); }
-  [[nodiscard]] const Expression &get_expression() const {
-    return name_assignment.get_expression();
-  }
-  Expression &get_expression_mut() {
-    return name_assignment.get_expression_mut();
-  }
-  [[nodiscard]] const NameAssignment &get_name_assignment() const {
-    return name_assignment;
-  }
-  NameAssignment &get_name_assignment_mut() { return name_assignment; }
+  DEFINE_ACCESSOR(name_assignment, NameAssignment, name_assignment)
   [[nodiscard]] bool is_const() const { return const_; }
 };
 
@@ -99,17 +82,13 @@ public:
   Statement &operator=(Statement &&) = default;
   ~Statement() = default;
 
-  Statement(OperatorAssignment &&assignment) : inner(std::move(assignment)) {}
-  Statement(NameAssignment &&assignment) : inner(std::move(assignment)) {}
-  Statement(Assignment &&assignment) {
-    match::match(std::move(assignment), [this](auto &&assignment) {
-      inner = std::forward<decltype(assignment)>(assignment);
-    });
-  }
-  Statement(Declaration &&declaration) : inner(std::move(declaration)) {}
-  Statement(FunctionCall &&call) : inner(std::move(call)) {}
-  Statement(IfStatement &&clause) : inner(std::move(clause)) {}
-  Statement(NamedFunction &&function) : inner(std::move(function)) {}
+  Statement(OperatorAssignment &&assignment);
+  Statement(NameAssignment &&assignment);
+  Statement(Assignment &&assignment);
+  Statement(Declaration &&declaration);
+  Statement(FunctionCall &&call);
+  Statement(IfStatement &&clause);
+  Statement(NamedFunction &&function);
 
   void print(std::output_iterator<char> auto &out, std::size_t depth = 0) const;
 
@@ -128,8 +107,7 @@ public:
 
   void print(std::output_iterator<char> auto &out, std::size_t depth = 0) const;
 
-  [[nodiscard]] const auto &get_expression() const { return expr; }
-  auto &get_expression_mut() { return expr; }
+  DEFINE_ACCESSOR(expression, std::optional<Expression>, expr)
 };
 
 class BreakStatement {

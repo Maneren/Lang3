@@ -20,7 +20,7 @@ RefValue Stack::push_value(RefValue value) {
 void Stack::mark_gc() {
   for (auto &frame : frames) {
     for (auto &value : frame) {
-      value.get_gc().mark();
+      value.get_gc_mut().mark();
     }
   }
 }

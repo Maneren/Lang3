@@ -1,6 +1,8 @@
 #pragma once
 
 #include "ast/nodes/expression_list.hpp"
+#include "utils/accessor.h"
+#include "utils/match.h"
 #include <cstddef>
 #include <iterator>
 #include <string>
@@ -17,10 +19,10 @@ class Boolean {
 
 public:
   Boolean(bool value);
+
   void print(std::output_iterator<char> auto &out, std::size_t depth = 0) const;
 
-  [[nodiscard]] const bool &get() const;
-  bool &get();
+  DEFINE_ACCESSOR(value, bool, value)
 };
 
 class Number {
@@ -28,10 +30,10 @@ class Number {
 
 public:
   Number(std::int64_t value);
+
   void print(std::output_iterator<char> auto &out, std::size_t depth = 0) const;
 
-  [[nodiscard]] const std::int64_t &get() const;
-  std::int64_t &get();
+  DEFINE_ACCESSOR(value, std::int64_t, value)
 };
 
 class Float {
@@ -39,10 +41,10 @@ class Float {
 
 public:
   Float(double value);
+
   void print(std::output_iterator<char> auto &out, std::size_t depth = 0) const;
 
-  [[nodiscard]] const double &get() const;
-  double &get();
+  DEFINE_ACCESSOR(value, double, value)
 };
 
 class String {
@@ -50,10 +52,10 @@ class String {
 
 public:
   String(const std::string &literal);
+
   void print(std::output_iterator<char> auto &out, std::size_t depth = 0) const;
 
-  [[nodiscard]] const std::string &get() const;
-  std::string &get();
+  DEFINE_ACCESSOR(value, std::string, value)
 };
 
 class Array {
@@ -65,7 +67,7 @@ public:
 
   void print(std::output_iterator<char> auto &out, std::size_t depth = 0) const;
 
-  [[nodiscard]] const ExpressionList &get() const;
+  DEFINE_ACCESSOR(elements, ExpressionList, elements)
 };
 
 class Literal {
@@ -80,15 +82,11 @@ public:
   Literal(String &&string);
   Literal(Array &&array);
 
-  void
-  print(std::output_iterator<char> auto &out, std::size_t depth = 0) const {
-    inner.visit([&out, depth](const auto &node) -> void {
-      node.print(out, depth);
-    });
-  }
+  void print(std::output_iterator<char> auto &out, std::size_t depth = 0) const;
 
-  [[nodiscard]] const auto &get() const { return inner; }
-  auto &get() { return inner; }
+  auto visit(auto &&...visitor) const -> decltype(auto) {
+    return match::match(inner, std::forward<decltype(visitor)>(visitor)...);
+  }
 };
 
 } // namespace l3::ast

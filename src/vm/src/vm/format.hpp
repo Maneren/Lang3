@@ -69,16 +69,16 @@ struct std::formatter<l3::vm::PrimitivePrettyPrinter>
 template <>
 struct std::formatter<l3::vm::L3Function>
     : utils::static_formatter<l3::vm::L3Function> {
-  static constexpr auto format(const auto &value, std::format_context &ctx) {
-    return std::format_to(ctx.out(), "function <{}>", value.get_name());
+  static constexpr auto format(const auto &obj, std::format_context &ctx) {
+    return std::format_to(ctx.out(), "function <{}>", obj.get_name());
   }
 };
 
 template <>
 struct std::formatter<l3::vm::BuiltinFunction>
     : utils::static_formatter<l3::vm::BuiltinFunction> {
-  static constexpr auto format(const auto &value, std::format_context &ctx) {
-    return std::format_to(ctx.out(), "function <{}>", value.get_name());
+  static constexpr auto format(const auto &obj, std::format_context &ctx) {
+    return std::format_to(ctx.out(), "function <{}>", obj.get_name());
   }
 };
 

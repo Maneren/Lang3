@@ -2,6 +2,7 @@
 
 #include "ast/nodes/expression_list.hpp"
 #include "identifier.hpp"
+#include "utils/accessor.h"
 #include <cstddef>
 #include <iterator>
 #include <memory>
@@ -21,10 +22,8 @@ public:
 
   void print(std::output_iterator<char> auto &out, std::size_t depth = 0) const;
 
-  [[nodiscard]] const Variable &get_name() const { return name; }
-  Variable &get_name_mut() { return name; }
-  [[nodiscard]] const Arguments &get_arguments() const { return args; }
-  Arguments &get_arguments_mut() { return args; }
+  DEFINE_ACCESSOR(name, Variable, name)
+  DEFINE_ACCESSOR(arguments, Arguments, args)
 };
 
 class Block;
@@ -46,10 +45,8 @@ public:
 
   void print(std::output_iterator<char> auto &out, std::size_t depth = 0) const;
 
-  [[nodiscard]] const NameList &get_parameters() const { return parameters; }
-  NameList &get_parameters_mut() { return parameters; }
-  [[nodiscard]] const Block &get_block() const { return *block; }
-  Block &get_block_mut() { return *block; }
+  DEFINE_ACCESSOR(parameters, NameList, parameters)
+  DEFINE_PTR_ACCESSOR(block, Block, block)
   [[nodiscard]] std::shared_ptr<Block> get_block_ptr() const { return block; }
   std::shared_ptr<Block> get_block_ptr_mut() { return block; }
 };
@@ -64,10 +61,8 @@ public:
 
   void print(std::output_iterator<char> auto &out, std::size_t depth = 0) const;
 
-  [[nodiscard]] const Identifier &get_name() const { return name; }
-  Identifier &get_name_mut() { return name; }
-  [[nodiscard]] const FunctionBody &get_body() const { return body; }
-  FunctionBody &get_body_mut() { return body; }
+  DEFINE_ACCESSOR(name, Identifier, name)
+  DEFINE_ACCESSOR(body, FunctionBody, body)
 };
 
 class AnonymousFunction {
@@ -79,8 +74,7 @@ public:
 
   void print(std::output_iterator<char> auto &out, std::size_t depth = 0) const;
 
-  [[nodiscard]] const FunctionBody &get_body() const { return body; }
-  FunctionBody &get_body_mut() { return body; }
+  DEFINE_ACCESSOR(body, FunctionBody, body)
 };
 
 } // namespace l3::ast

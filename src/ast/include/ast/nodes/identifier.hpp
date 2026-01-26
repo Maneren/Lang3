@@ -1,5 +1,6 @@
 #pragma once
 
+#include "utils/accessor.h"
 #include <compare>
 #include <cstddef>
 #include <deque>
@@ -17,10 +18,9 @@ public:
   Identifier(std::string &&id);
   Identifier(std::string_view id);
 
-  [[nodiscard]] const std::string &get_name() const;
-  [[nodiscard]] std::string &get_name_mut() { return id; }
-
   void print(std::output_iterator<char> auto &out, std::size_t depth = 0) const;
+
+  DEFINE_ACCESSOR(name, std::string, id);
 
   std::compare_three_way operator<=>(const Identifier &) const = default;
 };
@@ -34,8 +34,7 @@ public:
 
   void print(std::output_iterator<char> auto &out, std::size_t depth = 0) const;
 
-  [[nodiscard]] const Identifier &get_identifier() const;
-  Identifier &get_identifier_mut() { return id; }
+  DEFINE_ACCESSOR(identifier, Identifier, id);
 };
 
 class NameList : public std::deque<Identifier> {

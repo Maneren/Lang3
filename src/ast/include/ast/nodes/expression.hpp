@@ -5,6 +5,7 @@
 #include "if_else.hpp"
 #include "literal.hpp"
 #include "operator.hpp"
+#include "utils/accessor.h"
 #include <cstddef>
 #include <iterator>
 #include <memory>
@@ -25,10 +26,8 @@ public:
 
   void print(std::output_iterator<char> auto &out, std::size_t depth = 0) const;
 
-  [[nodiscard]] UnaryOperator get_op() const { return op; }
-  [[nodiscard]] UnaryOperator &get_op_mut() { return op; }
-  [[nodiscard]] const auto &get_expr() const { return *expr; }
-  [[nodiscard]] auto &get_expr_mut() { return *expr; }
+  DEFINE_VALUE_ACCESSOR(op, UnaryOperator, op)
+  DEFINE_PTR_ACCESSOR(expr, Expression, expr)
 };
 
 class BinaryExpression {
@@ -42,12 +41,9 @@ public:
 
   void print(std::output_iterator<char> auto &out, std::size_t depth = 0) const;
 
-  [[nodiscard]] const auto &get_lhs() const { return *lhs; }
-  [[nodiscard]] auto &get_lhs_mut() { return *lhs; }
-  [[nodiscard]] const auto &get_rhs() const { return *rhs; }
-  [[nodiscard]] auto &get_rhs_mut() { return *rhs; }
-  [[nodiscard]] BinaryOperator get_op() const { return op; }
-  [[nodiscard]] BinaryOperator &get_op_mut() { return op; }
+  DEFINE_PTR_ACCESSOR(lhs, Expression, lhs)
+  DEFINE_PTR_ACCESSOR(rhs, Expression, rhs)
+  DEFINE_VALUE_ACCESSOR(op, BinaryOperator, op)
 };
 
 class IndexExpression {
@@ -60,10 +56,8 @@ public:
 
   void print(std::output_iterator<char> auto &out, std::size_t depth = 0) const;
 
-  [[nodiscard]] const auto &get_base() const { return *base; }
-  [[nodiscard]] auto &get_base_mut() { return *base; }
-  [[nodiscard]] const auto &get_index() const { return *index; }
-  [[nodiscard]] auto &get_index_mut() { return *index; }
+  DEFINE_PTR_ACCESSOR(base, Expression, base)
+  DEFINE_PTR_ACCESSOR(index, Expression, index)
 };
 
 class Expression {

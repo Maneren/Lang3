@@ -48,7 +48,7 @@ RefValue L3Function::operator()(VM &vm, L3Args args) {
 
   auto arguments = Scope{};
   for (auto [parameter, arg] : std::views::zip(parameters, args)) {
-    arguments.declare_variable(parameter, arg.get_gc());
+    arguments.declare_variable(parameter, arg.get_gc_mut());
   }
 
   if (args.size() < parameters.size()) {

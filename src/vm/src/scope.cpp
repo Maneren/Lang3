@@ -22,7 +22,7 @@ Scope::get_variable(const ast::Identifier &id) const {
   if (present == variables.end()) {
     return std::nullopt;
   }
-  return std::optional{std::cref(present->second.get())};
+  return std::optional{std::cref(*present->second)};
 }
 utils::optional_ref<RefValue> Scope::get_variable(const ast::Identifier &id) {
   auto present = variables.find(id);
@@ -57,9 +57,9 @@ void format_args(const std::output_iterator<char> auto &out, L3Args args) {
   if (args.empty()) {
     return;
   }
-  std::format_to(out, "{}", ValuePrettyPrinter(args[0].get()));
+  std::format_to(out, "{}", ValuePrettyPrinter(*args[0]));
   for (const auto &arg : args | std::views::drop(1)) {
-    std::format_to(out, " {}", ValuePrettyPrinter(arg.get()));
+    std::format_to(out, " {}", ValuePrettyPrinter(*arg));
   }
 }
 
@@ -257,7 +257,7 @@ RefValue len(VM &vm, L3Args args) {
   if (args.size() != 1) {
     throw RuntimeError("len takes exactly one arguments");
   }
-  return args[0].get().visit(
+  return args[0]->visit(
       [&vm](const Value::vector_type &vector) -> RefValue {
         return vm.store_value(
             Value{Primitive{static_cast<std::int64_t>(vector.size())}}
@@ -301,11 +301,10 @@ Scope::BuiltinsMap Scope::_builtins = create_builtins();
 
 Scope::Scope(VariableMap &&variables) : variables{std::move(variables)} {};
 const Scope::BuiltinsMap &Scope::builtins() { return _builtins; }
-const Scope::VariableMap &Scope::get_variables() const { return variables; }
 
 void Scope::mark_gc() {
   for (auto &[name, it] : variables) {
-    it.get_gc().mark();
+    it.get_gc_mut().mark();
   }
 }
 bool Scope::has_variable(const ast::Identifier &id) const {

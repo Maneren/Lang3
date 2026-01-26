@@ -1,5 +1,6 @@
 #pragma once
 
+#include "utils/accessor.h"
 #include <format>
 #include <forward_list>
 #include <iostream>
@@ -19,8 +20,7 @@ struct GCValue {
 
   [[nodiscard]] bool is_marked() const { return marked; }
 
-  [[nodiscard]] const Value &get() const { return *value; }
-  Value &get() { return *value; }
+  DEFINE_PTR_ACCESSOR(value, Value, value);
 
 private:
   bool marked = false;
@@ -30,11 +30,10 @@ private:
 struct RefValue {
   explicit RefValue(GCValue &gc_value) : gc_value{gc_value} {}
 
-  [[nodiscard]] const Value &get() const { return gc_value.get().get(); }
-  [[nodiscard]] Value &get() { return gc_value.get().get(); }
+  [[nodiscard]] const Value &get() const { return get_gc().get_value(); }
+  [[nodiscard]] Value &get() { return get_gc_mut().get_value_mut(); }
 
-  [[nodiscard]] const GCValue &get_gc() const { return gc_value.get(); }
-  [[nodiscard]] GCValue &get_gc() { return gc_value.get(); }
+  DEFINE_ACCESSOR(gc, GCValue, gc_value);
 
   [[nodiscard]] Value &operator*() { return get(); }
   [[nodiscard]] const Value &operator*() const { return get(); }

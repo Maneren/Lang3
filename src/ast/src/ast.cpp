@@ -26,14 +26,8 @@ char decode_escape(char c) {
 } // namespace
 
 Boolean::Boolean(bool value) : value(value) {}
-const bool &Boolean::get() const { return value; }
-bool &Boolean::get() { return value; }
 Number::Number(std::int64_t value) : value(value) {}
-const std::int64_t &Number::get() const { return value; }
-std::int64_t &Number::get() { return value; }
 Float::Float(double value) : value(value) {}
-const double &Float::get() const { return value; }
-double &Float::get() { return value; }
 String::String(const std::string &literal) {
   using namespace std::ranges;
 
@@ -52,8 +46,6 @@ String::String(const std::string &literal) {
     }
   }
 }
-const std::string &String::get() const { return value; }
-std::string &String::get() { return value; }
 Literal::Literal(Nil nil) : inner(nil) {}
 Literal::Literal(Boolean boolean) : inner(boolean) {}
 Literal::Literal(Number num) : inner(num) {}
@@ -72,8 +64,6 @@ BinaryExpression::BinaryExpression(
 
 Identifier::Identifier(std::string &&id) : id(std::move(id)) {}
 Identifier::Identifier(std::string_view id) : id(id) {}
-const std::string &Identifier::get_name() const { return id; }
-const Identifier &Variable::get_identifier() const { return id; }
 Variable::Variable(Identifier &&id) : id(std::move(id)) {}
 
 NameList::NameList(Identifier &&ident) { emplace_front(std::move(ident)); }
@@ -148,7 +138,7 @@ IfStatement &IfStatement::operator=(IfStatement &&) noexcept = default;
 IfStatement::~IfStatement() = default;
 
 Block::Block(LastStatement &&lastStatement)
-    : lastStatement(std::move(lastStatement)) {}
+    : last_statement(std::move(lastStatement)) {}
 Block::Block(Statement &&statement) {
   statements.emplace_front(std::move(statement));
 }
@@ -163,13 +153,33 @@ utils::optional_cref<Block> IfStatement::get_else_block() const {
     return std::cref(*block);
   });
 }
+utils::optional_ref<Block> IfStatement::get_else_block_mut() {
+  return else_block.transform([](const auto &block) {
+    return std::ref(*block);
+  });
+}
 
 Array::Array() = default;
 Array::Array(ExpressionList &&elements) : elements(std::move(elements)) {}
-const ExpressionList &Array::get() const { return elements; }
 
 ElseIfList &ElseIfList::with_if(IfBase &&if_base) {
   inner.push_back(std::move(if_base));
   return *this;
 }
+
+Statement::Statement(Assignment &&assignment) {
+  match::match(std::move(assignment), [this](auto &&assignment) {
+    inner = std::forward<decltype(assignment)>(assignment);
+  });
+}
+Statement::Statement(OperatorAssignment &&assignment)
+    : inner(std::move(assignment)) {}
+Statement::Statement(NameAssignment &&assignment)
+    : inner(std::move(assignment)) {}
+Statement::Statement(Declaration &&declaration)
+    : inner(std::move(declaration)) {}
+Statement::Statement(FunctionCall &&call) : inner(std::move(call)) {}
+Statement::Statement(IfStatement &&clause) : inner(std::move(clause)) {}
+Statement::Statement(NamedFunction &&function) : inner(std::move(function)) {}
+
 } // namespace l3::ast

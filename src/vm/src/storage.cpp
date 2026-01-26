@@ -20,7 +20,7 @@ size_t GCStorage::sweep() {
   // Remove all unmarked items from the front to ensure we start from a marked
   // value
   while (!backing_store.empty() && !backing_store.front().is_marked()) {
-    debug_print("[GC] Erasing {}", backing_store.front().get());
+    debug_print("[GC] Erasing {}", backing_store.front().get_value());
     backing_store.pop_front();
     ++erased;
   }
@@ -36,7 +36,7 @@ size_t GCStorage::sweep() {
   while (std::next(iter) != backing_store.end()) {
     auto next = std::next(iter);
     if (!next->is_marked()) {
-      debug_print("[GC] Erasing {}", next->get());
+      debug_print("[GC] Erasing {}", next->get_value());
       backing_store.erase_after(iter);
       ++erased;
     } else {
@@ -51,9 +51,9 @@ size_t GCStorage::sweep() {
 void GCValue::mark() {
   marked = true;
 
-  if (auto vec = get().as_mut_vector()) {
+  if (auto vec = get_value_mut().as_mut_vector()) {
     for (auto &item : vec->get()) {
-      item.get_gc().mark();
+      item.get_gc_mut().mark();
     }
   }
 }

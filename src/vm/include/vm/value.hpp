@@ -1,5 +1,6 @@
 #pragma once
 
+#include "utils/accessor.h"
 #include "vm/storage.hpp"
 #include <ast/nodes/identifier.hpp>
 #include <cstddef>
@@ -47,20 +48,11 @@ public:
     return match::match(inner, std::forward<decltype(visitor)>(visitor)...);
   }
 
-  [[nodiscard]] const decltype(inner) &get() const;
-  [[nodiscard]] decltype(inner) &get();
+  DEFINE_ACCESSOR(inner, decltype(inner), inner);
 
   [[nodiscard]] bool is_truthy() const;
 
-  [[nodiscard]] constexpr std::string_view type_name() const {
-    using std::string_view_literals::operator""sv;
-    return visit(
-        [](const bool & /*value*/) { return "bool"sv; },
-        [](const std::int64_t & /*value*/) { return "integer"sv; },
-        [](const double & /*value*/) { return "double"sv; },
-        [](const std::string & /*value*/) { return "string"sv; }
-    );
-  }
+  [[nodiscard]] std::string_view type_name() const;
 };
 
 Primitive operator+(const Primitive &lhs, const Primitive &rhs);
@@ -149,15 +141,7 @@ public:
 
   [[nodiscard]] Value slice(Slice slice) const;
 
-  [[nodiscard]] constexpr std::string_view type_name() const {
-    using std::string_view_literals::operator""sv;
-    return visit(
-        [](const Primitive &primitive) { return primitive.type_name(); },
-        [](const Nil & /*value*/) { return "nil"sv; },
-        [](const function_type & /*value*/) { return "function"sv; },
-        [](const Value::vector_type & /*value*/) { return "vector"sv; }
-    );
-  }
+  [[nodiscard]] std::string_view type_name() const;
 
 private:
   [[nodiscard]] Value binary_op(
