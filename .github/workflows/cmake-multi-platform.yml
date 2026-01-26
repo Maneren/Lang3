@@ -67,6 +67,21 @@ jobs:
       - name: Setup Just
         uses: extractions/setup-just@v2
 
+      - name: Install Bison and Flex
+        shell: bash
+        run: |
+          if [[ "$RUNNER_OS" == "Linux" ]]; then
+            sudo apt-get install -y bison flex
+          elif [[ "$RUNNER_OS" == "macOS" ]]; then
+            brew install bison flex
+            # shellcheck disable=SC2016
+            echo 'export PATH="/opt/homebrew/opt/bison/bin:/opt/homebrew/opt/flex/bin:$PATH"' \
+              >> /Users/runner/.bash_profile
+          elif [[ "$RUNNER_OS" == "Windows" ]]; then
+            winget install --id=WinFlexBison.win_flex_bison \
+              -e --accept-source-agreements and --accept-package-agreements
+          fi
+
       - name: Configure via Just
         run: >
           just configure Ninja \
