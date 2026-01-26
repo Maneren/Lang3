@@ -25,16 +25,15 @@ namespace l3::vm {
 RefValue VM::evaluate(const ast::UnaryExpression &unary) {
   debug_print("Evaluating unary expression {}", unary.get_op());
   const auto argument = evaluate(unary.get_expr());
-  const auto &argument_ref = argument.get();
   switch (unary.get_op()) {
   case ast::UnaryOperator::Minus: {
-    return store_value(argument_ref.not_op());
+    return store_value(argument->negative());
   }
   case ast::UnaryOperator::Plus: {
     return argument;
   }
   case ast::UnaryOperator::Not: {
-    return store_value(argument_ref.not_op());
+    return store_value(argument->not_op());
   }
   }
   throw std::runtime_error("unreachable");
