@@ -1,6 +1,7 @@
 #include "vm/vm.hpp"
 #include "vm/error.hpp"
 #include "vm/format.hpp"
+#include "vm/scope.hpp"
 #include "vm/value.hpp"
 #include <algorithm>
 #include <ast/ast.hpp>
@@ -432,28 +433,6 @@ RefValue VM::store_new_value(NewValue &&value) {
       [this](Value &&value) { return store_value(std::move(value)); },
       [](RefValue value) { return value; }
   );
-}
-
-std::vector<RefValue> &Stack::top_frame() { return frames.back(); };
-void Stack::push_frame() {
-  debug_print("Pushing frame");
-  frames.emplace_back();
-}
-void Stack::pop_frame() {
-  debug_print("Popping frame");
-  frames.pop_back();
-}
-RefValue Stack::push_value(RefValue value) {
-  debug_print("Pushing value '{}' on stack", value);
-  top_frame().push_back(value);
-  return value;
-}
-void Stack::mark_gc() {
-  for (auto &frame : frames) {
-    for (auto &value : frame) {
-      value.get_gc().mark();
-    }
-  }
 }
 
 void VM::execute(const ast::NameAssignment &assignment) {

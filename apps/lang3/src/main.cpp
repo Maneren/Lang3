@@ -3,7 +3,6 @@
 #include <cli/cli.hpp>
 #include <cstdlib>
 #include <fstream>
-#include <functional>
 #include <iostream>
 #include <parser/lexer.hpp>
 #include <print>

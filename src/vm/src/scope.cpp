@@ -1,5 +1,4 @@
 #include "vm/scope.hpp"
-#include "utils/match.h"
 #include "vm/error.hpp"
 #include "vm/format.hpp"
 #include "vm/function.hpp"
