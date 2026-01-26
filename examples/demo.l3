@@ -37,14 +37,11 @@ end
 
 # Error handling via abort
 fn div(a, b)
-  if b == 0 then
-    error("cannot divide by zero")
-  else
-    return a / b
-  end
+  assert(b != 0, "cannot divide by zero")
+  return a / b
 end
 
-div(10, 0)
+# div(10, 0)
 
 # Conditional expression
 let message = if not (0 <= c and c < 10 or not (b == 0 and a == 0)) then
@@ -58,18 +55,14 @@ println(message)
 # Optimized for functional coding style
 let arr = [1, 2, 3, 4]
 
-fn print_array(arr)
-  if not arr then return end
-
+fn stringify(arr)
   let x, xs = head(arr)
-  print(x)
 
-  if xs then
-    print(", ")
-    print_array(xs)
+  return if xs then
+    return str(x) + ", " + stringify(xs)
   else
-    println()
+    return str(x)
   end
 end
 
-print_array(arr)
+println(stringify(arr))
