@@ -127,7 +127,7 @@ IfExpression::IfExpression(IfBase &&base_if, Block &&else_block)
     : IfElseBase(std::move(base_if)),
       else_block(std::make_unique<Block>(std::move(else_block))) {}
 IfExpression::IfExpression(
-    IfBase &&base_if, std::vector<IfBase> &&elseif, Block &&else_block
+    IfBase &&base_if, ElseIfList &&elseif, Block &&else_block
 )
     : IfElseBase(std::move(base_if), std::move(elseif)),
       else_block(std::make_unique<Block>(std::move(else_block))) {}
@@ -168,4 +168,8 @@ Array::Array() = default;
 Array::Array(ExpressionList &&elements) : elements(std::move(elements)) {}
 const ExpressionList &Array::get() const { return elements; }
 
+ElseIfList &ElseIfList::with_if(IfBase &&if_base) {
+  inner.push_back(std::move(if_base));
+  return *this;
+}
 } // namespace l3::ast

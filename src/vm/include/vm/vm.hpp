@@ -69,6 +69,7 @@ private:
   void execute(const ast::FunctionCall &function_call);
   void execute(const ast::IfStatement &if_statement);
   void execute(const ast::IfElseBase &if_else_base);
+  bool execute(const ast::ElseIfList &elseif_list);
   void execute(const ast::NamedFunction &named_function);
 
   void execute(const auto &node) {

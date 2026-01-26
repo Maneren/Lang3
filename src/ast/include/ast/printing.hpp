@@ -151,15 +151,22 @@ IfBase::print(std::output_iterator<char> auto &out, std::size_t depth) const {
   block->print(out, depth);
 }
 
+inline void ElseIfList::print(
+    std::output_iterator<char> auto &out, std::size_t depth
+) const {
+  detail::format_indented_line(out, depth, "ElseIfList");
+  for (const auto &elseif : get_inner()) {
+    detail::format_indented_line(out, depth + 1, "ElseIf");
+    elseif.print(out, depth + 2);
+  }
+}
+
 inline void IfExpression::print(
     std::output_iterator<char> auto &out, std::size_t depth
 ) const {
   detail::format_indented_line(out, depth, "IfExpression");
   get_base_if().print(out, depth + 1);
-  for (const auto &elseif : get_elseif()) {
-    detail::format_indented_line(out, depth + 1, "ElseIf");
-    elseif.print(out, depth + 2);
-  }
+  get_elseif().print(out, depth + 1);
   detail::format_indented_line(out, depth + 1, "Else");
   else_block->print(out, depth + 2);
 }
@@ -169,10 +176,7 @@ inline void IfStatement::print(
 ) const {
   detail::format_indented_line(out, depth, "IfStatement");
   get_base_if().print(out, depth + 1);
-  for (const auto &elseif : get_elseif()) {
-    detail::format_indented_line(out, depth + 1, "ElseIf");
-    elseif.print(out, depth + 2);
-  }
+  get_elseif().print(out, depth + 1);
   if (else_block) {
     detail::format_indented_line(out, depth + 1, "Else");
     else_block.value()->print(out, depth + 2);

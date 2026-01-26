@@ -194,13 +194,15 @@ void VM::execute(const ast::FunctionCall &function_call) {
   debug_print("Executing function call");
   auto _ = evaluate(function_call);
 }
+bool VM::execute(const ast::ElseIfList &elseif_list) {
+  return std::ranges::any_of(
+      elseif_list.get_inner(), std::bind_front(&VM::evaluate_if_branch, this)
+  );
+}
 void VM::execute(const ast::IfStatement &if_statement) {
   debug_print("Evaluating if statement");
   if (evaluate_if_branch(if_statement.get_base_if()) ||
-      std::ranges::any_of(
-          if_statement.get_elseif(),
-          std::bind_front(&VM::evaluate_if_branch, this)
-      )) {
+      execute(if_statement.get_elseif())) {
     return;
   }
 
@@ -211,10 +213,7 @@ void VM::execute(const ast::IfStatement &if_statement) {
 }
 void VM::execute(const ast::IfElseBase &if_else_base) {
   if (evaluate_if_branch(if_else_base.get_base_if()) ||
-      std::ranges::any_of(
-          if_else_base.get_elseif(),
-          std::bind_front(&VM::evaluate_if_branch, this)
-      )) {
+      execute(if_else_base.get_elseif())) {
     return;
   }
 }

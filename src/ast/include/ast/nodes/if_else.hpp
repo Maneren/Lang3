@@ -28,7 +28,24 @@ public:
   Block &get_block_mut() { return *block; }
 };
 
-using ElseIfList = std::vector<IfBase>;
+class ElseIfList {
+  std::vector<IfBase> inner;
+
+public:
+  ElseIfList() = default;
+  ElseIfList(const ElseIfList &) = delete;
+  ElseIfList(ElseIfList &&) noexcept = default;
+  ElseIfList &operator=(const ElseIfList &) = delete;
+  ElseIfList &operator=(ElseIfList &&) noexcept = default;
+  ~ElseIfList() = default;
+
+  ElseIfList &with_if(IfBase &&if_base);
+
+  void print(std::output_iterator<char> auto &out, std::size_t depth = 0) const;
+
+  [[nodiscard]] const std::vector<IfBase> &get_inner() const { return inner; }
+  std::vector<IfBase> &get_inner_mut() { return inner; }
+};
 
 class IfElseBase {
   IfBase base_if;
@@ -63,9 +80,7 @@ public:
   ~IfExpression() override;
 
   IfExpression(IfBase &&base_if, Block &&else_block);
-  IfExpression(
-      IfBase &&base_if, std::vector<IfBase> &&elseif, Block &&else_block
-  );
+  IfExpression(IfBase &&base_if, ElseIfList &&elseif, Block &&else_block);
 
   IfExpression &&with_elseif(IfBase &&elseif);
 
@@ -87,12 +102,10 @@ public:
   ~IfStatement() override;
 
   IfStatement(IfBase &&base_if);
-  IfStatement(IfBase &&base_if, std::vector<IfBase> &&elseif);
-  IfStatement(
-      IfBase &&base_if, std::vector<IfBase> &&elseif, Block &&else_block
-  );
+  IfStatement(IfBase &&base_if, ElseIfList &&elseif);
+  IfStatement(IfBase &&base_if, ElseIfList &&elseif, Block &&else_block);
 
-  IfStatement &&with_elseif(IfBase &&elseif);
+  // IfStatement &&with_elseif(IfBase &&elseif);
 
   void print(std::output_iterator<char> auto &out, std::size_t depth = 0) const;
 
