@@ -1,4 +1,5 @@
 #include "vm/scope.hpp"
+#include "utils/match.h"
 #include "vm/error.hpp"
 #include "vm/format.hpp"
 #include "vm/function.hpp"
@@ -24,8 +25,7 @@ Scope::get_variable(const ast::Identifier &id) const {
   }
   return std::optional{std::cref(present->second.get())};
 }
-utils::optional_ref<RefValue>
-Scope::get_variable(const ast::Identifier &id) {
+utils::optional_ref<RefValue> Scope::get_variable(const ast::Identifier &id) {
   auto present = variables.find(id);
   if (present == variables.end()) {
     return std::nullopt;
@@ -162,6 +162,17 @@ RefValue to_int(VM &vm, L3Args args) {
   return vm.store_value(Value{Primitive{value}});
 }
 
+RefValue to_string(VM &vm, L3Args args) {
+  if (args.size() != 1) {
+    throw RuntimeError("to_string takes one arguments");
+  }
+
+  std::string result;
+  format_args(std::back_inserter(result), args);
+
+  return vm.store_value(Value{Primitive{std::move(result)}});
+}
+
 RefValue head(VM &vm, L3Args args) {
   if (args.empty()) {
     throw RuntimeError("head takes at least one arguments");
@@ -278,6 +289,7 @@ Scope::BuiltinsMap create_builtins() {
       wrap_native_function("input", input),
       wrap_native_function("__trigger_gc", trigger_gc),
       wrap_native_function("int", to_int),
+      wrap_native_function("str", to_string),
       wrap_native_function("head", head),
       wrap_native_function("tail", tail),
       wrap_native_function("len", len)
