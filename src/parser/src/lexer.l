@@ -5,7 +5,9 @@
     using namespace l3;
 
     #undef  YY_DECL
-    #define YY_DECL int L3Lexer::lex(L3Parser::semantic_type *lval, location *lloc)
+    #define YY_DECL int lexer::L3Lexer::lex( \
+        parser::L3Parser::semantic_type *lval, \
+        parser::location *lloc)
 
     #define YY_USER_INIT yylval = lval; yylloc = lloc;
 
@@ -26,7 +28,7 @@ FLOAT    [+-]?({DIGIT}+\.{DIGIT}*|\.{DIGIT}+)
 %%
 
 %{
-    using Token = L3Parser::token;
+    using Token = parser::L3Parser::token;
 %}
 
 {FLOAT}                     { yylval->emplace<double>(std::stod(yytext)); return Token::fnum; }

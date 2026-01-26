@@ -24,6 +24,8 @@ cli::Parser cli_parser() {
 
 } // namespace
 
+using namespace l3;
+
 int main(int argc, char *argv[]) {
   const auto args = cli_parser().parse(argc, argv);
 
@@ -61,11 +63,11 @@ int main(int argc, char *argv[]) {
   } else if (debug_parser) {
     std::println(std::cerr, "=== Parser ===");
   }
-  l3::L3Lexer lexer(*input, debug_lexer);
+  lexer::L3Lexer lexer(*input, debug_lexer);
 
-  auto program = l3::ast::Program{};
+  auto program = ast::Program{};
 
-  l3::L3Parser parser(lexer, filename, debug_parser, program);
+  parser::L3Parser parser(lexer, filename, debug_parser, program);
   const auto result = parser.parse();
 
   if (timings) {
@@ -94,7 +96,7 @@ int main(int argc, char *argv[]) {
     std::println(std::cerr, "=== VM ===");
   }
 
-  l3::vm::VM vm{debug_vm};
+  vm::VM vm{debug_vm};
 
   start_time = std::chrono::steady_clock::now();
 
