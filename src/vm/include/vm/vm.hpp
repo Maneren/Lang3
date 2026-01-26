@@ -10,7 +10,6 @@
 #include <optional>
 #include <print>
 #include <span>
-#include <stdexcept>
 #include <utils/debug.h>
 #include <vector>
 
@@ -50,14 +49,6 @@ private:
   bool execute(const ast::ElseIfList &elseif_list);
   void execute(const ast::NamedFunction &named_function);
 
-  void execute(const auto &node) {
-    throw std::runtime_error(
-        std::format(
-            "execution not implemented: {}", utils::debug::type_name(node)
-        )
-    );
-  }
-
   [[nodiscard]] RefValue evaluate(const ast::Expression &expression);
   [[nodiscard]] RefValue evaluate(const ast::Literal &literal);
   [[nodiscard]] RefValue evaluate(const ast::Variable &variable);
@@ -68,14 +59,6 @@ private:
   [[nodiscard]] RefValue evaluate(const ast::AnonymousFunction &anonymous);
   [[nodiscard]] RefValue evaluate(const ast::FunctionCall &function_call);
   [[nodiscard]] RefValue evaluate(const ast::IfExpression &if_expr);
-
-  RefValue evaluate(const auto &node) const {
-    throw std::runtime_error(
-        std::format(
-            "evaluation not implemented: {}", utils::debug::type_name(node)
-        )
-    );
-  }
 
   [[nodiscard]] utils::optional_cref<Value>
   read_variable(const ast::Identifier &id) const;

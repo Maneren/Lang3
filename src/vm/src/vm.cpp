@@ -5,9 +5,6 @@
 #include "vm/value.hpp"
 #include <algorithm>
 #include <ast/ast.hpp>
-#include <cpptrace/from_current.hpp>
-#include <cpptrace/from_current_macros.hpp>
-#include <exception>
 #include <format>
 #include <functional>
 #include <iostream>
@@ -254,18 +251,12 @@ void VM::execute(const ast::Statement &statement) {
   statement.visit([this](const auto &stmt) { execute(stmt); });
 }
 void VM::execute(const ast::Program &program) {
-  CPPTRACE_TRY {
-    try {
-      for (const auto &statement : program.get_statements()) {
-        execute(statement);
-      }
-    } catch (const RuntimeError &error) {
-      std::println(std::cerr, "{}: {}", error.type(), error.what());
+  try {
+    for (const auto &statement : program.get_statements()) {
+      execute(statement);
     }
-  }
-  CPPTRACE_CATCH(const std::exception &e) {
-    std::println(std::cerr, "Exception: {}", e.what());
-    cpptrace::from_current_exception().print();
+  } catch (const RuntimeError &error) {
+    std::println(std::cerr, "{}: {}", error.type(), error.what());
   }
 }
 
