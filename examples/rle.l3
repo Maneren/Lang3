@@ -41,7 +41,9 @@ fn rle_decoder(data)
     let count = int(x)
     let y, ys = head(xs)
 
-    if y == "[" then y, ys = load_brackets(ys) end
+    if y == "[" then
+      y, ys = load_brackets(ys)
+    end
 
     return count * rle_decoder(y) + rle_decoder(ys)
   elif x == "[" then

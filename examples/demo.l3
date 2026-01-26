@@ -54,3 +54,22 @@ else
 end
 
 println(message)
+
+# Optimized for functional coding style
+let arr = [1, 2, 3, 4]
+
+fn print_array(arr)
+  if not arr then return end
+
+  let x, xs = head(arr)
+  print(x)
+
+  if xs then
+    print(", ")
+    print_array(xs)
+  else
+    println()
+  end
+end
+
+print_array(arr)
