@@ -6,6 +6,8 @@
 
 namespace match {
 
+/// Convert a set of lambdas into a single overloaded callable object.
+/// @tparam Ts The types of the lambdas.
 template <class... Ts> struct Overloaded : Ts... {
   using Ts::operator()...;
 };
@@ -13,9 +15,13 @@ template <class... Ts> struct Overloaded : Ts... {
 // Deduction guide for C++17
 template <class... Ts> Overloaded(Ts...) -> Overloaded<Ts...>;
 
-/// Pattern matching on a single std::variant.
-/// Combines multiple lambdas into a single callable object and applies them to
-/// the given variant.
+/// Pattern matching on a std::variant.
+/// Takes a variant and a set of lambdas and applies the matching lambda to the
+/// variant according to the contained alternative.
+/// It is require that exactly one lambda matches each variant alternative
+/// (there may be more than one alternative per lambda) and that all lamdas have
+/// the same return type. The matching follows the standard overload resolution
+/// rules.
 /// @tparam Variant The type of the variant.
 /// @tparam Visitors The types of the visitor lambdas.
 /// @param variant The variant to match.
@@ -33,8 +39,8 @@ constexpr decltype(auto) match(Variant &&variant, Visitors &&...visitors) {
 }
 
 /// Pattern matching on multiple std::variants (Cartesian product of
-/// alternatives). Combines multiple lambdas into a single callable object and
-/// applies them to all combinations of variant alternatives.
+/// alternatives). Same as match(Variant &&variant, Visitors &&...visitors)
+/// except that the lambdas take multiple arguments.
 /// @tparam Variants The types of the variants.
 /// @tparam Visitors The types of the visitor lambdas.
 /// @param variants Tuple of variants to match.
