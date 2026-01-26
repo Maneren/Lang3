@@ -15,10 +15,10 @@ struct std::formatter<l3::vm::Nil> : utils::static_formatter<l3::vm::Nil> {
 
 namespace l3::vm {
 struct PrimitivePrettyPrinter {
-  const Primitive &primitive;
+  const Primitive &primitive; // NOLINT
 };
 struct ValuePrettyPrinter {
-  const Value &value;
+  const Value &value; // NOLINT
 };
 } // namespace l3::vm
 
@@ -27,8 +27,7 @@ struct std::formatter<l3::vm::Primitive>
     : utils::static_formatter<l3::vm::Primitive> {
   static constexpr auto
   format(const auto &primitive, std::format_context &ctx) {
-    return match::match(
-        primitive,
+    return primitive.visit(
         [&ctx](const bool &value) {
           return std::format_to(ctx.out(), "{}", value);
         },

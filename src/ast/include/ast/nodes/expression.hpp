@@ -66,36 +66,42 @@ public:
   [[nodiscard]] auto &get_index_mut() { return *index; }
 };
 
-using ExpressionVariant = std::variant<
-    Literal,
-    UnaryExpression,
-    BinaryExpression,
-    Variable,
-    FunctionCall,
-    IndexExpression,
-    AnonymousFunction,
-    IfExpression
-    // Table
-    >;
+class Expression {
+  using ExpressionVariant = std::variant<
+      Literal,
+      UnaryExpression,
+      BinaryExpression,
+      Variable,
+      FunctionCall,
+      IndexExpression,
+      AnonymousFunction,
+      IfExpression
+      // Table
+      >;
 
-class Expression : public ExpressionVariant {
+  ExpressionVariant inner;
+
 public:
   Expression() = default;
 
-  Expression(Literal &&literal) : ExpressionVariant(std::move(literal)) {}
-  Expression(UnaryExpression &&expression)
-      : ExpressionVariant(std::move(expression)) {}
-  Expression(BinaryExpression &&expression)
-      : ExpressionVariant(std::move(expression)) {}
-  Expression(Variable &&var) : ExpressionVariant(std::move(var)) {}
-  Expression(FunctionCall &&call) : ExpressionVariant(std::move(call)) {}
-  Expression(IndexExpression &&index) : ExpressionVariant(std::move(index)) {}
-  Expression(AnonymousFunction &&function)
-      : ExpressionVariant(std::move(function)) {}
-  Expression(IfExpression &&clause) : ExpressionVariant(std::move(clause)) {}
+  Expression(Literal &&literal) : inner(std::move(literal)) {}
+  Expression(UnaryExpression &&expression) : inner(std::move(expression)) {}
+  Expression(BinaryExpression &&expression) : inner(std::move(expression)) {}
+  Expression(Variable &&var) : inner(std::move(var)) {}
+  Expression(FunctionCall &&call) : inner(std::move(call)) {}
+  Expression(IndexExpression &&index) : inner(std::move(index)) {}
+  Expression(AnonymousFunction &&function) : inner(std::move(function)) {}
+  Expression(IfExpression &&clause) : inner(std::move(clause)) {}
   // Expression(Table &&table) : inner(std::move(table)) {}
 
   void print(std::output_iterator<char> auto &out, std::size_t depth = 0) const;
+
+  auto visit(auto &&visitor) const -> decltype(auto) {
+    return std::visit(visitor, inner);
+  }
+  auto visit(auto &&visitor) -> decltype(auto) {
+    return std::visit(visitor, inner);
+  }
 };
 
 } // namespace l3::ast

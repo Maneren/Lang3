@@ -31,7 +31,7 @@ template <typename Result, typename... Handlers>
 auto handle_un_op(
     std::string_view name, const Primitive &value, Handlers... handlers
 ) {
-  return match::match(value, handlers..., [name](const auto &value) -> Result {
+  return value.visit(handlers..., [name](const auto &value) -> Result {
     throw UnsupportedOperation(name, value);
   });
 }
@@ -319,16 +319,13 @@ bool Value::is_truthy() const {
   );
 }
 
-std::optional<
-    std::reference_wrapper<const Primitive::string_type>>
+std::optional<std::reference_wrapper<const Primitive::string_type>>
 Primitive::as_string() const {
   return visit(
-      [](const string_type &value)
-          -> utils::optional_cref<string_type> {
+      [](const string_type &value) -> utils::optional_cref<string_type> {
         return std::cref(value);
       },
-      [](const auto &)
-          -> utils::optional_cref<string_type> {
+      [](const auto &) -> utils::optional_cref<string_type> {
         return std::nullopt;
       }
   );
@@ -354,13 +351,13 @@ std::optional<bool> Primitive::as_bool() const {
   );
 }
 
-Primitive::Primitive(bool value) : PrimitiveType{value} {}
-Primitive::Primitive(std::int64_t value) : PrimitiveType{value} {}
-Primitive::Primitive(double value) : PrimitiveType{value} {}
-Primitive::Primitive(const std::string &value) : PrimitiveType{value} {}
-Primitive::Primitive(std::string &&value) : PrimitiveType{std::move(value)} {}
-const PrimitiveType &Primitive::get() const { return *this; }
-PrimitiveType &Primitive::get() { return *this; }
+Primitive::Primitive(bool value) : inner{value} {}
+Primitive::Primitive(std::int64_t value) : inner{value} {}
+Primitive::Primitive(double value) : inner{value} {}
+Primitive::Primitive(const std::string &value) : inner{value} {}
+Primitive::Primitive(std::string &&value) : inner{std::move(value)} {}
+const decltype(Primitive::inner) &Primitive::get() const { return inner; }
+decltype(Primitive::inner) &Primitive::get() { return inner; }
 Value::Value() : inner{Nil{}} {}
 Value::Value(Nil /*unused*/) : inner{Nil{}} {}
 Value::Value(Primitive &&primitive) : inner{std::move(primitive)} {}
@@ -469,8 +466,7 @@ NewValue Value::index(size_t index) const {
   );
 }
 
-using copt_primitive_type =
-    utils::optional_cref<Primitive>;
+using copt_primitive_type = utils::optional_cref<Primitive>;
 
 copt_primitive_type Value::as_primitive() const {
   return visit(
@@ -481,8 +477,7 @@ copt_primitive_type Value::as_primitive() const {
   );
 }
 
-using copt_function_type =
-    utils::optional_cref<Value::function_type>;
+using copt_function_type = utils::optional_cref<Value::function_type>;
 
 copt_function_type Value::as_function() const {
   return visit(
@@ -492,8 +487,7 @@ copt_function_type Value::as_function() const {
       [](const auto &) -> copt_function_type { return std::nullopt; }
   );
 }
-using copt_vector_type =
-    utils::optional_cref<Value::vector_type>;
+using copt_vector_type = utils::optional_cref<Value::vector_type>;
 copt_vector_type Value::as_vector() const {
   return visit(
       [](const Value::vector_type &vector) -> copt_vector_type {
@@ -502,8 +496,7 @@ copt_vector_type Value::as_vector() const {
       [](const auto &) -> copt_vector_type { return std::nullopt; }
   );
 }
-using opt_vector_type =
-    utils::optional_ref<Value::vector_type>;
+using opt_vector_type = utils::optional_ref<Value::vector_type>;
 opt_vector_type Value::as_mut_vector() {
   return visit(
       [](Value::vector_type &vector) -> opt_vector_type { return vector; },

@@ -22,8 +22,9 @@ namespace l3::vm {
 
 struct Nil {};
 
-using PrimitiveType = std::variant<bool, std::int64_t, double, std::string>;
-class Primitive : public PrimitiveType {
+class Primitive {
+  std::variant<bool, std::int64_t, double, std::string> inner;
+
 public:
   using string_type = std::string;
   explicit Primitive(bool value);
@@ -43,11 +44,11 @@ public:
   [[nodiscard]] utils::optional_cref<string_type> as_string() const;
 
   auto visit(auto &&...visitor) const {
-    return match::match(*this, std::forward<decltype(visitor)>(visitor)...);
+    return match::match(inner, std::forward<decltype(visitor)>(visitor)...);
   }
 
-  [[nodiscard]] const PrimitiveType &get() const;
-  [[nodiscard]] PrimitiveType &get();
+  [[nodiscard]] const decltype(inner) &get() const;
+  [[nodiscard]] decltype(inner) &get();
 
   [[nodiscard]] bool is_truthy() const;
 
