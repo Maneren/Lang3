@@ -132,11 +132,13 @@ public:
   auto &get_expression_mut() { return expr; }
 };
 
-struct BreakStatement {
+class BreakStatement {
+public:
   void print(std::output_iterator<char> auto &out, std::size_t depth = 0) const;
 };
 
-struct ContinueStatement {
+class ContinueStatement {
+public:
   void print(std::output_iterator<char> auto &out, std::size_t depth = 0) const;
 };
 
