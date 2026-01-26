@@ -26,13 +26,13 @@ char decode_escape(char c) {
 } // namespace
 
 Boolean::Boolean(bool value) : value(value) {}
-[[nodiscard]] const bool &Boolean::get() const { return value; }
+const bool &Boolean::get() const { return value; }
 bool &Boolean::get() { return value; }
 Number::Number(std::int64_t value) : value(value) {}
-[[nodiscard]] const std::int64_t &Number::get() const { return value; }
+const std::int64_t &Number::get() const { return value; }
 std::int64_t &Number::get() { return value; }
 Float::Float(double value) : value(value) {}
-[[nodiscard]] const double &Float::get() const { return value; }
+const double &Float::get() const { return value; }
 double &Float::get() { return value; }
 String::String(const std::string &literal) {
   using namespace std::ranges;
@@ -52,7 +52,7 @@ String::String(const std::string &literal) {
     }
   }
 }
-[[nodiscard]] const std::string &String::get() const { return value; }
+const std::string &String::get() const { return value; }
 std::string &String::get() { return value; }
 Literal::Literal(Nil nil) : inner(nil) {}
 Literal::Literal(Boolean boolean) : inner(boolean) {}
@@ -72,8 +72,8 @@ BinaryExpression::BinaryExpression(
 
 Identifier::Identifier(std::string &&id) : id(std::move(id)) {}
 Identifier::Identifier(std::string_view id) : id(id) {}
-[[nodiscard]] const std::string &Identifier::get_name() const { return id; }
-[[nodiscard]] const Identifier &Variable::get_identifier() const { return id; }
+const std::string &Identifier::get_name() const { return id; }
+const Identifier &Variable::get_identifier() const { return id; }
 Variable::Variable(Identifier &&id) : id(std::move(id)) {}
 
 NameList::NameList(Identifier &&ident) { emplace_front(std::move(ident)); }

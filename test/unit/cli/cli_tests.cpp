@@ -12,7 +12,7 @@ public:
   explicit ArgvHelper(std::initializer_list<const char *> args)
       : args_(args), argv_(args_.data()) {}
 
-  [[nodiscard]] int argc() const { return static_cast<int>(args_.size()); }
+  int argc() const { return static_cast<int>(args_.size()); }
   const char **argv() { return argv_; }
 
 private:

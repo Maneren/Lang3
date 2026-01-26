@@ -319,7 +319,7 @@ bool Value::is_truthy() const {
   );
 }
 
-[[nodiscard]] std::optional<
+std::optional<
     std::reference_wrapper<const Primitive::string_type>>
 Primitive::as_string() const {
   return visit(
@@ -333,13 +333,13 @@ Primitive::as_string() const {
       }
   );
 }
-[[nodiscard]] std::optional<double> Primitive::as_double() const {
+std::optional<double> Primitive::as_double() const {
   return visit(
       [](const double &value) -> std::optional<double> { return value; },
       [](const auto &) -> std::optional<double> { return std::nullopt; }
   );
 }
-[[nodiscard]] std::optional<std::int64_t> Primitive::as_integer() const {
+std::optional<std::int64_t> Primitive::as_integer() const {
   return visit(
       [](const std::int64_t &value) -> std::optional<std::int64_t> {
         return value;
@@ -347,7 +347,7 @@ Primitive::as_string() const {
       [](const auto &) -> std::optional<std::int64_t> { return std::nullopt; }
   );
 }
-[[nodiscard]] std::optional<bool> Primitive::as_bool() const {
+std::optional<bool> Primitive::as_bool() const {
   return visit(
       [](const bool &value) -> std::optional<bool> { return value; },
       [](const auto &) -> std::optional<bool> { return std::nullopt; }
@@ -574,7 +574,7 @@ Value Value::slice(Slice slice) const {
   );
 }
 
-[[nodiscard]] Value Value::not_op() const {
+Value Value::not_op() const {
   return visit(
       [](const Primitive &primitive) -> Value { return Value{!primitive}; },
       [this](const auto & /*value*/) -> Value {
@@ -583,9 +583,9 @@ Value Value::slice(Slice slice) const {
   );
 }
 
-// [[nodiscard]] Value Value::positive() const {}
+// Value Value::positive() const {}
 
-[[nodiscard]] Value Value::negative() const {
+Value Value::negative() const {
   return visit(
       [](const Primitive &primitive) -> Value { return Value{-primitive}; },
       [this](const auto & /*value*/) -> Value {

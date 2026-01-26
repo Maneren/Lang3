@@ -386,7 +386,7 @@ RefValue VM::evaluate(const ast::AnonymousFunction &anonymous) {
   return store_value(Function{L3Function{scopes, anonymous}});
 }
 
-[[nodiscard]] RefValue VM::evaluate(const ast::IndexExpression &index_ex) {
+RefValue VM::evaluate(const ast::IndexExpression &index_ex) {
   auto base = evaluate(index_ex.get_base());
   auto index = evaluate(index_ex.get_index());
   return store_new_value(base->index(*index));
