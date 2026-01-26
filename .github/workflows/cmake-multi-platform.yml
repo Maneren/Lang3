@@ -1,57 +1,82 @@
 name: CMake on multiple platforms
-
 on:
-  push:
-    branches: ["master"]
   pull_request:
-    branches: ["master"]
-
+  push:
+    branches:
+      - main
+      - master
 jobs:
-  build:
+  test:
+    env:
+      BUILD_TYPE: Release
     runs-on: ${{ matrix.os }}
-
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
-        build_type: [Release]
-        c_compiler: [gcc, clang]
+        os:
+          - windows-2025
+          - ubuntu-24.04
+          - macos-26
+          - macos-15-intel
+        compiler:
+          - name: llvm
+            c: clang
+            cpp: clang++
+          - name: gcc
+            c: gcc
+            cpp: g++
         include:
-          - os: macos-latest
-            c_compiler: clang
-            cpp_compiler: clang++
-          - os: ubuntu-latest
-            c_compiler: gcc
-            cpp_compiler: g++
-          - os: ubuntu-latest
-            c_compiler: clang
-            cpp_compiler: clang++
-          - os: macos-latest
-            c_compiler: gcc
-            cpp_compiler: g++-13
-
+          - os: windows-2025
+            compiler:
+              name: msvc
+              c: cl
+              cpp: cl
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Cache
+        uses: actions/cache@v5
         with:
-          submodules: recursive
-      - name: Set reusable strings
-        id: strings
-        shell: bash
-        run: |
-          echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
-          
+          path: |
+            ~/vcpkg
+            ~/.cache/vcpkg/archives
+            ${{ env.LOCALAPPDATA }}/vcpkg/archives
+            ${{ env.APPDATA }}/vcpkg/archives
+            ${{ env.XDG_CACHE_HOME }}/vcpkg/archives
+            ~/.cache/ccache
+            ~/.ccache
+            ~/.config/ccache
+            ~/Library/Caches/ccache
+            ${{ env.LOCALAPPDATA }}/ccache
+            ${{ env.XDG_CACHE_HOME }}/ccache
+          key: |
+            ${{ runner.os }}-${{ matrix.compiler.name }}-${{ env.BUILD_TYPE }}-${{ hashFiles('**/CMakeLists.txt', './vcpkg.json') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ matrix.compiler.name }}-${{ env.BUILD_TYPE }} -
+
+      - name: Setup Cpp
+        uses: aminya/setup-cpp@v1
+        with:
+          compiler: ${{ matrix.compiler.name }}
+          cmake: true
+          ninja: true
+          clang-tidy: true
+          clang-format: true
+          ccache: true
+
       - name: Setup Just
         uses: extractions/setup-just@v2
-        
+
       - name: Configure via Just
         run: >
-          just configure "Ninja Multi-Config"\
-            "-DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }}" \
-            "-DCMAKE_C_COMPILER=${{ matrix.c_compiler }}" \
-            "-DCMAKE_BUILD_TYPE=${{ matrix.build_type }}"
+          just configure Ninja \
+            "-DCMAKE_CXX_COMPILER=${{ matrix.compiler.cpp}}" \
+            "-DCMAKE_C_COMPILER=${{ matrix.compiler.c}}" \
+            "-DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}" \
+            "-DSANITIZERS=ON"
 
       - name: Build via Just
-        run: just build ${{ matrix.build_type }}
+        run: just build
 
       - name: Test via Just
-        run: just test ${{ matrix.build_type }}
+        run: just test
