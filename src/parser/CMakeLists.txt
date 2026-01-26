@@ -21,6 +21,7 @@ add_custom_command(
   DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/lexer.l
   COMMENT "Generating lexer with flex"
   VERBATIM
+  CODEGEN
 )
 
 add_custom_command(
@@ -34,6 +35,7 @@ add_custom_command(
   DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/parser.y
   COMMENT "Generating parser with bison"
   VERBATIM
+  CODEGEN
 )
 
 auto_create_library(${LIB_NAME}

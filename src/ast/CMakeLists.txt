@@ -16,6 +16,7 @@ add_custom_command(
   DEPENDS ${AST_HEADERS}
   COMMENT "Generating forward AST header"
   VERBATIM
+  CODEGEN
 )
 
 auto_create_library(${LIB_NAME}

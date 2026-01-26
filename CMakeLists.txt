@@ -1,9 +1,10 @@
-cmake_minimum_required(VERSION 3.25)
+cmake_minimum_required(VERSION 3.31)
 
 set(PROJECT "Lang3")
 project(${PROJECT})
 
 set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_CXX_SCAN_FOR_MODULES OFF)
 set(DEFAULT_CXX_STD 26)
 
 set(CMAKE_INSTALL_PREFIX ${PROJECT_SOURCE_DIR})
