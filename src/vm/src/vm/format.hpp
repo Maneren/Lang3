@@ -2,7 +2,7 @@
 
 #include "vm/function.hpp"
 #include "vm/storage.hpp"
-#include <ast/printing.hpp>
+#include <ast/ast.hpp>
 #include <utils/format.h>
 
 template <>

@@ -1,9 +1,9 @@
 #pragma once
 
-#include "utils/accessor.h"
 #include "vm/storage.hpp"
 #include "vm/value.hpp"
-#include <ast/nodes/identifier.hpp>
+#include <ast/ast.hpp>
+#include <utils/accessor.h>
 
 namespace l3::vm {
 

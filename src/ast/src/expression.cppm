@@ -1,18 +1,20 @@
-#pragma once
+module;
 
-#include "function.hpp"
-#include "identifier.hpp"
-#include "if_else.hpp"
-#include "literal.hpp"
-#include "operator.hpp"
-#include "utils/accessor.h"
-#include <cstddef>
-#include <iterator>
 #include <memory>
-#include <utility>
+#include <utils/accessor.h>
+#include <utils/match.h>
 #include <variant>
 
-namespace l3::ast {
+export module l3.ast:expression;
+
+import :function;
+import :identifier;
+import :if_else;
+import :literal;
+import :operators;
+import :printing;
+
+export namespace l3::ast {
 
 class Expression;
 
@@ -24,7 +26,7 @@ public:
   UnaryExpression() = default;
   UnaryExpression(UnaryOperator op, Expression &&expr);
 
-  void print(std::output_iterator<char> auto &out, std::size_t depth = 0) const;
+  void print(std::output_iterator<char> auto &out, std::size_t depth) const;
 
   DEFINE_VALUE_ACCESSOR(op, UnaryOperator, op)
   DEFINE_PTR_ACCESSOR(expr, Expression, expr)
@@ -60,20 +62,34 @@ public:
   DEFINE_PTR_ACCESSOR(index, Expression, index)
 };
 
+class FunctionCall {
+  Variable name;
+  ExpressionList args;
+
+public:
+  FunctionCall() = default;
+  FunctionCall(Variable &&name, ExpressionList &&args)
+      : name(std::move(name)), args(std::move(args)) {}
+
+  void print(std::output_iterator<char> auto &out, std::size_t depth = 0) const;
+
+  DEFINE_ACCESSOR(name, Variable, name)
+  DEFINE_ACCESSOR(arguments, ExpressionList, args)
+};
+
 class Expression {
-  using ExpressionVariant = std::variant<
+  std::variant<
       Literal,
       UnaryExpression,
       BinaryExpression,
       Variable,
-      FunctionCall,
       IndexExpression,
+      FunctionCall,
       AnonymousFunction,
       IfExpression
       // Table
-      >;
-
-  ExpressionVariant inner;
+      >
+      inner;
 
 public:
   Expression() = default;
@@ -88,14 +104,46 @@ public:
   Expression(IfExpression &&clause) : inner(std::move(clause)) {}
   // Expression(Table &&table) : inner(std::move(table)) {}
 
-  void print(std::output_iterator<char> auto &out, std::size_t depth = 0) const;
+  void
+  print(std::output_iterator<char> auto &out, std::size_t depth = 0) const {
+    visit([&out, depth](const auto &node) -> void { node.print(out, depth); });
+  }
 
-  auto visit(auto &&visitor) const -> decltype(auto) {
-    return std::visit(visitor, inner);
-  }
-  auto visit(auto &&visitor) -> decltype(auto) {
-    return std::visit(visitor, inner);
-  }
+  VISIT(inner)
 };
+
+void UnaryExpression::print(
+    std::output_iterator<char> auto &out, std::size_t depth
+) const {
+  format_indented_line(out, depth, "UnaryExpression {}", op);
+  expr->print(out, depth + 1);
+}
+
+void BinaryExpression::print(
+    std::output_iterator<char> auto &out, std::size_t depth
+) const {
+  format_indented_line(out, depth, "BinaryExpression {}", op);
+  lhs->print(out, depth + 1);
+  rhs->print(out, depth + 1);
+}
+
+void IndexExpression::print(
+    std::output_iterator<char> auto &out, std::size_t depth
+) const {
+  format_indented_line(out, depth, "IndexExpression");
+  base->print(out, depth + 1);
+  index->print(out, depth + 1);
+}
+
+void FunctionCall::print(
+    std::output_iterator<char> auto &out, std::size_t depth
+) const {
+  format_indented_line(out, depth, "FunctionCall");
+  name.print(out, depth + 1);
+  format_indented_line(out, depth + 1, "Arguments");
+  for (const auto &arg : args) {
+    arg.print(out, depth + 2);
+  }
+}
 
 } // namespace l3::ast

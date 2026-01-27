@@ -1,14 +1,16 @@
-#pragma once
+module;
 
-#include <cstddef>
-#include <iterator>
 #include <memory>
-#include <optional>
 #include <utils/accessor.h>
+#include <utils/match.h>
 #include <utils/types.h>
 #include <vector>
 
-namespace l3::ast {
+export module l3.ast:if_else;
+
+import :printing;
+
+export namespace l3::ast {
 
 class Block;
 class Expression;
@@ -40,7 +42,14 @@ public:
 
   ElseIfList &with_if(IfBase &&if_base);
 
-  void print(std::output_iterator<char> auto &out, std::size_t depth = 0) const;
+  void
+  print(std::output_iterator<char> auto &out, std::size_t depth = 0) const {
+    format_indented_line(out, depth, "ElseIfList");
+    for (const auto &elseif : get_elseifs()) {
+      format_indented_line(out, depth + 1, "ElseIf");
+      elseif.print(out, depth + 2);
+    }
+  }
 
   DEFINE_ACCESSOR(elseifs, std::vector<IfBase>, inner)
 };

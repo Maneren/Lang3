@@ -1,5 +1,5 @@
 #include "vm/error.hpp"
-#include <ast/nodes/identifier.hpp>
+#include <ast/ast.hpp>
 #include <stdexcept>
 #include <string>
 

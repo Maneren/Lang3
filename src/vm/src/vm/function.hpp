@@ -2,7 +2,7 @@
 
 #include "utils/accessor.h"
 #include "vm/value.hpp"
-#include <ast/nodes/function.hpp>
+#include <ast/ast.hpp>
 #include <memory>
 #include <optional>
 #include <vector>

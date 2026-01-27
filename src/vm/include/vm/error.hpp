@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ast/nodes/identifier.hpp>
+#include <ast/ast.hpp>
 #include <format>
 #include <stdexcept>
 #include <string>

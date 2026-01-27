@@ -39,8 +39,7 @@ add_custom_command(
 )
 
 auto_create_library(${LIB_NAME}
-  HEADER_DEPS ast_headers
-  INTERFACE_DEPS ast
+  PUBLIC_DEPS ast
   EXTRA_SOURCES ${LEXER_CPP} ${PARSER_CPP}
 )
 

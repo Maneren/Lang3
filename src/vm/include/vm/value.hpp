@@ -2,7 +2,7 @@
 
 #include "utils/accessor.h"
 #include "vm/storage.hpp"
-#include <ast/nodes/identifier.hpp>
+#include <ast/ast.hpp>
 #include <cstddef>
 #include <functional>
 #include <string>

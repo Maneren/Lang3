@@ -12,9 +12,7 @@ function(set_compiler_and_linker_flags TARGET)
     )
 
     if(ARGS_CXX_STD)
-        target_compile_features(${TARGET} PUBLIC cxx_std_${ARGS_CXX_STD})
-    else()
-        target_compile_features(${TARGET} PUBLIC cxx_std_${DEFAULT_CXX_STD})
+        set_target_properties(${TARGET} PROPERTIES CXX_STANDARD ${ARGS_CXX_STD})
     endif()
 
     set(CXX_GNU_DEBUG_INFO -g3 -gdwarf-5 -fno-omit-frame-pointer)

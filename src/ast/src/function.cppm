@@ -1,30 +1,16 @@
-#pragma once
+module;
 
-#include "ast/nodes/expression_list.hpp"
-#include "identifier.hpp"
-#include "utils/accessor.h"
-#include <cstddef>
-#include <iterator>
 #include <memory>
-#include <utility>
+#include <utils/accessor.h>
+#include <utils/match.h>
 
-namespace l3::ast {
+export module l3.ast:function;
 
-using Arguments = ExpressionList;
+import :identifier;
+import :literal;
+import :printing;
 
-class FunctionCall {
-  Variable name;
-  Arguments args;
-
-public:
-  FunctionCall() = default;
-  FunctionCall(Variable &&name, Arguments &&args);
-
-  void print(std::output_iterator<char> auto &out, std::size_t depth = 0) const;
-
-  DEFINE_ACCESSOR(name, Variable, name)
-  DEFINE_ACCESSOR(arguments, Arguments, args)
-};
+export namespace l3::ast {
 
 class Block;
 
@@ -39,7 +25,8 @@ public:
   FunctionBody &operator=(const FunctionBody &) = default;
   FunctionBody &operator=(FunctionBody &&) noexcept;
   FunctionBody(NameList &&parameters, Block &&block);
-  FunctionBody(NameList &&parameters, std::shared_ptr<Block> &&block);
+  FunctionBody(NameList &&parameters, std::shared_ptr<Block> &&block)
+      : parameters(std::move(parameters)), block(std::move(block)) {};
 
   ~FunctionBody();
 
@@ -57,9 +44,15 @@ class NamedFunction {
 
 public:
   NamedFunction() = default;
-  NamedFunction(Identifier &&name, FunctionBody &&body);
+  NamedFunction(Identifier &&name, FunctionBody &&body)
+      : name(std::move(name)), body(std::move(body)) {}
 
-  void print(std::output_iterator<char> auto &out, std::size_t depth = 0) const;
+  void
+  print(std::output_iterator<char> auto &out, std::size_t depth = 0) const {
+    format_indented_line(out, depth, "NamedFunction");
+    name.print(out, depth + 1);
+    body.print(out, depth + 1);
+  };
 
   DEFINE_ACCESSOR(name, Identifier, name)
   DEFINE_ACCESSOR(body, FunctionBody, body)
@@ -72,7 +65,11 @@ public:
   AnonymousFunction() = default;
   AnonymousFunction(FunctionBody &&body) : body(std::move(body)) {}
 
-  void print(std::output_iterator<char> auto &out, std::size_t depth = 0) const;
+  void
+  print(std::output_iterator<char> auto &out, std::size_t depth = 0) const {
+    format_indented_line(out, depth, "AnonymousFunction");
+    body.print(out, depth + 1);
+  }
 
   DEFINE_ACCESSOR(body, FunctionBody, body)
 };

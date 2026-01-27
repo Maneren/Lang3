@@ -14,3 +14,11 @@
 #define DEFINE_PTR_ACCESSOR(name, type, member)                                \
   [[nodiscard]] const type &get_##name() const { return *member; }             \
   type &get_##name##_mut() { return *member; }
+
+#define VISIT(name)                                                            \
+  auto visit(auto &&...visitor) const -> decltype(auto) {                      \
+    return match::match(name, std::forward<decltype(visitor)>(visitor)...);    \
+  }                                                                            \
+  auto visit(auto &&...visitor) -> decltype(auto) {                            \
+    return match::match(name, std::forward<decltype(visitor)>(visitor)...);    \
+  }

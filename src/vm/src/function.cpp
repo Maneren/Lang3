@@ -3,9 +3,9 @@
 #include "vm/scope.hpp"
 #include "vm/value.hpp"
 #include "vm/vm.hpp"
-#include <ast/nodes/function.hpp>
-#include <ast/nodes/identifier.hpp>
-#include <ast/printing.hpp>
+#include <ast/ast.hpp>
+#include <ast/ast.hpp>
+#include <ast/ast.hpp>
 #include <memory>
 #include <optional>
 #include <ranges>

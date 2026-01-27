@@ -3,7 +3,7 @@
 #include "vm/stack.hpp"
 #include "vm/storage.hpp"
 #include "vm/value.hpp"
-#include <ast/forward.hpp>
+#include <ast/ast.hpp>
 #include <format>
 #include <iostream>
 #include <memory>
