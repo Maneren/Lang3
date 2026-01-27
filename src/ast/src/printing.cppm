@@ -5,6 +5,8 @@ module;
 
 export module l3.ast:printing;
 
+namespace {
+
 constexpr void indent(std::output_iterator<char> auto &out, std::size_t depth) {
   for (std::size_t i = 0; i < depth; ++i) {
     std::format_to(out, "▏ ");
@@ -33,3 +35,5 @@ constexpr void format_indented_line(
   std::format_to(out, fmt, std::forward<Args>(args)...);
   std::format_to(out, "\n");
 }
+
+} // namespace

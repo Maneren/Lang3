@@ -1,5 +1,3 @@
-module;
-
 export module l3.ast;
 
 export import :block;
