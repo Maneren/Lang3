@@ -1,11 +1,23 @@
 module;
 
-#include <iterator>
 #include <utility>
 
 module l3.ast;
 
 import :expression;
+
+char decode_escape(char c) {
+  switch (c) {
+  case '\\':
+    return '\\';
+  case 'n':
+    return '\n';
+  case 't':
+    return '\t';
+  default:
+    return c;
+  }
+}
 
 namespace l3::ast {
 

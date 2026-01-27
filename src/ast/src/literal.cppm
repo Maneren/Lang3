@@ -3,24 +3,14 @@ module;
 #include <deque>
 #include <ranges>
 #include <utils/accessor.h>
+#include <utils/match.h>
 #include <variant>
 
 export module l3.ast:literal;
 
 import :printing;
 
-char decode_escape(char c) {
-  switch (c) {
-  case '\\':
-    return '\\';
-  case 'n':
-    return '\n';
-  case 't':
-    return '\t';
-  default:
-    return c;
-  }
-}
+char decode_escape(char c);
 
 export namespace l3::ast {
 
