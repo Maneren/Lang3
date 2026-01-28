@@ -1,7 +1,7 @@
 #pragma once
 
 #include "utils/accessor.h"
-#include <format>
+#include "vm/value.hpp"
 #include <forward_list>
 #include <iostream>
 #include <memory>
@@ -9,40 +9,32 @@
 
 namespace l3::vm {
 
-class Value;
-
 struct GCValue {
-  GCValue(const std::shared_ptr<Value> &value) : value{value} {}
-  GCValue(std::shared_ptr<Value> &&value) : value{std::move(value)} {}
+  GCValue(Value &&value);
+  GCValue(const GCValue &) = delete;
+  GCValue(GCValue &&other) noexcept
+      : marked{other.marked}, value{std::move(other.value)} {
+    other.marked = false;
+  }
+  GCValue &operator=(const GCValue &) = delete;
+  GCValue &operator=(GCValue &&other) noexcept {
+    marked = other.marked;
+    value = std::move(other.value);
+    other.marked = false;
+    return *this;
+  }
+  ~GCValue() = default;
 
   void mark();
   void unmark() { marked = false; }
 
   [[nodiscard]] bool is_marked() const { return marked; }
 
-  DEFINE_PTR_ACCESSOR(value, Value, value);
+  DEFINE_ACCESSOR(value, Value, value);
 
 private:
   bool marked = false;
-  std::shared_ptr<Value> value;
-};
-
-struct RefValue {
-  explicit RefValue(GCValue &gc_value) : gc_value{gc_value} {}
-
-  [[nodiscard]] const Value &get() const { return get_gc().get_value(); }
-  [[nodiscard]] Value &get() { return get_gc_mut().get_value_mut(); }
-
-  DEFINE_ACCESSOR(gc, GCValue, gc_value);
-
-  [[nodiscard]] Value &operator*() { return get(); }
-  [[nodiscard]] const Value &operator*() const { return get(); }
-
-  Value *operator->() { return &get(); }
-  const Value *operator->() const { return &get(); }
-
-private:
-  std::reference_wrapper<GCValue> gc_value;
+  Value value;
 };
 
 class GCStorage {
@@ -51,7 +43,7 @@ public:
   size_t sweep();
 
   GCValue &emplace(Value &&value);
-  GCValue &emplace(const std::shared_ptr<Value> &value);
+  GCValue &emplace(std::unique_ptr<Value> &&value);
 
   static GCValue &nil() { return NIL; }
 

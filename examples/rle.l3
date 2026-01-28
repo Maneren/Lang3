@@ -10,7 +10,7 @@
 
 fn load_brackets_inner(depth, acc, data)
   if not data then
-    error("invalid input")
+    error("Encountered EOF while parsing brackets")
   end
 
   let x, xs = head(data)
@@ -36,10 +36,10 @@ fn rle_decoder(data)
   let x, xs = head(data)
 
   if "0" <= x and x <= "9" then
-    if not xs then error("invalid input") end
+    if not xs then error("Number can't be followed by EOF") end
 
     let count = int(x)
-    let y, ys = head(xs)
+    let mut y, ys = head(xs)
 
     if y == "[" then
       y, ys = load_brackets(ys)

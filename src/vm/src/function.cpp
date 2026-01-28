@@ -4,12 +4,9 @@
 #include "vm/value.hpp"
 #include "vm/vm.hpp"
 #include <ast/ast.hpp>
-#include <ast/ast.hpp>
-#include <ast/ast.hpp>
 #include <memory>
 #include <optional>
 #include <ranges>
-#include <span>
 #include <utility>
 #include <vector>
 
@@ -30,7 +27,7 @@ L3Function::L3Function(
 L3Function::L3Function(
     std::vector<std::shared_ptr<Scope>> &&active_scopes,
     ast::FunctionBody body,
-    std::optional<ast::Identifier> name
+    std::optional<Identifier> name
 )
     : capture_scopes{std::move(active_scopes)}, body{std::move(body)},
       name{std::move(name)} {};
@@ -48,7 +45,7 @@ RefValue L3Function::operator()(VM &vm, L3Args args) {
 
   auto arguments = Scope{};
   for (auto [parameter, arg] : std::views::zip(parameters, args)) {
-    arguments.declare_variable(parameter, arg.get_gc_mut());
+    arguments.declare_variable(parameter, arg, Mutability::Mutable);
   }
 
   if (args.size() < parameters.size()) {
@@ -70,16 +67,14 @@ RefValue L3Function::operator()(VM &vm, L3Args args) {
 
 L3Function::~L3Function() = default;
 
-const ast::Identifier &L3Function::get_name() const {
+const Identifier &L3Function::get_name() const {
   if (name.has_value()) {
     return name.value();
   }
   return anonymous_function_name;
 }
 
-ast::Identifier L3Function::anonymous_function_name{
-    std::string_view{"<anonymous>"}
-};
+Identifier L3Function::anonymous_function_name{std::string_view{"<anonymous>"}};
 
 Function::Function(L3Function &&function) : inner{std::move(function)} {}
 Function::Function(BuiltinFunction &&function) : inner{std::move(function)} {}
@@ -88,7 +83,7 @@ RefValue Function::operator()(VM &vm, L3Args args) {
   return inner.visit([&vm, &args](auto &func) { return func(vm, args); });
 };
 
-BuiltinFunction::BuiltinFunction(ast::Identifier &&name, Body &&body)
+BuiltinFunction::BuiltinFunction(Identifier &&name, Body &&body)
     : name{std::move(name)}, body{std::move(body)} {}
 RefValue BuiltinFunction::operator()(VM &vm, L3Args args) const {
   return body(vm, args);

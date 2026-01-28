@@ -5,26 +5,23 @@
 #include "vm/value.hpp"
 #include "vm/vm.hpp"
 #include <functional>
-#include <memory>
 #include <optional>
 #include <print>
 #include <ranges>
-#include <span>
 #include <string>
-#include <string_view>
 #include <utility>
+#include <utils/format.h>
 
 namespace l3::vm {
 
-utils::optional_cref<Value>
-Scope::get_variable(const ast::Identifier &id) const {
+utils::optional_cref<Variable> Scope::get_variable(const Identifier &id) const {
   auto present = variables.find(id);
   if (present == variables.end()) {
     return std::nullopt;
   }
-  return std::optional{std::cref(*present->second)};
+  return std::optional{std::cref(present->second)};
 }
-utils::optional_ref<RefValue> Scope::get_variable(const ast::Identifier &id) {
+utils::optional_ref<Variable> Scope::get_variable_mut(const Identifier &id) {
   auto present = variables.find(id);
   if (present == variables.end()) {
     return std::nullopt;
@@ -32,25 +29,26 @@ utils::optional_ref<RefValue> Scope::get_variable(const ast::Identifier &id) {
   return std::optional{std::ref(present->second)};
 }
 
-RefValue &
-Scope::declare_variable(const ast::Identifier &id, GCValue &gc_value) {
+Variable &Scope::declare_variable(
+    const Identifier &id, RefValue ref_value, Mutability mut
+) {
   const auto present = variables.find(id);
   if (present != variables.end()) {
     throw NameError("variable '{}' already declared", id.get_name());
   }
-  auto &[_, value] = *variables.emplace_hint(present, id, std::ref(gc_value));
+  auto &[_, value] =
+      *variables.emplace_hint(present, id, Variable{ref_value, mut});
   return value;
 }
 
 namespace {
 
-std::pair<ast::Identifier, std::shared_ptr<Value>>
+std::pair<Identifier, GCValue>
 wrap_native_function(std::string_view name, BuiltinFunction::Body function) {
-  auto function_ptr = std::make_shared<Value>(
-      BuiltinFunction{ast::Identifier{name}, std::move(function)}
-  );
-
-  return {ast::Identifier{name}, function_ptr};
+  return {
+      Identifier{name},
+      GCValue{Value{BuiltinFunction{Identifier{name}, std::move(function)}}}
+  };
 }
 
 void format_args(const std::output_iterator<char> auto &out, L3Args args) {
@@ -146,8 +144,7 @@ RefValue to_int(VM &vm, L3Args args) {
       [base](const std::string &string) {
         std::int64_t value = 0;
 
-        if (auto result =
-                std::from_chars(string.data(), &*string.end(), value, base)) {
+        if (std::from_chars(string.data(), &*string.end(), value, base)) {
           return value;
         }
 
@@ -280,34 +277,49 @@ RefValue len(VM &vm, L3Args args) {
 }
 
 Scope::BuiltinsMap create_builtins() {
-  return {
-      wrap_native_function("print", print),
-      wrap_native_function("println", println),
-      wrap_native_function("error", error),
-      wrap_native_function("assert", l3_assert),
-      wrap_native_function("input", input),
-      wrap_native_function("__trigger_gc", trigger_gc),
-      wrap_native_function("int", to_int),
-      wrap_native_function("str", to_string),
-      wrap_native_function("head", head),
-      wrap_native_function("tail", tail),
-      wrap_native_function("len", len)
-  };
+  Scope::BuiltinsMap builtins;
+
+  for (const auto &[name, value] :
+       std::initializer_list<std::pair<std::string, BuiltinFunction::Body>>{
+           {"print", print},
+           {"println", println},
+           {"error", error},
+           {"assert", l3_assert},
+           {"input", input},
+           {"__trigger_gc", trigger_gc},
+           {"int", to_int},
+           {"str", to_string},
+           {"head", head},
+           {"tail", tail},
+           {"len", len}
+       }) {
+    builtins.emplace(wrap_native_function(name, value));
+  }
+
+  return builtins;
 }
 
 } // namespace
 
-Scope::BuiltinsMap Scope::_builtins = create_builtins();
+Scope::BuiltinsMap Scope::builtins = create_builtins();
+
+std::optional<RefValue> Scope::get_builtin(const Identifier &id) {
+  auto present = builtins.find(id);
+  if (present == builtins.end()) {
+    return std::nullopt;
+  }
+  return RefValue{present->second};
+}
 
 Scope::Scope(VariableMap &&variables) : variables{std::move(variables)} {};
-const Scope::BuiltinsMap &Scope::builtins() { return _builtins; }
+// const Scope &Scope::builtins() { return _builtins; }
 
 void Scope::mark_gc() {
   for (auto &[name, it] : variables) {
-    it.get_gc_mut().mark();
+    it->get_gc_mut().mark();
   }
 }
-bool Scope::has_variable(const ast::Identifier &id) const {
+bool Scope::has_variable(const Identifier &id) const {
   return variables.contains(id);
 }
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ast/ast.hpp>
+#include "vm/identifier.hpp"
 #include <format>
 #include <stdexcept>
 #include <string>
@@ -70,7 +70,7 @@ class UndefinedVariableError : public NameError {
 public:
   using NameError::NameError;
 
-  UndefinedVariableError(const ast::Identifier &id);
+  UndefinedVariableError(const Identifier &id);
   UndefinedVariableError(const ast::Variable &id);
 
   [[nodiscard]] constexpr std::string_view type() const override {

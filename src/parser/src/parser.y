@@ -219,8 +219,8 @@ ASSIGNMENT: VAR ASSIGNMENT_OPERATOR EXPRESSION
           | NAME_LIST equal EXPRESSION
             { $$ = NameAssignment { std::move($1), std::move($3) }; }
 
-DECLARATION: let NAME_ASSIGNMENT      { $$ = { std::move($2), true }; }
-           | let mut NAME_ASSIGNMENT  { $$ = { std::move($3), false }; }
+DECLARATION: let NAME_ASSIGNMENT      { $$ = { std::move($2), Mutability::Immutable }; }
+           | let mut NAME_ASSIGNMENT  { $$ = { std::move($3), Mutability::Mutable }; }
 
 // Control Statements
 RETURN: _return EXPRESSION { $$ = { std::move($2) }; }

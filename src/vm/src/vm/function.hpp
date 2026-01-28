@@ -1,10 +1,12 @@
 #pragma once
 
 #include "utils/accessor.h"
+#include "vm/identifier.hpp"
 #include "vm/value.hpp"
 #include <ast/ast.hpp>
 #include <memory>
 #include <optional>
+#include <span>
 #include <vector>
 
 namespace l3::vm {
@@ -31,35 +33,35 @@ public:
   L3Function(
       std::vector<std::shared_ptr<Scope>> &&active_scopes,
       ast::FunctionBody body,
-      std::optional<ast::Identifier> name
+      std::optional<Identifier> name
   );
   ~L3Function();
 
   RefValue operator()(VM &vm, L3Args args);
 
   DEFINE_ACCESSOR(body, ast::FunctionBody, body)
-  [[nodiscard]] const ast::Identifier &get_name() const;
+  [[nodiscard]] const Identifier &get_name() const;
 
 private:
   std::vector<std::shared_ptr<Scope>> capture_scopes;
   ast::FunctionBody body;
-  std::optional<ast::Identifier> name;
+  std::optional<Identifier> name;
 
-  static ast::Identifier anonymous_function_name;
+  static Identifier anonymous_function_name;
 };
 
 class BuiltinFunction {
 public:
   using Body = std::function<RefValue(VM &vm, L3Args args)>;
-  BuiltinFunction(ast::Identifier &&name, Body &&body);
+  BuiltinFunction(Identifier &&name, Body &&body);
 
   RefValue operator()(VM &vm, std::span<RefValue> args) const;
 
-  DEFINE_ACCESSOR(name, ast::Identifier, name)
+  DEFINE_ACCESSOR(name, Identifier, name)
   DEFINE_ACCESSOR(body, Body, body)
 
 private:
-  ast::Identifier name;
+  Identifier name;
   Body body;
 };
 

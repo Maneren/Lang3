@@ -1,6 +1,7 @@
 #pragma once
 
 #include "vm/function.hpp"
+#include "vm/scope.hpp"
 #include "vm/storage.hpp"
 #include <ast/ast.hpp>
 #include <utils/format.h>
@@ -106,6 +107,14 @@ struct std::formatter<l3::vm::RefValue>
 };
 
 template <>
+struct std::formatter<l3::vm::Variable>
+    : utils::static_formatter<l3::vm::Variable> {
+  static constexpr auto format(const auto &value, std::format_context &ctx) {
+    return std::format_to(ctx.out(), "{} {}", value.get_mutability(), *value);
+  }
+};
+
+template <>
 struct std::formatter<l3::vm::Value> : utils::static_formatter<l3::vm::Value> {
   static constexpr auto format(const auto &value, std::format_context &ctx) {
     return value.visit(
@@ -152,9 +161,9 @@ template <>
 struct std::formatter<l3::vm::GCValue>
     : utils::static_formatter<l3::vm::GCValue> {
   static constexpr auto format(const auto &value, std::format_context &ctx) {
-    if (value.marked) {
-      return std::format_to(ctx.out(), "{}*", value.value);
+    if (value.is_marked()) {
+      return std::format_to(ctx.out(), "{}*", value.get_value());
     }
-    return std::format_to(ctx.out(), "{}", value.value);
+    return std::format_to(ctx.out(), "{}", value.get_value());
   }
 };

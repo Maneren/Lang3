@@ -1,17 +1,16 @@
-#include <print>
+#include <ranges>
 #include <vm/format.hpp>
+#include <vm/scope.hpp>
 #include <vm/storage.hpp>
 #include <vm/value.hpp>
 
 namespace l3::vm {
 
+GCValue::GCValue(Value &&value) : value{std::move(value)} {}
+
 GCValue &GCStorage::emplace(Value &&value) {
   debug_print("[GC] Emplacing {}", value);
-  return backing_store.emplace_front(std::make_shared<Value>(std::move(value)));
-}
-GCValue &GCStorage::emplace(const std::shared_ptr<Value> &value) {
-  debug_print("[GC] Emplacing {}", value);
-  return backing_store.emplace_front(value);
+  return backing_store.emplace_front(std::move(value));
 }
 
 size_t GCStorage::sweep() {
@@ -29,7 +28,7 @@ size_t GCStorage::sweep() {
     return erased;
   }
 
-  // Reset the marks for or erase the rest
+  // Erase the unmarked items and reset the marks
   auto iter = backing_store.begin();
   iter->unmark();
 
@@ -58,6 +57,12 @@ void GCValue::mark() {
   }
 }
 
-GCValue GCStorage::NIL{std::make_shared<Value>()};
+GCValue GCStorage::NIL{Value()};
+
+RefValue::RefValue(GCValue &gc_value) : gc_value{gc_value} {}
+[[nodiscard]] const Value &RefValue::get() const {
+  return get_gc().get_value();
+}
+[[nodiscard]] Value &RefValue::get() { return get_gc_mut().get_value_mut(); }
 
 } // namespace l3::vm

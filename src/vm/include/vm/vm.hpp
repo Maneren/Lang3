@@ -1,17 +1,14 @@
 #pragma once
 
+#include "vm/scope.hpp"
 #include "vm/stack.hpp"
 #include "vm/storage.hpp"
 #include "vm/value.hpp"
-#include <ast/ast.hpp>
-#include <format>
-#include <iostream>
 #include <memory>
-#include <optional>
 #include <print>
-#include <span>
-#include <utils/debug.h>
 #include <vector>
+
+import l3.ast;
 
 namespace l3::vm {
 
@@ -31,7 +28,9 @@ public:
 
   RefValue store_value(Value &&value);
   RefValue store_new_value(NewValue &&value);
-  RefValue &declare_variable(const ast::Identifier &id);
+  Variable &declare_variable(
+      const Identifier &id, Mutability mut, GCValue &gc_value = GCStorage::nil()
+  );
   static RefValue nil();
 
   size_t run_gc();
@@ -55,17 +54,15 @@ private:
   [[nodiscard]] RefValue evaluate(const ast::UnaryExpression &unary);
   [[nodiscard]] RefValue evaluate(const ast::BinaryExpression &binary);
   [[nodiscard]] RefValue evaluate(const ast::IndexExpression &index_ex);
-  [[nodiscard]] RefValue evaluate(const ast::Identifier &identifier);
   [[nodiscard]] RefValue evaluate(const ast::AnonymousFunction &anonymous);
   [[nodiscard]] RefValue evaluate(const ast::FunctionCall &function_call);
   [[nodiscard]] RefValue evaluate(const ast::IfExpression &if_expr);
+  [[nodiscard]] RefValue evaluate(const ast::Identifier &identifier);
 
-  [[nodiscard]] utils::optional_cref<Value>
-  read_variable(const ast::Identifier &id) const;
-  [[nodiscard]] utils::optional_ref<RefValue>
-  read_write_variable(const ast::Identifier &id);
-
-  void assign_variable(const ast::Identifier &name, const RefValue &val);
+  [[nodiscard]] std::reference_wrapper<const RefValue>
+  read_variable(const Identifier &id) const;
+  [[nodiscard]] std::reference_wrapper<RefValue>
+  read_write_variable(const Identifier &id);
 
   bool evaluate_if_branch(const ast::IfBase &if_base);
 

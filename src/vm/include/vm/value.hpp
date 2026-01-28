@@ -1,23 +1,14 @@
 #pragma once
 
-#include "vm/storage.hpp"
-#include <ast/ast.hpp>
-#include <cstddef>
+#include "vm/ref_value.hpp"
 #include <functional>
+#include <memory>
 #include <string>
 #include <utility>
 #include <utils/accessor.h>
-#include <utils/cow.h>
-#include <utils/debug.h>
 #include <utils/match.h>
 #include <utils/types.h>
 #include <variant>
-
-template <> struct std::hash<l3::ast::Identifier> {
-  std::size_t operator()(const l3::ast::Identifier &id) const {
-    return std::hash<std::string>{}(id.get_name());
-  }
-};
 
 namespace l3::vm {
 

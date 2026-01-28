@@ -19,6 +19,12 @@ public:
   Identifier(std::string &&id) : id(std::move(id)) {};
   Identifier(std::string_view id) : id(id) {}
 
+  Identifier(const Identifier &other) = default;
+  Identifier &operator=(const Identifier &other) = default;
+  Identifier(Identifier &&other) noexcept = default;
+  Identifier &operator=(Identifier &&other) noexcept = default;
+  ~Identifier() = default;
+
   void
   print(std::output_iterator<char> auto &out, std::size_t depth = 0) const {
     format_indented_line(out, depth, "Identifier '{}'", id);

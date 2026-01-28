@@ -5,13 +5,11 @@
 #include "vm/value.hpp"
 #include <algorithm>
 #include <ast/ast.hpp>
-#include <format>
 #include <functional>
 #include <iostream>
 #include <optional>
 #include <print>
 #include <ranges>
-#include <stdexcept>
 #include <utility>
 #include <utils/match.h>
 #include <vector>
@@ -91,10 +89,7 @@ RefValue VM::evaluate(const ast::BinaryExpression &binary) {
 }
 
 RefValue VM::evaluate(const ast::Identifier &identifier) {
-  if (auto value = read_write_variable(identifier)) {
-    return RefValue{*value};
-  }
-  throw UndefinedVariableError(identifier);
+  return read_variable(identifier);
 }
 
 RefValue VM::evaluate(const ast::Variable &variable) {
@@ -137,14 +132,10 @@ void VM::execute(const ast::OperatorAssignment &assignment) {
   debug_print(
       "Executing assignment to {}", variable.get_identifier().get_name()
   );
-  auto value = read_write_variable(variable.get_identifier());
-  if (!value) {
-    throw UndefinedVariableError(variable);
-  }
+  auto &lhs = read_write_variable(variable.get_identifier()).get();
   const auto &expression = assignment.get_expression();
   const auto rhs = evaluate(expression);
 
-  auto &lhs = value->get();
   switch (assignment.get_operator()) {
   case ast::AssignmentOperator::Assign:
     lhs = rhs;
@@ -169,25 +160,9 @@ void VM::execute(const ast::OperatorAssignment &assignment) {
         std::format("not implemented: {}", assignment.get_operator())
     );
   }
-  debug_print("Assigned: {}", value->get());
-}
-void VM::execute(const ast::Declaration &declaration) {
-  const auto &assignment = declaration.get_name_assignment();
-  const auto &names = assignment.get_names();
-  debug_print(
-      "Executing declaration of {}",
-      std::views::transform(names, &ast::Identifier::get_name) |
-          std::ranges::to<std::vector>()
-  );
-
-  for (const auto &name : names) {
-    declare_variable(name);
-  }
-
-  execute(assignment);
+  debug_print("Assigned: {}", lhs);
 }
 void VM::execute(const ast::FunctionCall &function_call) {
-  debug_print("Executing function call");
   auto _ = evaluate(function_call);
 }
 bool VM::execute(const ast::ElseIfList &elseif_list) {
@@ -271,30 +246,44 @@ void VM::execute(const ast::Block &block) {
   if (last_statement) {
     execute(*last_statement);
   }
+  const auto created_values =
+      stack.top_frame().size() + scopes.back()->get_variables().size();
   stack.pop_frame();
   scopes.pop_back();
-  run_gc();
+  if (created_values > 0) {
+    run_gc();
+  }
 }
 
-std::optional<std::reference_wrapper<const Value>>
-VM::read_variable(const ast::Identifier &id) const {
+std::reference_wrapper<const RefValue>
+VM::read_variable(const Identifier &id) const {
+  debug_print("Reading variable {}", id.get_name());
   for (const auto &it : std::views::reverse(scopes)) {
     const auto &scope = *it;
-    if (auto value = scope.get_variable(id)) {
-      return value;
+    if (auto variable = scope.get_variable(id)) {
+      return *variable->get();
     }
   }
-  return std::nullopt;
+  if (auto value = Scope::get_builtin(id)) {
+    return *value;
+  }
+  throw UndefinedVariableError(id);
 }
 
-std::optional<std::reference_wrapper<RefValue>>
-VM::read_write_variable(const ast::Identifier &id) {
+std::reference_wrapper<RefValue> VM::read_write_variable(const Identifier &id) {
+  debug_print("Writing variable {}", id.get_name());
   for (auto &it : std::views::reverse(scopes)) {
-    if (auto value = it->get_variable(id)) {
-      return value;
+    if (auto variable = it->get_variable_mut(id)) {
+      if (variable->get().is_const()) {
+        throw RuntimeError("Cannot modify const variable {}", id);
+      }
+      return *variable->get();
     }
   }
-  return std::nullopt;
+  if (auto value = Scope::get_builtin(id)) {
+    throw RuntimeError("Cannot modify builtin variable {}", id);
+  }
+  throw UndefinedVariableError(id);
 }
 
 bool VM::evaluate_if_branch(const ast::IfBase &if_base) {
@@ -314,9 +303,8 @@ bool VM::evaluate_if_branch(const ast::IfBase &if_base) {
 void VM::execute(const ast::NamedFunction &named_function) {
   debug_print("Declaring named function");
   const auto &name = named_function.get_name();
-  auto &variable = declare_variable(name);
-
-  variable = store_value({Function{L3Function{scopes, named_function}}});
+  *declare_variable(name, Mutability::Immutable) =
+      store_value({Function{L3Function{scopes, named_function}}});
 
   debug_print("Declared function {}", name.get_name());
 }
@@ -380,13 +368,9 @@ RefValue VM::evaluate(const ast::IndexExpression &index_ex) {
   return store_new_value(base->index(*index));
 }
 
-VM::VM(bool debug) : debug{debug}, stack{debug}, gc_storage{debug} {
-  auto &scope = scopes.emplace_back(std::make_shared<Scope>());
-
-  for (const auto &[id, value] : Scope::builtins()) {
-    scope->declare_variable(id, gc_storage.emplace(value));
-  }
-}
+VM::VM(bool debug)
+    : debug{debug}, scopes{std::make_shared<Scope>()}, stack{debug},
+      gc_storage{debug} {}
 
 size_t VM::run_gc() {
   debug_print("Running GC");
@@ -400,13 +384,13 @@ size_t VM::run_gc() {
   }
   stack.mark_gc();
   auto erased = gc_storage.sweep();
-  debug_print("Erased {} values", erased);
+  debug_print("[GC] Swept {} values", erased);
   return erased;
 }
 
-RefValue &VM::declare_variable(const ast::Identifier &id) {
-  auto &gc_value = GCStorage::nil();
-  return scopes.back()->declare_variable(id, gc_value);
+Variable &
+VM::declare_variable(const Identifier &id, Mutability mut, GCValue &gc_value) {
+  return scopes.back()->declare_variable(id, RefValue{gc_value}, mut);
 }
 
 RefValue VM::store_value(Value &&value) {
@@ -424,18 +408,12 @@ RefValue VM::store_new_value(NewValue &&value) {
   );
 }
 
-void VM::execute(const ast::NameAssignment &assignment) {
-  const auto &names = assignment.get_names();
-  const auto value = evaluate(assignment.get_expression());
-  debug_print(
-      "Executing name assignment {} = {}",
-      std::views::transform(names, &ast::Identifier::get_name) |
-          std::ranges::to<std::vector>(),
-      value
-  );
+void assign_variables(
+    std::span<std::reference_wrapper<RefValue>> variables, RefValue value
+) {
 
-  if (names.size() == 1) {
-    assign_variable(names.front(), value);
+  if (variables.size() == 1) {
+    variables.begin()->get() = value;
     return;
   }
 
@@ -447,29 +425,61 @@ void VM::execute(const ast::NameAssignment &assignment) {
 
   const auto &value_vector = value_vector_opt->get();
 
-  if (value_vector.size() != names.size()) {
+  if (value_vector.size() != variables.size()) {
     throw ValueError(
         "Destructuring assignment expected {} names but got {}",
-        names.size(),
+        variables.size(),
         value_vector.size()
     );
   }
 
-  for (const auto [name, value] : std::views::zip(names, value_vector)) {
-    assign_variable(name, value);
+  for (const auto [variable, value] :
+       std::views::zip(variables, value_vector)) {
+    variable.get() = value;
   }
+}
+
+void VM::execute(const ast::Declaration &declaration) {
+  const auto &assignment = declaration.get_name_assignment();
+  const auto &names = assignment.get_names();
+  debug_print(
+      "Executing declaration of {}",
+      std::views::transform(names, &Identifier::get_name) |
+          std::ranges::to<std::vector>()
+  );
+
+  auto mutability = declaration.get_mutability();
+
+  auto variables = std::views::transform(
+                       names,
+                       [&, this](const auto &id) {
+                         return std::ref(*declare_variable(id, mutability));
+                       }
+                   ) |
+                   std::ranges::to<std::vector>();
+
+  assign_variables(variables, evaluate(assignment.get_expression()));
+}
+
+void VM::execute(const ast::NameAssignment &assignment) {
+  const auto &names = assignment.get_names();
+  const auto value = evaluate(assignment.get_expression());
+  debug_print(
+      "Executing name assignment {} = {}",
+      std::views::transform(names, &Identifier::get_name) |
+          std::ranges::to<std::vector>(),
+      value
+  );
+
+  auto variables = std::views::transform(
+                       names, std::bind_front(&VM::read_write_variable, this)
+                   ) |
+                   std::ranges::to<std::vector>();
+
+  assign_variables(variables, value);
 }
 
 RefValue VM::nil() { return RefValue{GCStorage::nil()}; }
-
-void VM::assign_variable(const ast::Identifier &name, const RefValue &val) {
-  if (auto var = read_write_variable(name)) {
-    debug_print("Assigning {} to {}", val, name);
-    var->get() = val;
-    return;
-  }
-  throw UndefinedVariableError(name);
-}
 
 RefValue VM::evaluate(const ast::IfExpression &if_expr) {
   std::optional<RefValue> result;

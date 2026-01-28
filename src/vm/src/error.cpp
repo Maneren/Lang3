@@ -5,7 +5,7 @@
 
 namespace l3::vm {
 
-UndefinedVariableError::UndefinedVariableError(const ast::Identifier &id)
+UndefinedVariableError::UndefinedVariableError(const Identifier &id)
     : NameError("variable '{}' not declared", id.get_name()) {}
 
 UndefinedVariableError::UndefinedVariableError(const ast::Variable &id)

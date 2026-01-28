@@ -12,6 +12,7 @@ import :expression;
 import :function;
 import :identifier;
 import :if_else;
+import :mutability;
 import :operators;
 import :printing;
 
@@ -70,12 +71,12 @@ using Assignment = std::variant<OperatorAssignment, NameAssignment>;
 
 class Declaration {
   NameAssignment name_assignment;
-  bool const_ = false;
+  Mutability mut = Mutability::Immutable;
 
 public:
   Declaration() = default;
-  Declaration(NameAssignment &&name_assignment, bool is_const = false)
-      : name_assignment(std::move(name_assignment)), const_(is_const) {}
+  Declaration(NameAssignment &&name_assignment, Mutability mut)
+      : name_assignment(std::move(name_assignment)), mut(mut) {}
 
   void
   print(std::output_iterator<char> auto &out, std::size_t depth = 0) const {
@@ -84,7 +85,9 @@ public:
   }
 
   DEFINE_ACCESSOR(name_assignment, NameAssignment, name_assignment)
-  [[nodiscard]] bool is_const() const { return const_; }
+  DEFINE_VALUE_ACCESSOR(mutability, Mutability, mut)
+  [[nodiscard]] bool is_const() const { return mut == Mutability::Immutable; }
+  [[nodiscard]] bool is_mutable() const { return mut == Mutability::Mutable; }
 };
 
 class Statement {
