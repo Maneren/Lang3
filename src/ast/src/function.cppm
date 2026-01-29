@@ -7,7 +7,6 @@ module;
 export module l3.ast:function;
 
 import :identifier;
-import :literal;
 import :printing;
 
 export namespace l3::ast {

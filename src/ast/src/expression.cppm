@@ -6,7 +6,7 @@ module;
 
 export module l3.ast:expression;
 
-import :expression_parts;
+export import :expression_parts;
 import :function;
 import :identifier;
 import :if_else;

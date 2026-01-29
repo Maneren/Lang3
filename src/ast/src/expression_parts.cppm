@@ -21,7 +21,7 @@ public:
   UnaryExpression() = default;
   UnaryExpression(UnaryOperator op, Expression &&expr);
 
-  void print(std::output_iterator<char> auto &out, std::size_t depth) const;
+  void print(std::output_iterator<char> auto &out, std::size_t depth = 0) const;
 
   DEFINE_VALUE_ACCESSOR(op, UnaryOperator, op)
   DEFINE_PTR_ACCESSOR(expr, Expression, expr)
