@@ -44,7 +44,6 @@
     #define yylex lexer.lex
 }
 
-%right lbracket
 %right equal
 %left  _or
 %left  _and
@@ -53,6 +52,7 @@
 %left  mul div mod
 %right pow
 %nonassoc equal_equal not_equal less less_equal greater greater_equal
+%left lbracket
 
 %token _if _else _while _break _continue _return _for in _do _true _false then
        end nil function let equal _not lparen rparen lbrace rbrace lbracket
@@ -75,7 +75,6 @@
       <Expression> EXPRESSION
       <ExpressionList> ARGUMENTS
       <ExpressionList> EXPRESSION_LIST
-      <Expression> PREFIX_EXPRESSION
       <FunctionBody> FUNCTION_BODY
       <FunctionCall> FUNCTION_CALL
       <Identifier> IDENTIFIER
@@ -93,6 +92,7 @@
       <Statement> STATEMENT
       <UnaryExpression> UNARY
       <Variable> VAR
+      <While> WHILE
 
 %start PROGRAM
 
@@ -154,17 +154,14 @@ BINARY: EXPRESSION plus EXPRESSION
       | EXPRESSION _or EXPRESSION
         { $$ = { std::move($1), BinaryOperator::Or, std::move($3) }; }
 
-PREFIX_EXPRESSION: lparen EXPRESSION rparen
-                   { $$ = std::move($2); }
-                 | EXPRESSION lbracket EXPRESSION rbracket
-                   { $$ = { IndexExpression { std::move($1), std::move($3) } }; }
-
 EXPRESSION: UNARY                    { $$ = { std::move($1) }; }
           | BINARY                   { $$ = { std::move($1) }; }
           | ANONYMOUS_FUNCTION       { $$ = { std::move($1) }; }
           | FUNCTION_CALL            { $$ = { std::move($1) }; }
           | VAR                      { $$ = { std::move($1) }; }
-          | PREFIX_EXPRESSION        { $$ = { std::move($1) }; }
+          | lparen EXPRESSION rparen { $$ = std::move($2); }
+          | EXPRESSION lbracket EXPRESSION rbracket
+            { $$ = { IndexExpression { std::move($1), std::move($3) } }; }
           | LITERAL                  { $$ = { std::move($1) }; }
           | IF_EXPRESSION            { $$ = { std::move($1) }; }
 
@@ -204,6 +201,10 @@ IF_STATEMENT: IF_BASE IF_ELSE end
 IF_EXPRESSION: IF_BASE IF_ELSE _else BLOCK end
                { $$ = { std::move($1), std::move($2), std::move($4) }; }
 
+// Loops
+WHILE: _while EXPRESSION _do BLOCK end
+       { $$ = { std::move($2), std::move($4) }; }
+
 // Assignments and Declarations
 ASSIGNMENT_OPERATOR: plus_equal  { $$ = AssignmentOperator::Plus; }
                    | minus_equal { $$ = AssignmentOperator::Minus; }
@@ -237,6 +238,7 @@ STATEMENT: ASSIGNMENT           { $$ = { std::move($1) }; }
          | IF_STATEMENT         { $$ = { std::move($1) }; }
          | FUNCTION_CALL        { $$ = { std::move($1) }; }
          | FUNCTION_DEFINITION  { $$ = { std::move($1) }; }
+         | WHILE                { $$ = { std::move($1) }; }
 
 SEMI_STATEMENT: STATEMENT      { $$ = std::move($1); }
               | STATEMENT semi { $$ = std::move($1); }

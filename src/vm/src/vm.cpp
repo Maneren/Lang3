@@ -254,8 +254,7 @@ void VM::execute(const ast::Block &block) {
   }
 }
 
-std::reference_wrapper<const RefValue>
-VM::read_variable(const Identifier &id) const {
+RefValue VM::read_variable(const Identifier &id) const {
   debug_print("Reading variable {}", id.get_name());
   for (const auto &it : std::views::reverse(scopes)) {
     const auto &scope = *it;
@@ -496,6 +495,15 @@ RefValue VM::evaluate(const ast::IfExpression &if_expr) {
   }
 
   throw RuntimeError("if expression did not return a value");
+}
+
+void VM::execute(const ast::While &while_loop) {
+  const auto &condition = while_loop.get_condition();
+  const auto &body = while_loop.get_body();
+
+  while (evaluate(condition)->is_truthy()) {
+    execute(body);
+  }
 }
 
 } // namespace l3::vm

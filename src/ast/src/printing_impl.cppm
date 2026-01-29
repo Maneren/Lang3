@@ -60,4 +60,14 @@ void IfExpression::print(
   else_block->print(out, depth + 2);
 }
 
+void While::print(
+    std::output_iterator<char> auto &out, std::size_t depth
+) const {
+  format_indented_line(out, depth, "While");
+  format_indented_line(out, depth + 1, "Condition");
+  get_condition().print(out, depth + 2);
+  format_indented_line(out, depth + 1, "Block");
+  get_body().print(out, depth + 2);
+}
+
 } // namespace l3::ast

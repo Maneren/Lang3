@@ -14,6 +14,7 @@ import :if_else;
 import :mutability;
 import :operators;
 import :printing;
+import :loop;
 
 export namespace l3::ast {
 
@@ -114,6 +115,7 @@ public:
   Statement(NameAssignment &&assignment) : inner(std::move(assignment)) {}
   Statement(NamedFunction &&function) : inner(std::move(function)) {}
   Statement(OperatorAssignment &&assignment) : inner(std::move(assignment)) {}
+  Statement(While &&loop) : inner(std::move(loop)) {}
 
   void
   print(std::output_iterator<char> auto &out, std::size_t depth = 0) const {

@@ -47,6 +47,7 @@ private:
   void execute(const ast::IfElseBase &if_else_base);
   bool execute(const ast::ElseIfList &elseif_list);
   void execute(const ast::NamedFunction &named_function);
+  void execute(const ast::While &while_loop);
 
   [[nodiscard]] RefValue evaluate(const ast::Expression &expression);
   [[nodiscard]] RefValue evaluate(const ast::Literal &literal);
@@ -59,8 +60,7 @@ private:
   [[nodiscard]] RefValue evaluate(const ast::IfExpression &if_expr);
   [[nodiscard]] RefValue evaluate(const ast::Identifier &identifier);
 
-  [[nodiscard]] std::reference_wrapper<const RefValue>
-  read_variable(const Identifier &id) const;
+  [[nodiscard]] RefValue read_variable(const Identifier &id) const;
   [[nodiscard]] std::reference_wrapper<RefValue>
   read_write_variable(const Identifier &id);
 

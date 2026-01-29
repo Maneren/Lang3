@@ -12,3 +12,4 @@ export import :mutability;
 export import :operators;
 export import :printing_impl;
 export import :statement;
+export import :loop;
