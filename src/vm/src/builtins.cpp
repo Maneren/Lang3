@@ -235,6 +235,50 @@ RefValue len(VM &vm, L3Args args) {
   );
 }
 
+RefValue drop(VM &vm, L3Args args) {
+  if (args.size() != 2) {
+    throw RuntimeError("drop takes two arguments");
+  }
+
+  auto index_opt = args[1]->as_primitive().and_then(&Primitive::as_integer);
+  if (!index_opt) {
+    throw TypeError("drop takes only an integer as an index argument");
+  }
+  auto index = *index_opt;
+
+  return vm.store_value(args[0]->slice(Slice{index, std::nullopt}));
+}
+
+RefValue take(VM &vm, L3Args args) {
+  if (args.size() != 2) {
+    throw RuntimeError("take takes two arguments");
+  }
+
+  auto index_opt = args[1]->as_primitive().and_then(&Primitive::as_integer);
+  if (!index_opt) {
+    throw TypeError("take takes only an integer as an index argument");
+  }
+  auto index = *index_opt;
+
+  return vm.store_value(args[0]->slice(Slice{std::nullopt, index}));
+}
+
+RefValue slice(VM &vm, L3Args args) {
+  if (args.size() != 3) {
+    throw RuntimeError("slice takes three arguments");
+  }
+
+  auto start_opt = args[1]->as_primitive().and_then(&Primitive::as_integer);
+  auto end_opt = args[2]->as_primitive().and_then(&Primitive::as_integer);
+  if (!start_opt || !end_opt) {
+    throw TypeError("slice takes only integers as index arguments");
+  }
+  auto start = *start_opt;
+  auto end = *end_opt;
+
+  return vm.store_value(args[0]->slice(Slice{start, end}));
+}
+
 const std::initializer_list<std::pair<std::string_view, BuiltinFunction::Body>>
     BUILTINS{
         {"print", print},
@@ -247,21 +291,10 @@ const std::initializer_list<std::pair<std::string_view, BuiltinFunction::Body>>
         {"str", to_string},
         {"head", head},
         {"tail", tail},
-        {"len", len}
+        {"len", len},
+        {"drop", drop},
+        {"take", take},
+        {"slice", slice},
     };
-
-// std::initializer_list<std::pair<std::string, BuiltinFunction::Body>>{
-//            {"print", builtins::print},
-//            {"println", builtins::println},
-//            {"error", builtins::error},
-//            {"assert", builtins::l3_assert},
-//            {"input", builtins::input},
-//            {"__trigger_gc", builtins::trigger_gc},
-//            {"int", builtins::to_int},
-//            {"str", builtins::to_string},
-//            {"head", builtins::head},
-//            {"tail", builtins::tail},
-//            {"len", builtins::len}
-//        }
 
 } // namespace l3::vm::builtins

@@ -502,59 +502,71 @@ opt_vector_type Value::as_mut_vector() {
   );
 }
 
-Value Value::slice(Slice slice) const {
+namespace {
+
+Value slice_vector(const Value::vector_type &vector, Slice slice) {
   const auto [start_opt, end_opt] = slice;
+  auto start = start_opt.value_or(0);
+  auto end = end_opt.value_or(vector.size());
+
+  if (start > end) {
+    throw ValueError("start index must be less than end index");
+  }
+
+  if (start < 0) {
+    start += static_cast<std::int64_t>(vector.size());
+  }
+  if (end < 0) {
+    end += static_cast<std::int64_t>(vector.size());
+  }
+
+  if (static_cast<std::size_t>(end) > vector.size()) {
+    throw ValueError("end index out of bounds");
+  }
+  if (static_cast<std::size_t>(start) > vector.size()) {
+    throw ValueError("start index out of bounds");
+  }
+  return Value{
+      Value::vector_type(vector.begin() + start, vector.begin() + end)
+  };
+}
+Value slice_string(Slice slice, const std::string &string) {
+  const auto [start_opt, end_opt] = slice;
+  auto start = start_opt.value_or(0);
+  auto end = end_opt.value_or(string.size());
+
+  if (start > end) {
+    throw ValueError("start index must be less than end index");
+  }
+
+  if (start < 0) {
+    start += static_cast<std::int64_t>(string.size());
+  }
+  if (end < 0) {
+    end += static_cast<std::int64_t>(string.size());
+  }
+
+  if (static_cast<std::size_t>(end) > string.size()) {
+    throw ValueError("end index out of bounds");
+  }
+  if (static_cast<std::size_t>(start) > string.size()) {
+    throw ValueError("start index out of bounds");
+  }
+  return Primitive{string.substr(
+      static_cast<std::size_t>(start), static_cast<std::size_t>(end - start)
+  )};
+}
+
+} // namespace
+
+Value Value::slice(Slice slice) const {
   return visit(
-      [start_opt, end_opt](const vector_type &vector) -> Value {
-        auto start = start_opt.value_or(0);
-        auto end = end_opt.value_or(vector.size());
-
-        if (start > end) {
-          throw ValueError("start index must be less than end index");
-        }
-
-        if (start < 0) {
-          start += static_cast<std::int64_t>(vector.size());
-        }
-        if (end < 0) {
-          end += static_cast<std::int64_t>(vector.size());
-        }
-
-        if (static_cast<std::size_t>(end) > vector.size()) {
-          throw ValueError("end index out of bounds");
-        }
-        if (static_cast<std::size_t>(start) > vector.size()) {
-          throw ValueError("start index out of bounds");
-        }
-        return Value{vector_type(vector.begin() + start, vector.begin() + end)};
+      [slice](const vector_type &vector) -> Value {
+        return slice_vector(vector, slice);
       },
-      [this, start_opt, end_opt](const Primitive &primitive) -> Value {
+      [this, slice](const Primitive &primitive) -> Value {
         if (const auto string_opt = primitive.as_string()) {
-          const auto &string = string_opt->get();
-          auto start = start_opt.value_or(0);
-          auto end = end_opt.value_or(string.size());
-
-          if (start > end) {
-            throw ValueError("start index must be less than end index");
-          }
-
-          if (start < 0) {
-            start += static_cast<std::int64_t>(string.size());
-          }
-          if (end < 0) {
-            end += static_cast<std::int64_t>(string.size());
-          }
-
-          if (static_cast<std::size_t>(end) > string.size()) {
-            throw ValueError("end index out of bounds");
-          }
-          if (static_cast<std::size_t>(start) > string.size()) {
-            throw ValueError("start index out of bounds");
-          }
-          return Primitive{string.substr(
-              static_cast<std::size_t>(start),
-              static_cast<std::size_t>(end - start)
-          )};
+          return slice_string(slice, *string_opt);
         }
 
         throw TypeError("cannot slice a {} value", type_name());
