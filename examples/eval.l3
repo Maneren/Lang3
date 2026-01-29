@@ -1,6 +1,6 @@
 #!/bin/env lang3
 
-let a = 8 / 2 + 20
+let mut a = 8 / 2 + 20
 a += 10
 let b = a * 2
 
@@ -32,4 +32,10 @@ a = 0
 if a then println("a is truthy")
 elif b then println("b is truthy")
 else println("neither a or b is truthy")
+end
+
+let mut i = 0
+while i < 10 do
+  println(random(100))
+  i += 1
 end

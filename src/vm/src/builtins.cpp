@@ -2,6 +2,7 @@
 #include "vm/error.hpp"
 #include "vm/format.hpp"
 #include "vm/vm.hpp"
+#include <random>
 #include <ranges>
 
 namespace l3::vm::builtins {
@@ -279,6 +280,36 @@ RefValue slice(VM &vm, L3Args args) {
   return vm.store_value(args[0]->slice(Slice{start, end}));
 }
 
+RefValue random(VM &vm, L3Args args) {
+  static std::random_device rd;
+  static std::mt19937 gen(rd());
+
+  if (args.empty() || args.size() > 2) {
+    throw RuntimeError("random takes one or two arguments");
+  }
+
+  std::optional<std::int64_t> min_opt, max_opt;
+
+  if (args.size() == 2) {
+    min_opt = args[0]->as_primitive().and_then(&Primitive::as_integer);
+    max_opt = args[1]->as_primitive().and_then(&Primitive::as_integer);
+  } else {
+    min_opt = std::make_optional(std::int64_t{0});
+    max_opt = args[0]->as_primitive().and_then(&Primitive::as_integer);
+  }
+
+  if (!min_opt || !max_opt) {
+    throw TypeError("random takes only integers as arguments");
+  }
+
+  auto min = *min_opt;
+  auto max = *max_opt;
+
+  auto distribution = std::uniform_int_distribution<std::int64_t>{min, max};
+
+  return vm.store_value(Value{Primitive{distribution(gen)}});
+}
+
 const std::initializer_list<std::pair<std::string_view, BuiltinFunction::Body>>
     BUILTINS{
         {"print", print},
@@ -295,6 +326,7 @@ const std::initializer_list<std::pair<std::string_view, BuiltinFunction::Body>>
         {"drop", drop},
         {"take", take},
         {"slice", slice},
+        {"random", random},
     };
 
 } // namespace l3::vm::builtins
