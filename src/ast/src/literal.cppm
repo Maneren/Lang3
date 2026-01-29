@@ -14,8 +14,6 @@ char decode_escape(char c);
 
 export namespace l3::ast {
 
-class Expression;
-
 struct Nil {
   void
   print(std::output_iterator<char> auto &out, std::size_t depth = 0) const {
@@ -96,6 +94,7 @@ public:
   DEFINE_ACCESSOR(value, std::string, value)
 };
 
+class Expression;
 class ExpressionList : public std::deque<Expression> {
 public:
   ExpressionList();

@@ -9,6 +9,7 @@ export module l3.ast:block;
 
 import :printing;
 import :statement;
+import :last_statement;
 
 export namespace l3::ast {
 
