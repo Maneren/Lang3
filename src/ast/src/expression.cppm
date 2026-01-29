@@ -17,30 +17,29 @@ export namespace l3::ast {
 
 class Expression {
   std::variant<
-      Literal,
-      UnaryExpression,
-      BinaryExpression,
-      Variable,
-      IndexExpression,
-      FunctionCall,
       AnonymousFunction,
-      IfExpression
-      // Table
-      >
+      BinaryExpression,
+      FunctionCall,
+      IfExpression,
+      IndexExpression,
+      Literal,
+      // Table,
+      UnaryExpression,
+      Variable>
       inner;
 
 public:
   Expression() = default;
 
-  Expression(Literal &&literal) : inner(std::move(literal)) {}
-  Expression(UnaryExpression &&expression) : inner(std::move(expression)) {}
-  Expression(BinaryExpression &&expression) : inner(std::move(expression)) {}
-  Expression(Variable &&var) : inner(std::move(var)) {}
-  Expression(FunctionCall &&call) : inner(std::move(call)) {}
-  Expression(IndexExpression &&index) : inner(std::move(index)) {}
   Expression(AnonymousFunction &&function) : inner(std::move(function)) {}
+  Expression(BinaryExpression &&expression) : inner(std::move(expression)) {}
+  Expression(FunctionCall &&call) : inner(std::move(call)) {}
   Expression(IfExpression &&clause) : inner(std::move(clause)) {}
+  Expression(IndexExpression &&index) : inner(std::move(index)) {}
+  Expression(Literal &&literal) : inner(std::move(literal)) {}
   // Expression(Table &&table) : inner(std::move(table)) {}
+  Expression(UnaryExpression &&expression) : inner(std::move(expression)) {}
+  Expression(Variable &&var) : inner(std::move(var)) {}
 
   void
   print(std::output_iterator<char> auto &out, std::size_t depth = 0) const {

@@ -63,35 +63,36 @@
        <std::int64_t> num
        <double> fnum
 
-%type <UnaryExpression> UNARY
-      <BinaryExpression> BINARY
-      <Literal> LITERAL
+%type
+      <AnonymousFunction> ANONYMOUS_FUNCTION
       <Array> ARRAY
+      <Assignment> ASSIGNMENT
+      <AssignmentOperator> ASSIGNMENT_OPERATOR
+      <BinaryExpression> BINARY
+      <Block> BLOCK
+      <Declaration> DECLARATION
+      <ElseIfList> IF_ELSE
+      <Expression> EXPRESSION
+      <ExpressionList> ARGUMENTS
+      <ExpressionList> EXPRESSION_LIST
+      <Expression> PREFIX_EXPRESSION
+      <FunctionBody> FUNCTION_BODY
+      <FunctionCall> FUNCTION_CALL
+      <Identifier> IDENTIFIER
+      <IfBase> IF_BASE
+      <IfExpression> IF_EXPRESSION
+      <IfStatement> IF_STATEMENT
+      <LastStatement> LAST_STATEMENT
+      <Literal> LITERAL
+      <NameAssignment> NAME_ASSIGNMENT
+      <NamedFunction> FUNCTION_DEFINITION
       <NameList> NAME_LIST
       <NameList> PARAMETERS
-      <ExpressionList> ARGUMENTS
-      <FunctionCall> FUNCTION_CALL
-      <FunctionBody> FUNCTION_BODY
-      <AnonymousFunction> ANONYMOUS_FUNCTION
-      <Expression> PREFIX_EXPRESSION
-      <Expression> EXPRESSION
-      <ExpressionList> EXPRESSION_LIST
-      <Identifier> IDENTIFIER
-      <Variable> VAR
-      <IfBase> IF_BASE
-      <IfStatement> IF_STATEMENT
-      <IfExpression> IF_EXPRESSION
-      <ElseIfList> IF_ELSE
-      <AssignmentOperator> ASSIGNMENT_OPERATOR
-      <Assignment> ASSIGNMENT
-      <NameAssignment> NAME_ASSIGNMENT
-      <Declaration> DECLARATION
-      <NamedFunction> FUNCTION_DEFINITION
-      <Statement> STATEMENT
-      <Statement> SEMI_STATEMENT
       <ReturnStatement> RETURN
-      <LastStatement> LAST_STATEMENT
-      <Block> BLOCK
+      <Statement> SEMI_STATEMENT
+      <Statement> STATEMENT
+      <UnaryExpression> UNARY
+      <Variable> VAR
 
 %start PROGRAM
 

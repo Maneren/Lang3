@@ -1,7 +1,6 @@
 module;
 
 #include <iterator>
-#include <optional>
 #include <utils/accessor.h>
 #include <utils/match.h>
 #include <variant>
@@ -25,13 +24,8 @@ class OperatorAssignment {
 
 public:
   OperatorAssignment() = default;
-  OperatorAssignment(const OperatorAssignment &) = delete;
-  OperatorAssignment(OperatorAssignment &&) noexcept = default;
-  OperatorAssignment &operator=(const OperatorAssignment &) = delete;
-  OperatorAssignment &operator=(OperatorAssignment &&) noexcept = default;
   OperatorAssignment(Variable &&var, AssignmentOperator op, Expression &&expr)
       : var(std::move(var)), op(op), expr(std::move(expr)) {}
-  ~OperatorAssignment() = default;
 
   void
   print(std::output_iterator<char> auto &out, std::size_t depth = 0) const {
@@ -92,12 +86,13 @@ public:
 
 class Statement {
   std::variant<
-      OperatorAssignment,
-      NameAssignment,
       Declaration,
       FunctionCall,
       IfStatement,
-      NamedFunction>
+      NameAssignment,
+      NamedFunction,
+      OperatorAssignment,
+      While>
       inner;
 
 public:
@@ -113,12 +108,12 @@ public:
       inner = std::forward<decltype(assignment)>(assignment);
     });
   }
-  Statement(OperatorAssignment &&assignment) : inner(std::move(assignment)) {}
-  Statement(NameAssignment &&assignment) : inner(std::move(assignment)) {}
   Statement(Declaration &&declaration) : inner(std::move(declaration)) {}
   Statement(FunctionCall &&call) : inner(std::move(call)) {}
   Statement(IfStatement &&clause) : inner(std::move(clause)) {}
+  Statement(NameAssignment &&assignment) : inner(std::move(assignment)) {}
   Statement(NamedFunction &&function) : inner(std::move(function)) {}
+  Statement(OperatorAssignment &&assignment) : inner(std::move(assignment)) {}
 
   void
   print(std::output_iterator<char> auto &out, std::size_t depth = 0) const {
