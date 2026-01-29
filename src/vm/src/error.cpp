@@ -1,5 +1,4 @@
 #include "vm/error.hpp"
-#include <ast/ast.hpp>
 #include <stdexcept>
 #include <string>
 

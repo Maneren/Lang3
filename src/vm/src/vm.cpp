@@ -4,7 +4,6 @@
 #include "vm/scope.hpp"
 #include "vm/value.hpp"
 #include <algorithm>
-#include <ast/ast.hpp>
 #include <functional>
 #include <iostream>
 #include <optional>

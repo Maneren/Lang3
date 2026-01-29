@@ -3,11 +3,12 @@
 #include "utils/accessor.h"
 #include "vm/identifier.hpp"
 #include "vm/value.hpp"
-#include <ast/ast.hpp>
 #include <memory>
 #include <optional>
 #include <span>
 #include <vector>
+
+import l3.ast;
 
 namespace l3::vm {
 

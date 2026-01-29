@@ -1,4 +1,3 @@
-#include <ast/ast.hpp>
 #include <chrono>
 #include <cli/cli.hpp>
 #include <cstdlib>
@@ -7,6 +6,8 @@
 #include <parser/lexer.hpp>
 #include <print>
 #include <vm/vm.hpp>
+
+import l3.ast;
 
 namespace {
 

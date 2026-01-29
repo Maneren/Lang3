@@ -3,7 +3,6 @@
 #include "vm/scope.hpp"
 #include "vm/value.hpp"
 #include "vm/vm.hpp"
-#include <ast/ast.hpp>
 #include <memory>
 #include <optional>
 #include <ranges>

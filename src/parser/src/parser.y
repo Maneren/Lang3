@@ -2,7 +2,7 @@
 %language "c++"
 
 %code requires {
-    #include <ast/ast.hpp>
+    import l3.ast;
 
     namespace l3::lexer {
       class L3Lexer;
