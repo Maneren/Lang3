@@ -2,6 +2,7 @@ export module l3.ast;
 
 export import :block;
 export import :expression;
+export import :expression_parts;
 export import :function;
 export import :identifier;
 export import :if_else;
