@@ -18,7 +18,7 @@ if(SANITIZERS)
     add_link_options(-fsanitize=address,undefined,leak)
 endif()
 
-option(USE_CCACHE "Use ccache" ON)
+option(USE_CCACHE "Use ccache" OFF)
 if (USE_CCACHE)
     find_program(CCACHE ccache)
     find_program(SCCACHE sccache)
