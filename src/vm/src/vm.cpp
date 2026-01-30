@@ -212,9 +212,13 @@ RefValue VM::evaluate(const ast::FunctionCall &function_call) {
     debug_print("  {}", argument);
   }
 
-  auto result = function_ptr->operator()(*this, evaluated_arguments);
-  debug_print("Result: {}", result);
-  return result;
+  try {
+    auto result = function_ptr->operator()(*this, evaluated_arguments);
+    debug_print("Result: {}", result);
+    return result;
+  } catch (const LoopFlowException &error) {
+    throw RuntimeError("Unexpected {} outside of loop", error.type());
+  }
 };
 void VM::execute(const ast::Statement &statement) {
   debug_print("Executing statement");
@@ -227,6 +231,8 @@ void VM::execute(const ast::Program &program) {
     }
   } catch (const RuntimeError &error) {
     std::println(std::cerr, "{}: {}", error.type(), error.what());
+  } catch (const ReturnException &error) {
+    std::println(std::cerr, "Unexpected return outside of function");
   }
 }
 
@@ -324,7 +330,7 @@ RefValue VM::evaluate_function_body(
 
   try {
     execute(body.get_block());
-  } catch (const BreakFlowException &exception) {
+  } catch (const ReturnException &exception) {
     return_value = exception.value;
   }
 
@@ -347,9 +353,14 @@ void VM::execute(const ast::LastStatement &last_statement) {
                                    })
                                    .value_or(VM::nil());
             debug_print("Returning {}", value);
-            throw BreakFlowException(value);
+            throw ReturnException(value);
           },
-          [](const auto & /*expression*/) { throw BreakFlowException(); }
+          [](const ast::BreakStatement & /*expression*/) {
+            throw BreakLoopException();
+          },
+          [](const ast::ContinueStatement & /*expression*/) {
+            throw ContinueLoopException();
+          }
       }
   );
 }
@@ -513,7 +524,7 @@ RefValue VM::evaluate(const ast::IfExpression &if_expr) {
     execute(static_cast<const ast::IfElseBase &>(if_expr));
     const auto &else_expr = if_expr.get_else_block();
     execute(else_expr);
-  } catch (const BreakFlowException &e) {
+  } catch (const ReturnException &e) {
     result = e.value;
   }
 
@@ -529,7 +540,13 @@ void VM::execute(const ast::While &while_loop) {
   const auto &body = while_loop.get_body();
 
   while (evaluate(condition)->is_truthy()) {
-    execute(body);
+    try {
+      execute(body);
+    } catch (const BreakLoopException &e) {
+      break;
+    } catch (const ContinueLoopException &e) {
+      continue;
+    }
   }
 }
 

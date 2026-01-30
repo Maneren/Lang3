@@ -84,8 +84,21 @@ private:
     }
   }
 
-  struct BreakFlowException {
+  struct FlowException {
+    virtual constexpr std::string_view type() const { return "<nil>"; }
+  };
+  struct ReturnException final : public FlowException {
     std::optional<RefValue> value;
+    explicit ReturnException(std::optional<RefValue> value = {})
+        : value(value) {}
+    constexpr std::string_view type() const override { return "return"; }
+  };
+  struct LoopFlowException : public FlowException {};
+  struct BreakLoopException final : public LoopFlowException {
+    constexpr std::string_view type() const override { return "break"; }
+  };
+  struct ContinueLoopException final : public LoopFlowException {
+    constexpr std::string_view type() const override { return "continue"; }
   };
 };
 
