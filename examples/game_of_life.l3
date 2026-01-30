@@ -3,60 +3,58 @@
 # Conway's Game of Life
 
 let WIDTH = 40
-let HEIGHT = 20
-let GENERATIONS = 100
-let DELAY = 500 # milliseconds (2 generations per second)
+let HEIGHT = 40
+let GENERATIONS = 200
+
+let WIDTH_RANGE = range(WIDTH)
+let HEIGHT_RANGE = range(HEIGHT)
 
 fn create_board()
   let mut board = []
-  let mut i = 0
-  while i < HEIGHT do
+  for i in HEIGHT_RANGE do
     let mut row = []
-    let mut j = 0
-    while j < WIDTH do
+    for j in WIDTH_RANGE do
       row += [false]
-      j += 1
     end
     board += [row]
-    i += 1
   end
   return board
 end
 
-fn randomize_board(board)
-  let mut i = 0
-  while i < HEIGHT do
-    let mut j = 0
-    while j < WIDTH do
-      # make ~30% cells alive
-      board[i][j] = random(10) < 3
-      j += 1
+fn for_cell_in_board(board, f)
+  for i in HEIGHT_RANGE do
+    for j in WIDTH_RANGE do
+      f(i, j)
     end
-    i += 1
   end
 end
 
+fn randomize_board(board)
+  for_cell_in_board(board, fn(i, j)
+    # make ~30% cells alive
+    board[i][j] = random(10) < 3
+  end)
+end
+
+let NEIGHBOR_RANGE = range(-1, 2)
+
 fn count_neighbors(board, row, col)
   let mut count = 0
-  let mut i = -1
 
-  while i <= 1 do
-    let mut j = -1
-    while j <= 1 do
+  for i in NEIGHBOR_RANGE do
+    for j in NEIGHBOR_RANGE do
       # Skip the cell itself
-      if not (i == 0 and j == 0) then
-        let ni = row + i
-        let nj = col + j
+      if  (i == 0 and j == 0) then continue end
 
-        if 0 <= ni and ni < HEIGHT and 0 <= nj and nj < WIDTH then
-          if board[ni][nj] then
-            count += 1
-          end
-        end
+      let ni = row + i
+      let nj = col + j
+
+      if 0 <= ni and ni < HEIGHT and
+         0 <= nj and nj < WIDTH
+      then
+        count += int(board[ni][nj])
       end
-      j += 1
     end
-    i += 1
   end
 
   return count
@@ -65,72 +63,41 @@ end
 fn next_generation(board)
   let mut new_board = create_board()
 
-  let mut i = 0
-  while i < HEIGHT do
-    let mut j = 0
-    while j < WIDTH do
+  for_cell_in_board(board, fn(i, j)
       let neighbors = count_neighbors(board, i, j)
-      let alive = board[i][j]
-
       # Game of Life rules:
       # 1. Any live cell with 2-3 neighbors survives
       # 2. Any dead cell with exactly 3 neighbors becomes alive
       # 3. All other cells die or stay dead
-      if alive then
-        new_board[i][j] = neighbors == 2 or neighbors == 3
-      else
-        new_board[i][j] = neighbors == 3
-      end
-
-      j += 1
-    end
-    i += 1
-  end
+      new_board[i][j] = (
+          (board[i][j] and neighbors == 2) or neighbors == 3
+      )
+  end)
 
   return new_board
 end
 
-fn display_board(board, generation)
-  # Clear screen
-  # println("\x1b[2J\x1b[H")
+let HORIZONTAL_BORDER = "+" + 2 * WIDTH * "-" + "+"
 
-  println("Conway's Game of Life - Generation: " + str(generation))
-  println()
+let FULL_BLOCK = "██"
+let EMPTY_BLOCK = "  "
 
-  # Top border
-  print("+")
-  let mut k = 0
-  while k < WIDTH do
-    print("-")
-    k += 1
-  end
-  println("+")
+fn display_board(board)
+  println(HORIZONTAL_BORDER)
 
-  # Board content
-  let mut i = 0
-  while i < HEIGHT do
+  for row in board do
     print("|")
-    let mut j = 0
-    while j < WIDTH do
-      if board[i][j] then
-        print("█")
+    for cell in row do
+      if cell then
+        print(FULL_BLOCK)
       else
-        print(" ")
+        print(EMPTY_BLOCK)
       end
-      j += 1
     end
     println("|")
-    i += 1
   end
 
-  # Bottom border
-  print("+")
-  k = 0
-  while k < WIDTH do
-    print("-")
-    k += 1
-  end
-  println("+")
+  println(HORIZONTAL_BORDER)
 end
 
 # Main simulation
@@ -138,16 +105,11 @@ fn main()
   let mut board = create_board()
   randomize_board(board)
 
-  let mut gen = 0
-  while gen <= GENERATIONS do
-    display_board(board, gen)
-
-    if gen < GENERATIONS then
-      # sleep(DELAY)
-      board = next_generation(board)
-    end
-
-    gen += 1
+  for gen in range(GENERATIONS) do
+    println("Conway's Game of Life - Generation:", str(gen))
+    println()
+    display_board(board)
+    board = next_generation(board)
   end
 
   println()
