@@ -453,8 +453,7 @@ void assign_variables(
 }
 
 void VM::execute(const ast::Declaration &declaration) {
-  const auto &assignment = declaration.get_name_assignment();
-  const auto &names = assignment.get_names();
+  const auto &names = declaration.get_names();
   debug_print(
       "Executing declaration of {}",
       std::views::transform(names, &Identifier::get_name) |
@@ -471,7 +470,16 @@ void VM::execute(const ast::Declaration &declaration) {
                    ) |
                    std::ranges::to<std::vector>();
 
-  assign_variables(variables, evaluate(assignment.get_expression()));
+  const auto &expr_opt = declaration.get_expression();
+  if (expr_opt.has_value()) {
+    assign_variables(variables, evaluate(*expr_opt));
+  } else {
+    // Assign nil to all variables
+    auto nil_value = nil();
+    for (auto &var : variables) {
+      var.get() = nil_value;
+    }
+  }
 }
 
 void VM::execute(const ast::NameAssignment &assignment) {

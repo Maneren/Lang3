@@ -83,16 +83,14 @@
       <IfBase> IF_BASE
       <IfExpression> IF_EXPRESSION
       <IfStatement> IF_STATEMENT
+      <std::optional<Expression>> INITIALIZER
       <LastStatement> LAST_STATEMENT
       <Literal> LITERAL
-      <NameAssignment> MULTIPLE_ASSIGNMENT
-      <NameAssignment> NAME_ASSIGNMENT
-      <NameAssignment> SINGLE_ASSIGNMENT
+      <Mutability> MUTABILITY
       <NamedFunction> FUNCTION_DEFINITION
       <NameList> MULTIPLE_NAME_LIST
       <NameList> NAME_LIST
       <NameList> PARAMETERS
-      <OperatorAssignment> OPERATOR_ASSIGNMENT
       <ReturnStatement> RETURN
       <Statement> SEMI_STATEMENT
       <Statement> STATEMENT
@@ -227,27 +225,19 @@ ASSIGNMENT_OPERATOR: plus_equal  { $$ = AssignmentOperator::Plus; }
                    | pow_equal   { $$ = AssignmentOperator::Power; }
                    | equal       { $$ = AssignmentOperator::Assign; }
 
-OPERATOR_ASSIGNMENT: VAR ASSIGNMENT_OPERATOR PRIMARY_EXPRESSION
-                   { $$ = OperatorAssignment { std::move($1), $2, std::move($3) }; }
+ASSIGNMENT: VAR ASSIGNMENT_OPERATOR PRIMARY_EXPRESSION
+            { $$ = OperatorAssignment { std::move($1), $2, std::move($3) }; }
+          | MULTIPLE_NAME_LIST equal PRIMARY_EXPRESSION
+            { $$ = NameAssignment { std::move($1), std::move($3) }; }
 
-MULTIPLE_ASSIGNMENT: MULTIPLE_NAME_LIST equal PRIMARY_EXPRESSION
-                     { $$ = { std::move($1), std::move($3) }; }
+INITIALIZER: equal PRIMARY_EXPRESSION { $$ = std::move($2); }
+           | %empty                   { $$ = std::nullopt; }
 
-SINGLE_ASSIGNMENT: IDENTIFIER equal PRIMARY_EXPRESSION
-                   { $$ = { std::move($1), std::move($3) }; }
+MUTABILITY: mut     { $$ = Mutability::Mutable; }
+          | %empty  { $$ = Mutability::Immutable; }
 
-NAME_ASSIGNMENT: MULTIPLE_ASSIGNMENT
-                 { $$ = std::move($1); }
-               | SINGLE_ASSIGNMENT
-                 { $$ = std::move($1); }
-
-ASSIGNMENT: OPERATOR_ASSIGNMENT
-            { $$ = std::move($1); }
-          | MULTIPLE_ASSIGNMENT
-            { $$ = std::move($1); }
-
-DECLARATION: let NAME_ASSIGNMENT      { $$ = { std::move($2), Mutability::Immutable }; }
-           | let mut NAME_ASSIGNMENT  { $$ = { std::move($3), Mutability::Mutable }; }
+DECLARATION: let MUTABILITY NAME_LIST INITIALIZER
+             { $$ = { std::move($3), std::move($4), std::move($2) }; }
 
 // Control Statements
 RETURN: _return PRIMARY_EXPRESSION { $$ = { std::move($2) }; }
