@@ -4,6 +4,7 @@
 #include "vm/format.hpp"
 #include "vm/vm.hpp"
 #include <print>
+#include <ranges>
 
 namespace l3::vm {
 
@@ -96,4 +97,44 @@ ScopeStack ScopeStack::clone(VM &vm) const {
   }
   return cloned;
 }
+ScopeStack::FrameGuard::FrameGuard(ScopeStack &scope_stack)
+    : scope_stack{scope_stack} {
+  scope_stack.emplace_back(std::make_shared<Scope>());
+}
+ScopeStack::FrameGuard::FrameGuard(ScopeStack &scope_stack, Scope &&scope)
+    : scope_stack{scope_stack} {
+  scope_stack.emplace_back(std::make_shared<Scope>(std::move(scope)));
+}
+ScopeStack::FrameGuard::~FrameGuard() { scope_stack.pop_back(); }
+[[nodiscard]] ScopeStack::FrameGuard ScopeStack::with_frame() {
+  return FrameGuard(*this);
+}
+[[nodiscard]] ScopeStack::FrameGuard ScopeStack::with_frame(Scope &&scope) {
+  return FrameGuard(*this, std::move(scope));
+}
+
+[[nodiscard]]
+std::optional<RefValue> ScopeStack::read_variable(const Identifier &id) const {
+  for (const auto &scope : std::views::reverse(*this)) {
+    if (auto variable = scope->get_variable(id)) {
+      return *variable->get();
+    }
+  }
+  return std::nullopt;
+}
+
+[[nodiscard]]
+utils::optional_ref<RefValue>
+ScopeStack::read_variable_mut(const Identifier &id) {
+  for (auto &scope : std::views::reverse(*this)) {
+    if (auto variable = scope->get_variable_mut(id)) {
+      if (variable->get().is_const()) {
+        throw RuntimeError("Cannot modify constant variable {}", id);
+      }
+      return *variable->get();
+    }
+  }
+  return std::nullopt;
+}
+
 } // namespace l3::vm

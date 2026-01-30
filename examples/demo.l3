@@ -46,6 +46,11 @@ while i < 10 do
   end
 end
 
+let numbers = [10, 20, 30, 40, 50]
+let mut total = 0
+for n in numbers do total += n end
+println("Sum:", total)
+
 # Error handling via abort
 fn div(a, b)
   assert(b != 0, "cannot divide by zero")

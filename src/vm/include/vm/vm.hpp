@@ -53,6 +53,7 @@ private:
   bool execute(const ast::ElseIfList &elseif_list);
   void execute(const ast::NamedFunction &named_function);
   void execute(const ast::While &while_loop);
+  void execute(const ast::ForLoop &for_loop);
 
   [[nodiscard]] RefValue evaluate(const ast::Expression &expression);
   [[nodiscard]] RefValue evaluate(const ast::Literal &literal);

@@ -79,6 +79,23 @@ public:
   [[nodiscard]] Scope &top() { return *back(); }
 
   [[nodiscard]] ScopeStack clone(VM &vm) const;
+
+  [[nodiscard]]
+  std::optional<RefValue> read_variable(const Identifier &id) const;
+  [[nodiscard]]
+  utils::optional_ref<RefValue> read_variable_mut(const Identifier &id);
+
+  class FrameGuard {
+    ScopeStack &scope_stack;
+
+  public:
+    FrameGuard(ScopeStack &scope_stack);
+    FrameGuard(ScopeStack &scope_stack, Scope &&scope);
+    ~FrameGuard();
+  };
+
+  [[nodiscard]] FrameGuard with_frame();
+  [[nodiscard]] FrameGuard with_frame(Scope &&scope);
 };
 
 } // namespace l3::vm

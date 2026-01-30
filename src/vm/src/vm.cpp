@@ -240,7 +240,7 @@ void VM::execute(const ast::Program &program) {
 void VM::execute(const ast::Block &block) {
   debug_print("Evaluating block");
   const auto frame_guard = stack.with_frame();
-  scopes.push_back(std::make_shared<Scope>());
+  const auto scope_guard = scopes.with_frame();
   for (const auto &statement : block.get_statements()) {
     execute(statement);
   }
@@ -250,19 +250,16 @@ void VM::execute(const ast::Block &block) {
   if (last_statement) {
     execute(*last_statement);
   }
-  scopes.pop_back();
 }
 
 RefValue VM::read_variable(const Identifier &id) {
   debug_print("Reading variable {}", id.get_name());
-  for (const auto &it : std::views::reverse(scopes)) {
-    const auto &scope = *it;
-    if (auto variable = scope.get_variable(id)) {
-      const auto ref_value = *variable->get();
-      return store_value(ref_value->clone());
-    }
-  }
-  if (auto value = Scope::get_builtin(id)) {
+  auto value = scopes.read_variable(id)
+                   .transform([this](const auto &variable) {
+                     return store_value(variable->clone());
+                   })
+                   .or_else([&id] { return Scope::get_builtin(id); });
+  if (value) {
     return *value;
   }
   throw UndefinedVariableError(id);
@@ -270,13 +267,8 @@ RefValue VM::read_variable(const Identifier &id) {
 
 RefValue &VM::read_write_variable(const Identifier &id) {
   debug_print("Writing variable {}", id.get_name());
-  for (auto &it : std::views::reverse(scopes)) {
-    if (auto variable = it->get_variable_mut(id)) {
-      if (variable->get().is_const()) {
-        throw RuntimeError("Cannot modify const variable {}", id);
-      }
-      return *variable->get();
-    }
+  if (auto value = scopes.read_variable_mut(id)) {
+    return *value;
   }
   if (auto value = Scope::get_builtin(id)) {
     throw RuntimeError("Cannot modify builtin variable {}", id);
@@ -573,6 +565,57 @@ void VM::execute(const ast::While &while_loop) {
       continue;
     }
   }
+}
+
+void VM::execute(const ast::ForLoop &for_loop) {
+  const auto &variable = for_loop.get_variable();
+  const auto &collection = for_loop.get_collection();
+  const auto &body = for_loop.get_body();
+  const auto mutability = for_loop.get_mutability();
+
+  auto collection_value = evaluate(collection);
+
+  if (auto vector_opt = collection_value->as_vector()) {
+    const auto &vector = vector_opt->get();
+    for (const auto &item : vector) {
+      const auto frame_guard = stack.with_frame();
+      const auto scope_guard = scopes.with_frame();
+      declare_variable(variable, mutability, item);
+      try {
+        execute(body);
+      } catch (const BreakLoopException &e) {
+        break;
+      } catch (const ContinueLoopException &e) {
+        continue;
+      }
+    }
+    return;
+  }
+
+  if (auto primitive_opt = collection_value->as_primitive()) {
+    if (auto string_opt = primitive_opt->get().as_string()) {
+      const auto &string = string_opt->get();
+      for (char c : string) {
+        const auto frame_guard = stack.with_frame();
+        const auto scope_guard = scopes.with_frame();
+        declare_variable(
+            variable, mutability, store_value(Primitive{std::string{c}})
+        );
+        try {
+          execute(body);
+        } catch (const BreakLoopException &e) {
+          break;
+        } catch (const ContinueLoopException &e) {
+          continue;
+        }
+      }
+      return;
+    }
+  }
+
+  throw TypeError{std::format(
+      "cannot iterate over value of type '{}'", collection_value->type_name()
+  )};
 }
 
 } // namespace l3::vm

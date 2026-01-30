@@ -104,6 +104,18 @@ void While::print(
   get_body().print(out, depth + 2);
 }
 
+void ForLoop::print(
+    std::output_iterator<char> auto &out, std::size_t depth
+) const {
+  format_indented_line(out, depth, "ForLoop ({})", mutability);
+  format_indented_line(out, depth + 1, "Variable");
+  get_variable().print(out, depth + 2);
+  format_indented_line(out, depth + 1, "Collection");
+  get_collection().print(out, depth + 2);
+  format_indented_line(out, depth + 1, "Block");
+  get_body().print(out, depth + 2);
+}
+
 void ReturnStatement::print(
     std::output_iterator<char> auto &out, std::size_t depth
 ) const {

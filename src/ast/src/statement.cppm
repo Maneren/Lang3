@@ -19,6 +19,7 @@ export namespace l3::ast {
 class Statement {
   std::variant<
       Declaration,
+      ForLoop,
       FunctionCall,
       IfStatement,
       NameAssignment,
@@ -41,6 +42,7 @@ public:
     });
   }
   Statement(Declaration &&declaration) : inner(std::move(declaration)) {}
+  Statement(ForLoop &&loop) : inner(std::move(loop)) {}
   Statement(FunctionCall &&call) : inner(std::move(call)) {}
   Statement(IfStatement &&clause) : inner(std::move(clause)) {}
   Statement(NameAssignment &&assignment) : inner(std::move(assignment)) {}

@@ -77,6 +77,7 @@
       <ExpressionList> EXPRESSION_LIST
       <Expression> PREFIX_EXPRESSION
       <Expression> PRIMARY_EXPRESSION
+      <ForLoop> FOR
       <FunctionBody> FUNCTION_BODY
       <FunctionCall> FUNCTION_CALL
       <Identifier> IDENTIFIER
@@ -216,6 +217,9 @@ IF_EXPRESSION: IF_BASE IF_ELSE _else BLOCK end
 WHILE: _while EXPRESSION _do BLOCK end
        { $$ = { std::move($2), std::move($4) }; }
 
+FOR: _for MUTABILITY IDENTIFIER in EXPRESSION _do BLOCK end
+     { $$ = { std::move($3), std::move($5), std::move($7), std::move($2) }; }
+
 // Assignments and Declarations
 ASSIGNMENT_OPERATOR: plus_equal  { $$ = AssignmentOperator::Plus; }
                    | minus_equal { $$ = AssignmentOperator::Minus; }
@@ -250,6 +254,7 @@ LAST_STATEMENT: RETURN    { $$ = { std::move($1) }; }
 // Statements and Blocks
 STATEMENT: ASSIGNMENT           { $$ = { std::move($1) }; }
          | DECLARATION          { $$ = { std::move($1) }; }
+         | FOR                  { $$ = { std::move($1) }; }
          | IF_STATEMENT         { $$ = { std::move($1) }; }
          | FUNCTION_CALL        { $$ = { std::move($1) }; }
          | FUNCTION_DEFINITION  { $$ = { std::move($1) }; }
