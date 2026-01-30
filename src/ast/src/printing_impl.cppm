@@ -104,4 +104,13 @@ void While::print(
   get_body().print(out, depth + 2);
 }
 
+void ReturnStatement::print(
+    std::output_iterator<char> auto &out, std::size_t depth
+) const {
+  format_indented_line(out, depth, "Return");
+  if (expression) {
+    (*expression)->print(out, depth + 1);
+  }
+}
+
 } // namespace l3::ast

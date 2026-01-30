@@ -1,6 +1,8 @@
 export module l3.ast;
 
+export import :assignment;
 export import :block;
+export import :declaration;
 export import :expression;
 export import :format;
 export import :function;
@@ -10,7 +12,9 @@ export import :last_statement;
 export import :literal;
 export import :loop;
 export import :mutability;
+export import :name_assignment;
 export import :name_list;
+export import :operator_assignment;
 export import :operators;
 export import :printing_impl;
 export import :statement;

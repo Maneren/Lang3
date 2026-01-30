@@ -9,7 +9,7 @@ module;
 
 export module l3.ast:last_statement;
 
-import :expression;
+import :printing;
 
 export namespace l3::ast {
 
@@ -20,16 +20,15 @@ class ReturnStatement {
 
 public:
   ReturnStatement() = default;
-  ReturnStatement(Expression &&expression)
-      : expression(std::make_unique<Expression>(std::move(expression))) {}
+  ReturnStatement(Expression &&expression);
 
-  void
-  print(std::output_iterator<char> auto &out, std::size_t depth = 0) const {
-    format_indented_line(out, depth, "Return");
-    if (expression) {
-      (*expression)->print(out, depth + 1);
-    }
-  }
+  ReturnStatement(const ReturnStatement &) = delete;
+  ReturnStatement(ReturnStatement &&) noexcept;
+  ReturnStatement &operator=(const ReturnStatement &) = delete;
+  ReturnStatement &operator=(ReturnStatement &&) noexcept;
+  ~ReturnStatement();
+
+  void print(std::output_iterator<char> auto &out, std::size_t depth = 0) const;
 
   [[nodiscard]] utils::optional_cref<Expression> get_expression() const {
     return expression.transform(
