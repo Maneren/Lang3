@@ -6,14 +6,13 @@ module;
 
 export module l3.ast:while_loop;
 
-import :expression;
-
 export namespace l3::ast {
 
 class Block;
+class Expression;
 
 class While {
-  Expression condition;
+  std::unique_ptr<Expression> condition;
   std::unique_ptr<Block> body;
 
 public:
@@ -28,8 +27,8 @@ public:
 
   void print(std::output_iterator<char> auto &out, std::size_t depth = 0) const;
 
-  DEFINE_ACCESSOR(condition, Expression, condition);
-  DEFINE_PTR_ACCESSOR(body, Block, body);
+  DEFINE_PTR_ACCESSOR_X(condition);
+  DEFINE_PTR_ACCESSOR_X(body);
 };
 
 } // namespace l3::ast

@@ -5,8 +5,7 @@ module;
 module l3.ast;
 
 import :block;
-import :identifier;
-import :literal;
+import :name_list;
 
 namespace l3::ast {
 

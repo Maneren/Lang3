@@ -4,6 +4,7 @@ module;
 #include <optional>
 #include <utils/accessor.h>
 #include <utils/match.h>
+#include <utils/types.h>
 #include <variant>
 
 export module l3.ast:last_statement;
@@ -12,22 +13,36 @@ import :expression;
 
 export namespace l3::ast {
 
+class Expression;
+
 class ReturnStatement {
-  std::optional<Expression> expr;
+  std::optional<std::unique_ptr<Expression>> expression;
 
 public:
   ReturnStatement() = default;
-  ReturnStatement(Expression &&expression) : expr(std::move(expression)) {}
+  ReturnStatement(Expression &&expression)
+      : expression(std::make_unique<Expression>(std::move(expression))) {}
 
   void
   print(std::output_iterator<char> auto &out, std::size_t depth = 0) const {
     format_indented_line(out, depth, "Return");
-    if (expr) {
-      expr->print(out, depth + 1);
+    if (expression) {
+      (*expression)->print(out, depth + 1);
     }
   }
 
-  DEFINE_ACCESSOR(expression, std::optional<Expression>, expr)
+  [[nodiscard]] utils::optional_cref<Expression> get_expression() const {
+    return expression.transform(
+        [](auto &ptr) -> std::reference_wrapper<const Expression> {
+          return *ptr;
+        }
+    );
+  }
+  [[nodiscard]] utils::optional_ref<Expression> get_expression_mut() {
+    return expression.transform(
+        [](auto &ptr) -> std::reference_wrapper<Expression> { return *ptr; }
+    );
+  }
 };
 
 class BreakStatement {

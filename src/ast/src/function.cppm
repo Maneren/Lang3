@@ -7,6 +7,7 @@ module;
 export module l3.ast:function;
 
 import :identifier;
+import :name_list;
 import :printing;
 
 export namespace l3::ast {
@@ -31,7 +32,7 @@ public:
 
   void print(std::output_iterator<char> auto &out, std::size_t depth = 0) const;
 
-  DEFINE_ACCESSOR(parameters, NameList, parameters)
+  DEFINE_ACCESSOR_X(parameters);
   DEFINE_PTR_ACCESSOR(block, Block, block)
   [[nodiscard]] std::shared_ptr<Block> get_block_ptr() const { return block; }
   std::shared_ptr<Block> get_block_ptr_mut() { return block; }
@@ -53,8 +54,8 @@ public:
     body.print(out, depth + 1);
   };
 
-  DEFINE_ACCESSOR(name, Identifier, name)
-  DEFINE_ACCESSOR(body, FunctionBody, body)
+  DEFINE_ACCESSOR_X(name);
+  DEFINE_ACCESSOR_X(body);
 };
 
 class AnonymousFunction {
@@ -70,7 +71,7 @@ public:
     body.print(out, depth + 1);
   }
 
-  DEFINE_ACCESSOR(body, FunctionBody, body)
+  DEFINE_ACCESSOR_X(body);
 };
 
 } // namespace l3::ast

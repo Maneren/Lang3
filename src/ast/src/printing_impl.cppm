@@ -20,6 +20,40 @@ void Array::print(
   }
 }
 
+void UnaryExpression::print(
+    std::output_iterator<char> auto &out, std::size_t depth
+) const {
+  format_indented_line(out, depth, "UnaryExpression {}", op);
+  expression->print(out, depth + 1);
+}
+
+void BinaryExpression::print(
+    std::output_iterator<char> auto &out, std::size_t depth
+) const {
+  format_indented_line(out, depth, "BinaryExpression {}", op);
+  lhs->print(out, depth + 1);
+  rhs->print(out, depth + 1);
+}
+
+void IndexExpression::print(
+    std::output_iterator<char> auto &out, std::size_t depth
+) const {
+  format_indented_line(out, depth, "IndexExpression");
+  base->print(out, depth + 1);
+  index->print(out, depth + 1);
+}
+
+void FunctionCall::print(
+    std::output_iterator<char> auto &out, std::size_t depth
+) const {
+  format_indented_line(out, depth, "FunctionCall");
+  name.print(out, depth + 1);
+  format_indented_line(out, depth + 1, "Arguments");
+  for (const auto &arg : arguments) {
+    arg.print(out, depth + 2);
+  }
+}
+
 void FunctionBody::print(
     std::output_iterator<char> auto &out, std::size_t depth
 ) const {

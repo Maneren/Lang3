@@ -6,20 +6,9 @@ module;
 
 export module l3.ast:array;
 
-export namespace l3::ast {
+import :expression_list;
 
-class Expression;
-class ExpressionList : public std::deque<Expression> {
-public:
-  ExpressionList();
-  ExpressionList(const ExpressionList &) = delete;
-  ExpressionList(ExpressionList &&) noexcept;
-  ExpressionList &operator=(const ExpressionList &) = delete;
-  ExpressionList &operator=(ExpressionList &&) noexcept;
-  ExpressionList(Expression &&expr);
-  ExpressionList &with_expression(Expression &&expr);
-  ~ExpressionList();
-};
+export namespace l3::ast {
 
 class Array {
   ExpressionList elements;
@@ -30,7 +19,7 @@ public:
 
   void print(std::output_iterator<char> auto &out, std::size_t depth = 0) const;
 
-  DEFINE_ACCESSOR(elements, ExpressionList, elements)
+  DEFINE_ACCESSOR_X(elements);
 };
 
 } // namespace l3::ast

@@ -6,13 +6,8 @@ module l3.ast;
 
 namespace l3::ast {
 
-IndexExpression::IndexExpression() = default;
-IndexExpression::IndexExpression(Expression &&base, Expression &&index)
-    : base(std::make_unique<Expression>(std::move(base))),
-      index(std::make_unique<Expression>(std::move(index))) {};
-
-UnaryExpression::UnaryExpression(UnaryOperator op, Expression &&expr)
-    : op(op), expr(std::make_unique<Expression>(std::move(expr))) {}
+UnaryExpression::UnaryExpression(UnaryOperator op, Expression &&expression)
+    : op(op), expression(std::make_unique<Expression>(std::move(expression))) {}
 
 BinaryExpression::BinaryExpression(
     Expression &&lhs, BinaryOperator op, Expression &&rhs

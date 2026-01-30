@@ -68,8 +68,8 @@ public:
   IfElseBase(IfBase &&base_if);
   IfElseBase(IfBase &&base_if, ElseIfList &&elseif);
 
-  DEFINE_ACCESSOR(base_if, IfBase, base_if)
-  DEFINE_ACCESSOR(elseif, ElseIfList, elseif)
+  DEFINE_ACCESSOR_X(base_if);
+  DEFINE_ACCESSOR_X(elseif);
 };
 
 class IfExpression final : public IfElseBase {

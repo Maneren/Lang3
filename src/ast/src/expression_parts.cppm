@@ -15,16 +15,16 @@ class Expression;
 
 class UnaryExpression {
   UnaryOperator op = UnaryOperator::Plus;
-  std::unique_ptr<Expression> expr;
+  std::unique_ptr<Expression> expression;
 
 public:
   UnaryExpression() = default;
-  UnaryExpression(UnaryOperator op, Expression &&expr);
+  UnaryExpression(UnaryOperator op, Expression &&expression);
 
   void print(std::output_iterator<char> auto &out, std::size_t depth = 0) const;
 
   DEFINE_VALUE_ACCESSOR(op, UnaryOperator, op)
-  DEFINE_PTR_ACCESSOR(expr, Expression, expr)
+  DEFINE_PTR_ACCESSOR(expression, Expression, expression)
 };
 
 class BinaryExpression {
@@ -41,35 +41,6 @@ public:
   DEFINE_PTR_ACCESSOR(lhs, Expression, lhs)
   DEFINE_PTR_ACCESSOR(rhs, Expression, rhs)
   DEFINE_VALUE_ACCESSOR(op, BinaryOperator, op)
-};
-
-class IndexExpression {
-  std::unique_ptr<Expression> base;
-  std::unique_ptr<Expression> index;
-
-public:
-  IndexExpression();
-  IndexExpression(Expression &&base, Expression &&index);
-
-  void print(std::output_iterator<char> auto &out, std::size_t depth = 0) const;
-
-  DEFINE_PTR_ACCESSOR(base, Expression, base)
-  DEFINE_PTR_ACCESSOR(index, Expression, index)
-};
-
-class FunctionCall {
-  Variable name;
-  ExpressionList args;
-
-public:
-  FunctionCall() = default;
-  FunctionCall(Variable &&name, ExpressionList &&args)
-      : name(std::move(name)), args(std::move(args)) {}
-
-  void print(std::output_iterator<char> auto &out, std::size_t depth = 0) const;
-
-  DEFINE_ACCESSOR(name, Variable, name)
-  DEFINE_ACCESSOR(arguments, ExpressionList, args)
 };
 
 } // namespace l3::ast

@@ -1,6 +1,5 @@
 module;
 
-#include <deque>
 #include <format>
 #include <string>
 #include <utils/accessor.h>
@@ -12,12 +11,12 @@ import :printing;
 export namespace l3::ast {
 
 class Identifier {
-  std::string id;
+  std::string name;
 
 public:
   Identifier() = default;
-  Identifier(std::string &&id) : id(std::move(id)) {};
-  Identifier(std::string_view id) : id(id) {}
+  Identifier(std::string &&name) : name(std::move(name)) {};
+  Identifier(std::string_view name) : name(name) {}
 
   Identifier(const Identifier &other) = default;
   Identifier &operator=(const Identifier &other) = default;
@@ -27,44 +26,12 @@ public:
 
   void
   print(std::output_iterator<char> auto &out, std::size_t depth = 0) const {
-    format_indented_line(out, depth, "Identifier '{}'", id);
+    format_indented_line(out, depth, "Identifier '{}'", name);
   }
 
-  DEFINE_ACCESSOR(name, std::string, id);
+  DEFINE_ACCESSOR_X(name);
 
   std::compare_three_way operator<=>(const Identifier &) const = default;
-};
-
-class NameList : public std::deque<Identifier> {
-public:
-  NameList() = default;
-  NameList(Identifier &&ident) { emplace_front(std::move(ident)); }
-  NameList &with_name(Identifier &&ident) {
-    emplace_front(std::move(ident));
-    return *this;
-  }
-
-  void
-  print(std::output_iterator<char> auto &out, std::size_t depth = 0) const {
-    for (const auto &name : *this) {
-      name.print(out, depth);
-    }
-  }
-};
-
-class Variable {
-  Identifier id;
-
-public:
-  Variable() = default;
-  Variable(Identifier &&id) : id(std::move(id)) {}
-
-  void
-  print(std::output_iterator<char> auto &out, std::size_t depth = 0) const {
-    format_indented_line(out, depth, "Variable '{}'", id.get_name());
-  }
-
-  DEFINE_ACCESSOR(identifier, Identifier, id);
 };
 
 } // namespace l3::ast

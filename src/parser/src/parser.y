@@ -52,7 +52,6 @@
 %left  mul div mod
 %right pow
 %nonassoc equal_equal not_equal less less_equal greater greater_equal
-%left lbracket
 
 %token _if _else _while _break _continue _return _for in _do _true _false then
        end nil function let equal _not lparen rparen lbrace rbrace lbracket
@@ -73,8 +72,11 @@
       <Declaration> DECLARATION
       <ElseIfList> IF_ELSE
       <Expression> EXPRESSION
+      <Expression> INDEX
       <ExpressionList> ARGUMENTS
       <ExpressionList> EXPRESSION_LIST
+      <Expression> PREFIX_EXPRESSION
+      <Expression> PRIMARY_EXPRESSION
       <FunctionBody> FUNCTION_BODY
       <FunctionCall> FUNCTION_CALL
       <Identifier> IDENTIFIER
@@ -83,10 +85,14 @@
       <IfStatement> IF_STATEMENT
       <LastStatement> LAST_STATEMENT
       <Literal> LITERAL
+      <NameAssignment> MULTIPLE_ASSIGNMENT
       <NameAssignment> NAME_ASSIGNMENT
+      <NameAssignment> SINGLE_ASSIGNMENT
       <NamedFunction> FUNCTION_DEFINITION
+      <NameList> MULTIPLE_NAME_LIST
       <NameList> NAME_LIST
       <NameList> PARAMETERS
+      <OperatorAssignment> OPERATOR_ASSIGNMENT
       <ReturnStatement> RETURN
       <Statement> SEMI_STATEMENT
       <Statement> STATEMENT
@@ -112,14 +118,18 @@ ARRAY: lbracket EXPRESSION_LIST rbracket { $$ = { std::move($2) }; }
 // Identifiers and Variables
 IDENTIFIER: id { $$ = { std::move($1) }; }
 
+INDEX: lbracket PRIMARY_EXPRESSION rbracket { $$ = { std::move($2) }; }
+
 VAR: IDENTIFIER { $$ = { std::move($1) }; }
+   | VAR INDEX  { $$ = { IndexExpression { std::move($1), std::move($2) } }; }
 
 NAME_LIST: IDENTIFIER comma NAME_LIST
            { $$ = std::move($3.with_name(std::move($1))); }
          | IDENTIFIER
            { $$ = { std::move($1) }; }
-         | %empty
-           { $$ = {}; }
+
+MULTIPLE_NAME_LIST: IDENTIFIER comma NAME_LIST
+                    { $$ = std::move($3.with_name(std::move($1))); }
 
 // Expressions
 UNARY: minus EXPRESSION
@@ -154,32 +164,35 @@ BINARY: EXPRESSION plus EXPRESSION
       | EXPRESSION _or EXPRESSION
         { $$ = { std::move($1), BinaryOperator::Or, std::move($3) }; }
 
+PREFIX_EXPRESSION: FUNCTION_CALL                 { $$ = { std::move($1) }; }
+                 | VAR                           { $$ = { std::move($1) }; }
+                 | lparen PRIMARY_EXPRESSION rparen { $$ = std::move($2); }
+
 EXPRESSION: UNARY                    { $$ = { std::move($1) }; }
           | BINARY                   { $$ = { std::move($1) }; }
           | ANONYMOUS_FUNCTION       { $$ = { std::move($1) }; }
-          | FUNCTION_CALL            { $$ = { std::move($1) }; }
-          | VAR                      { $$ = { std::move($1) }; }
-          | lparen EXPRESSION rparen { $$ = std::move($2); }
-          | EXPRESSION lbracket EXPRESSION rbracket
-            { $$ = { IndexExpression { std::move($1), std::move($3) } }; }
+          | PREFIX_EXPRESSION        { $$ = { std::move($1) }; }
           | LITERAL                  { $$ = { std::move($1) }; }
-          | IF_EXPRESSION            { $$ = { std::move($1) }; }
 
-EXPRESSION_LIST: EXPRESSION comma EXPRESSION_LIST
+PRIMARY_EXPRESSION: EXPRESSION      { $$ = std::move($1); }
+                  | IF_EXPRESSION   { $$ = { std::move($1) }; }
+
+EXPRESSION_LIST: PRIMARY_EXPRESSION comma EXPRESSION_LIST
                  { $$ = std::move($3.with_expression(std::move($1))); }
-               | EXPRESSION
+               | PRIMARY_EXPRESSION
                  { $$ = { std::move($1) }; }
                | %empty
                  { $$ = {}; }
 
 // Functions
 PARAMETERS: lparen NAME_LIST rparen { $$ = std::move($2); }
+          | lparen rparen           { $$ = {}; }
 
 FUNCTION_BODY: PARAMETERS BLOCK end { $$ = { std::move($1), std::move($2) }; }
 
 ANONYMOUS_FUNCTION: function FUNCTION_BODY { $$ = { std::move($2) }; }
 
-FUNCTION_CALL: VAR ARGUMENTS { $$ = { std::move($1), std::move($2) }; }
+FUNCTION_CALL: IDENTIFIER ARGUMENTS { $$ = { std::move($1), std::move($2) }; }
 
 FUNCTION_DEFINITION: function IDENTIFIER FUNCTION_BODY
                      { $$ = { std::move($2), std::move($3) }; }
@@ -212,21 +225,33 @@ ASSIGNMENT_OPERATOR: plus_equal  { $$ = AssignmentOperator::Plus; }
                    | div_equal   { $$ = AssignmentOperator::Divide; }
                    | mod_equal   { $$ = AssignmentOperator::Modulo; }
                    | pow_equal   { $$ = AssignmentOperator::Power; }
+                   | equal       { $$ = AssignmentOperator::Assign; }
 
-NAME_ASSIGNMENT: NAME_LIST equal EXPRESSION
-                 { $$ = { std::move($1), std::move($3) }; }
+OPERATOR_ASSIGNMENT: VAR ASSIGNMENT_OPERATOR PRIMARY_EXPRESSION
+                   { $$ = OperatorAssignment { std::move($1), $2, std::move($3) }; }
 
-ASSIGNMENT: VAR ASSIGNMENT_OPERATOR EXPRESSION
-            { $$ = OperatorAssignment { std::move($1), $2, std::move($3) }; }
-          | NAME_LIST equal EXPRESSION
-            { $$ = NameAssignment { std::move($1), std::move($3) }; }
+MULTIPLE_ASSIGNMENT: MULTIPLE_NAME_LIST equal PRIMARY_EXPRESSION
+                     { $$ = { std::move($1), std::move($3) }; }
+
+SINGLE_ASSIGNMENT: IDENTIFIER equal PRIMARY_EXPRESSION
+                   { $$ = { std::move($1), std::move($3) }; }
+
+NAME_ASSIGNMENT: MULTIPLE_ASSIGNMENT
+                 { $$ = std::move($1); }
+               | SINGLE_ASSIGNMENT
+                 { $$ = std::move($1); }
+
+ASSIGNMENT: OPERATOR_ASSIGNMENT
+            { $$ = std::move($1); }
+          | MULTIPLE_ASSIGNMENT
+            { $$ = std::move($1); }
 
 DECLARATION: let NAME_ASSIGNMENT      { $$ = { std::move($2), Mutability::Immutable }; }
            | let mut NAME_ASSIGNMENT  { $$ = { std::move($3), Mutability::Mutable }; }
 
 // Control Statements
-RETURN: _return EXPRESSION { $$ = { std::move($2) }; }
-      | _return            {}
+RETURN: _return PRIMARY_EXPRESSION { $$ = { std::move($2) }; }
+      | _return                    {}
 
 LAST_STATEMENT: RETURN    { $$ = { std::move($1) }; }
               | _continue { $$ = { ContinueStatement {} }; }

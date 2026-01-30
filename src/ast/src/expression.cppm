@@ -6,12 +6,15 @@ module;
 
 export module l3.ast:expression;
 
+export import :expression_list;
 export import :expression_parts;
+export import :function_call;
 import :function;
 import :identifier;
 import :if_else;
 import :literal;
 import :printing;
+import :variable;
 
 export namespace l3::ast {
 
@@ -21,7 +24,6 @@ class Expression {
       BinaryExpression,
       FunctionCall,
       IfExpression,
-      IndexExpression,
       Literal,
       // Table,
       UnaryExpression,
@@ -39,7 +41,7 @@ public:
   Expression(Literal &&literal) : inner(std::move(literal)) {}
   // Expression(Table &&table) : inner(std::move(table)) {}
   Expression(UnaryExpression &&expression) : inner(std::move(expression)) {}
-  Expression(Variable &&var) : inner(std::move(var)) {}
+  Expression(Variable &&variable) : inner(std::move(variable)) {}
 
   void
   print(std::output_iterator<char> auto &out, std::size_t depth = 0) const {
@@ -48,39 +50,5 @@ public:
 
   VISIT(inner)
 };
-
-void UnaryExpression::print(
-    std::output_iterator<char> auto &out, std::size_t depth
-) const {
-  format_indented_line(out, depth, "UnaryExpression {}", op);
-  expr->print(out, depth + 1);
-}
-
-void BinaryExpression::print(
-    std::output_iterator<char> auto &out, std::size_t depth
-) const {
-  format_indented_line(out, depth, "BinaryExpression {}", op);
-  lhs->print(out, depth + 1);
-  rhs->print(out, depth + 1);
-}
-
-void IndexExpression::print(
-    std::output_iterator<char> auto &out, std::size_t depth
-) const {
-  format_indented_line(out, depth, "IndexExpression");
-  base->print(out, depth + 1);
-  index->print(out, depth + 1);
-}
-
-void FunctionCall::print(
-    std::output_iterator<char> auto &out, std::size_t depth
-) const {
-  format_indented_line(out, depth, "FunctionCall");
-  name.print(out, depth + 1);
-  format_indented_line(out, depth + 1, "Arguments");
-  for (const auto &arg : args) {
-    arg.print(out, depth + 2);
-  }
-}
 
 } // namespace l3::ast

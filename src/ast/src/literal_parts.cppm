@@ -29,7 +29,7 @@ public:
     format_indented_line(out, depth, "Boolean {}", value);
   }
 
-  DEFINE_ACCESSOR(value, bool, value)
+  DEFINE_ACCESSOR_X(value);
 };
 
 class Number {
@@ -43,7 +43,7 @@ public:
     format_indented_line(out, depth, "Number {}", value);
   }
 
-  DEFINE_ACCESSOR(value, std::int64_t, value)
+  DEFINE_ACCESSOR_X(value);
 };
 
 class Float {
@@ -57,7 +57,7 @@ public:
     format_indented_line(out, depth, "Float {}", value);
   }
 
-  DEFINE_ACCESSOR(value, double, value)
+  DEFINE_ACCESSOR_X(value);
 };
 
 class String {
@@ -71,7 +71,7 @@ public:
     format_indented_line(out, depth, "String \"{}\"", value);
   }
 
-  DEFINE_ACCESSOR(value, std::string, value)
+  DEFINE_ACCESSOR_X(value);
 };
 
 } // namespace l3::ast
