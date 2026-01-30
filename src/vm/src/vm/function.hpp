@@ -18,6 +18,10 @@ class VM;
 using L3Args = std::span<RefValue>;
 
 class L3Function {
+  std::vector<std::shared_ptr<Scope>> capture_scopes;
+  ast::FunctionBody body;
+  std::optional<Identifier> name;
+
 public:
   L3Function(const L3Function &) = delete;
   L3Function(L3Function &&) = default;
@@ -40,30 +44,28 @@ public:
 
   RefValue operator()(VM &vm, L3Args args);
 
-  DEFINE_ACCESSOR(body, ast::FunctionBody, body)
+  DEFINE_ACCESSOR_X(body);
   [[nodiscard]] const Identifier &get_name() const;
 
 private:
-  std::vector<std::shared_ptr<Scope>> capture_scopes;
-  ast::FunctionBody body;
-  std::optional<Identifier> name;
-
   static Identifier anonymous_function_name;
 };
 
 class BuiltinFunction {
 public:
   using Body = std::function<RefValue(VM &vm, L3Args args)>;
-  BuiltinFunction(Identifier &&name, Body &&body);
-
-  RefValue operator()(VM &vm, std::span<RefValue> args) const;
-
-  DEFINE_ACCESSOR(name, Identifier, name)
-  DEFINE_ACCESSOR(body, Body, body)
 
 private:
   Identifier name;
   Body body;
+
+public:
+  BuiltinFunction(Identifier &&name, Body &&body);
+
+  RefValue operator()(VM &vm, std::span<RefValue> args) const;
+
+  DEFINE_ACCESSOR_X(name);
+  DEFINE_ACCESSOR_X(body);
 };
 
 class Function {
@@ -73,9 +75,7 @@ public:
 
   RefValue operator()(VM &vm, L3Args args);
 
-  auto visit(auto &&...visitor) const {
-    return match::match(inner, std::forward<decltype(visitor)>(visitor)...);
-  }
+  VISIT(inner);
 
 private:
   std::variant<L3Function, BuiltinFunction> inner;

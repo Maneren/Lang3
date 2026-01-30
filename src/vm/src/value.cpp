@@ -194,8 +194,23 @@ Primitive operator>=(const Primitive &lhs, const Primitive &rhs) {
 }
 
 Value Value::add(const Value &other) const {
-  return binary_op(
-      other, [](const auto &lhs, const auto &rhs) { return lhs + rhs; }, "add"
+  return match::match(
+      std::forward_as_tuple(inner, other.inner),
+      [](const Primitive &lhs, const Primitive &rhs) -> Value {
+        return Value{lhs + rhs};
+      },
+      [](const vector_type &lhs, const vector_type &rhs) -> Value {
+        auto result = lhs;
+        result.insert(result.end(), rhs.begin(), rhs.end());
+        return Value{std::move(result)};
+      },
+      [&other, this](const auto &, const auto &) -> Value {
+        throw UnsupportedOperation(
+            "add between {} and {} not supported",
+            type_name(),
+            other.type_name()
+        );
+      }
   );
 }
 
@@ -395,7 +410,7 @@ Value Value::binary_op(
 
 namespace {
 
-size_t value_to_index(const Value &value, size_t max_size) {
+size_t value_to_index(const Value &value) {
   const auto index_opt = value.as_primitive().and_then(&Primitive::as_integer);
 
   if (!index_opt) {
@@ -404,7 +419,7 @@ size_t value_to_index(const Value &value, size_t max_size) {
 
   const auto index = *index_opt;
 
-  if (index < 0LL || static_cast<std::size_t>(index) >= max_size) {
+  if (index < 0LL) {
     throw ValueError("index out of bounds");
   }
 
@@ -414,26 +429,7 @@ size_t value_to_index(const Value &value, size_t max_size) {
 } // namespace
 
 NewValue Value::index(const Value &index_value) const {
-  return visit(
-      [&index_value](const std::vector<RefValue> &values) -> NewValue {
-        const auto index = value_to_index(index_value, values.size());
-        return values[static_cast<std::size_t>(index)];
-      },
-      [&index_value](const Primitive &primitive) -> NewValue {
-        const auto string_opt = primitive.as_string();
-
-        if (!string_opt) {
-          throw TypeError("cannot index a primitive non-string value");
-        }
-
-        const auto &string = string_opt->get();
-        const auto index = value_to_index(index_value, string.size());
-        return Primitive{string.substr(index, 1)};
-      },
-      [this](const auto & /*value*/) -> NewValue {
-        throw TypeError("cannot index a {} value", type_name());
-      }
-  );
+  return index(value_to_index(index_value));
 }
 NewValue Value::index(size_t index) const {
   return visit(
@@ -460,6 +456,23 @@ NewValue Value::index(size_t index) const {
       },
       [this](const auto & /*value*/) -> NewValue {
         throw TypeError("cannot index a {} value", type_name());
+      }
+  );
+}
+
+RefValue &Value::index_mut(const Value &index) {
+  return index_mut(value_to_index(index));
+}
+RefValue &Value::index_mut(size_t index) {
+  return visit(
+      [&index](std::vector<RefValue> &values) -> RefValue & {
+        if (index >= values.size()) {
+          throw ValueError("index out of bounds");
+        }
+        return values[index];
+      },
+      [this](const auto & /*value*/) -> RefValue & {
+        throw TypeError("cannot mutaly index a {} value", type_name());
       }
   );
 }

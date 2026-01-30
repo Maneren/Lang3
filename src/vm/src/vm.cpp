@@ -17,7 +17,7 @@ namespace l3::vm {
 
 RefValue VM::evaluate(const ast::UnaryExpression &unary) {
   debug_print("Evaluating unary expression {}", unary.get_op());
-  const auto argument = evaluate(unary.get_expr());
+  const auto argument = evaluate(unary.get_expression());
   switch (unary.get_op()) {
   case ast::UnaryOperator::Minus: {
     return store_value(argument->negative());
@@ -92,7 +92,7 @@ RefValue VM::evaluate(const ast::Identifier &identifier) {
 }
 
 RefValue VM::evaluate(const ast::Variable &variable) {
-  return evaluate(variable.get_identifier());
+  return variable.visit([this](const auto &inner) { return evaluate(inner); });
 }
 
 RefValue VM::evaluate(const ast::Literal &literal) {
@@ -120,18 +120,16 @@ RefValue VM::evaluate(const ast::Literal &literal) {
 }
 RefValue VM::evaluate(const ast::Expression &expression) {
   debug_print("Evaluating expression");
-  return expression.visit([this](const auto &expr) {
-    auto result = evaluate(expr);
+  return expression.visit([this](const auto &expression) {
+    auto result = evaluate(expression);
     debug_print("Expression result: {}", result.get());
     return result;
   });
 }
 void VM::execute(const ast::OperatorAssignment &assignment) {
   const auto &variable = assignment.get_variable();
-  debug_print(
-      "Executing assignment to {}", variable.get_identifier().get_name()
-  );
-  auto &lhs = read_write_variable(variable.get_identifier()).get();
+  debug_print("Executing assignment to {}", variable);
+  auto &lhs = evaluate_mut(variable);
   const auto &expression = assignment.get_expression();
   const auto rhs = evaluate(expression);
 
@@ -191,7 +189,7 @@ RefValue VM::evaluate(const ast::FunctionCall &function_call) {
   const auto &function = function_call.get_name();
   const auto &arguments = function_call.get_arguments();
 
-  debug_print("Calling function {}", function.get_identifier());
+  debug_print("Calling function {}", function);
 
   const auto evaluated_function = evaluate(function);
 
@@ -268,7 +266,7 @@ RefValue VM::read_variable(const Identifier &id) const {
   throw UndefinedVariableError(id);
 }
 
-std::reference_wrapper<RefValue> VM::read_write_variable(const Identifier &id) {
+RefValue &VM::read_write_variable(const Identifier &id) {
   debug_print("Writing variable {}", id.get_name());
   for (auto &it : std::views::reverse(scopes)) {
     if (auto variable = it->get_variable_mut(id)) {
@@ -344,8 +342,8 @@ void VM::execute(const ast::LastStatement &last_statement) {
       match::Overloaded{
           [this](const ast::ReturnStatement &return_statement) {
             const auto value = return_statement.get_expression()
-                                   .transform([this](const auto &expr) {
-                                     return evaluate(expr);
+                                   .transform([this](const auto &expression) {
+                                     return evaluate(expression);
                                    })
                                    .value_or(VM::nil());
             debug_print("Returning {}", value);
@@ -357,13 +355,29 @@ void VM::execute(const ast::LastStatement &last_statement) {
 }
 
 RefValue VM::evaluate(const ast::AnonymousFunction &anonymous) {
-  return store_value(Function{L3Function{scopes, anonymous}});
+  return store_value(std::make_shared<Function>(L3Function{scopes, anonymous}));
 }
 
-RefValue VM::evaluate(const ast::IndexExpression &index_ex) {
-  auto base = evaluate(index_ex.get_base());
-  auto index = evaluate(index_ex.get_index());
+RefValue VM::evaluate(const ast::IndexExpression &index_expression) {
+  auto base = evaluate(index_expression.get_base());
+  auto index = evaluate(index_expression.get_index());
   return store_new_value(base->index(*index));
+}
+
+RefValue &VM::evaluate_mut(const ast::Variable &variable) {
+  return variable.visit([this](const auto &variable) -> RefValue & {
+    return evaluate_mut(variable);
+  });
+}
+
+RefValue &VM::evaluate_mut(const ast::Identifier &ident) {
+  return read_write_variable(ident);
+}
+
+RefValue &VM::evaluate_mut(const ast::IndexExpression &index_expression) {
+  auto base = evaluate_mut(index_expression.get_base());
+  auto index = evaluate(index_expression.get_index());
+  return base->index_mut(*index);
 }
 
 VM::VM(bool debug)
@@ -386,9 +400,10 @@ size_t VM::run_gc() {
   return erased;
 }
 
-Variable &
-VM::declare_variable(const Identifier &id, Mutability mut, GCValue &gc_value) {
-  return scopes.back()->declare_variable(id, RefValue{gc_value}, mut);
+Variable &VM::declare_variable(
+    const Identifier &id, Mutability mutability, GCValue &gc_value
+) {
+  return scopes.back()->declare_variable(id, RefValue{gc_value}, mutability);
 }
 
 RefValue VM::store_value(Value &&value) {
@@ -469,10 +484,12 @@ void VM::execute(const ast::NameAssignment &assignment) {
       value
   );
 
-  auto variables = std::views::transform(
-                       names, std::bind_front(&VM::read_write_variable, this)
-                   ) |
-                   std::ranges::to<std::vector>();
+  auto variables =
+      std::views::transform(
+          names,
+          [&, this](const auto &id) { return std::ref(evaluate_mut(id)); }
+      ) |
+      std::ranges::to<std::vector>();
 
   assign_variables(variables, value);
 }

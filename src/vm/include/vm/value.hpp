@@ -35,11 +35,9 @@ public:
   [[nodiscard]] std::optional<double> as_double() const;
   [[nodiscard]] utils::optional_cref<string_type> as_string() const;
 
-  auto visit(auto &&...visitor) const {
-    return match::match(inner, std::forward<decltype(visitor)>(visitor)...);
-  }
+  VISIT(inner);
 
-  DEFINE_ACCESSOR(inner, decltype(inner), inner);
+  DEFINE_ACCESSOR_X(inner);
 
   [[nodiscard]] bool is_truthy() const;
 
@@ -107,13 +105,7 @@ public:
   [[nodiscard]] Value not_op() const;
   [[nodiscard]] Value negative() const;
 
-  auto visit(auto &&...visitor) const {
-    return match::match(inner, std::forward<decltype(visitor)>(visitor)...);
-  }
-
-  auto visit(auto &&...visitor) {
-    return match::match(inner, std::forward<decltype(visitor)>(visitor)...);
-  }
+  VISIT(inner);
 
   [[nodiscard]] bool is_nil() const;
   [[nodiscard]] bool is_function() const;
@@ -129,6 +121,9 @@ public:
 
   [[nodiscard]] NewValue index(const Value &index) const;
   [[nodiscard]] NewValue index(size_t index) const;
+
+  [[nodiscard]] RefValue &index_mut(const Value &index);
+  [[nodiscard]] RefValue &index_mut(size_t index);
 
   [[nodiscard]] Value slice(Slice slice) const;
 

@@ -7,8 +7,6 @@ namespace l3::vm {
 UndefinedVariableError::UndefinedVariableError(const Identifier &id)
     : NameError("variable '{}' not declared", id.get_name()) {}
 
-UndefinedVariableError::UndefinedVariableError(const ast::Variable &id)
-    : NameError("variable '{}' not declared", id.get_identifier().get_name()) {}
 
 RuntimeError::RuntimeError(const std::string &message)
     : std::runtime_error(message) {}

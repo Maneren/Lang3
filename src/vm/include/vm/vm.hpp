@@ -29,7 +29,7 @@ public:
   RefValue store_value(Value &&value);
   RefValue store_new_value(NewValue &&value);
   Variable &declare_variable(
-      const Identifier &id, Mutability mut, GCValue &gc_value = GCStorage::nil()
+      const Identifier &id, Mutability mutability, GCValue &gc_value = GCStorage::nil()
   );
   static RefValue nil();
 
@@ -54,15 +54,18 @@ private:
   [[nodiscard]] RefValue evaluate(const ast::Variable &variable);
   [[nodiscard]] RefValue evaluate(const ast::UnaryExpression &unary);
   [[nodiscard]] RefValue evaluate(const ast::BinaryExpression &binary);
-  [[nodiscard]] RefValue evaluate(const ast::IndexExpression &index_ex);
+  [[nodiscard]] RefValue evaluate(const ast::IndexExpression &index_expression);
   [[nodiscard]] RefValue evaluate(const ast::AnonymousFunction &anonymous);
   [[nodiscard]] RefValue evaluate(const ast::FunctionCall &function_call);
   [[nodiscard]] RefValue evaluate(const ast::IfExpression &if_expr);
   [[nodiscard]] RefValue evaluate(const ast::Identifier &identifier);
 
+  [[nodiscard]] RefValue &evaluate_mut(const ast::Variable &index_expression);
+  [[nodiscard]] RefValue &evaluate_mut(const ast::Identifier &index_expression);
+  [[nodiscard]] RefValue &evaluate_mut(const ast::IndexExpression &index_expression);
+
   [[nodiscard]] RefValue read_variable(const Identifier &id) const;
-  [[nodiscard]] std::reference_wrapper<RefValue>
-  read_write_variable(const Identifier &id);
+  [[nodiscard]] RefValue &read_write_variable(const Identifier &id);
 
   bool evaluate_if_branch(const ast::IfBase &if_base);
 

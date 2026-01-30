@@ -20,14 +20,14 @@ utils::optional_ref<Variable> Scope::get_variable_mut(const Identifier &id) {
 }
 
 Variable &Scope::declare_variable(
-    const Identifier &id, RefValue ref_value, Mutability mut
+    const Identifier &id, RefValue ref_value, Mutability mutability
 ) {
   const auto present = variables.find(id);
   if (present != variables.end()) {
     throw NameError("variable '{}' already declared", id.get_name());
   }
   auto &[_, value] =
-      *variables.emplace_hint(present, id, Variable{ref_value, mut});
+      *variables.emplace_hint(present, id, Variable{ref_value, mutability});
   return value;
 }
 

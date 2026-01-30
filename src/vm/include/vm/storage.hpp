@@ -9,7 +9,11 @@
 
 namespace l3::vm {
 
-struct GCValue {
+class GCValue {
+  bool marked = false;
+  Value value;
+
+public:
   GCValue(Value &&value);
   GCValue(const GCValue &) = delete;
   GCValue(GCValue &&other) noexcept
@@ -30,14 +34,13 @@ struct GCValue {
 
   [[nodiscard]] bool is_marked() const { return marked; }
 
-  DEFINE_ACCESSOR(value, Value, value);
-
-private:
-  bool marked = false;
-  Value value;
+  DEFINE_ACCESSOR_X(value);
 };
 
 class GCStorage {
+  bool debug;
+  std::forward_list<GCValue> backing_store;
+
 public:
   GCStorage(bool debug = false) : debug{debug} {}
   size_t sweep();
@@ -47,6 +50,8 @@ public:
 
   static GCValue &nil() { return NIL; }
 
+  DEFINE_VALUE_ACCESSOR_X(debug);
+
 private:
   template <typename... Ts>
   void debug_print(std::format_string<Ts...> message, Ts &&...args) const {
@@ -54,9 +59,6 @@ private:
       std::println(std::cerr, message, std::forward<Ts>(args)...);
     }
   }
-
-  bool debug;
-  std::forward_list<GCValue> backing_store;
 
   static GCValue NIL;
 };
