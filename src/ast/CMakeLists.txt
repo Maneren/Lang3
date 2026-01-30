@@ -13,9 +13,9 @@ target_sources(${LIB_NAME} INTERFACE
   FILES include/ast/ast.hpp
 )
 
-target_sources(${LIB_NAME} INTERFACE
-  PUBLIC
-  FILE_SET cxx_modules TYPE CXX_MODULES
+target_sources(${LIB_NAME} PUBLIC
+  FILE_SET cxx_modules
+  TYPE CXX_MODULES
   FILES ${MODULES}
 )
 

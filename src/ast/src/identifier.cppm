@@ -6,6 +6,7 @@ module;
 
 export module l3.ast:identifier;
 
+import utils;
 import :printing;
 
 export namespace l3::ast {
@@ -36,8 +37,9 @@ public:
 
 } // namespace l3::ast
 
-export template <> struct std::formatter<l3::ast::Identifier> {
-  static constexpr auto parse(format_parse_context &ctx) { return ctx.begin(); }
+export template <>
+struct std::formatter<l3::ast::Identifier>
+    : utils::static_formatter<l3::ast::Identifier> {
   static constexpr auto
   format(l3::ast::Identifier const &id, std::format_context &ctx) {
     return std::format_to(ctx.out(), "{}", id.get_name());

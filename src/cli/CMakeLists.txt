@@ -7,14 +7,7 @@ add_library(${LIB_NAME} STATIC
   ${SOURCES}
 )
 
-target_sources(${LIB_NAME} INTERFACE
-  FILE_SET HEADERS
-  BASE_DIRS include
-  FILES include/cli/cli.hpp
-)
-
-target_sources(${LIB_NAME} INTERFACE
-  PUBLIC
+target_sources(${LIB_NAME} PUBLIC
   FILE_SET cxx_modules TYPE CXX_MODULES
   FILES ${MODULES}
 )

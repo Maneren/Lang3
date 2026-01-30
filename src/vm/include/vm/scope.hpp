@@ -4,7 +4,8 @@
 #include "vm/ref_value.hpp"
 #include "vm/storage.hpp"
 #include "vm/value.hpp"
-#include <utils/accessor.h>
+
+import utils;
 
 namespace l3::vm {
 

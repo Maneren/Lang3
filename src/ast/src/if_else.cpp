@@ -1,11 +1,10 @@
 module;
 
 #include <memory>
-#include <utils/accessor.h>
-#include <utils/types.h>
 
 module l3.ast;
 
+import utils;
 import :block;
 import :expression;
 

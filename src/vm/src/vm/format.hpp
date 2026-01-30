@@ -3,9 +3,9 @@
 #include "vm/function.hpp"
 #include "vm/scope.hpp"
 #include "vm/storage.hpp"
-#include <utils/format.h>
 
 import l3.ast;
+import utils;
 
 template <>
 struct std::formatter<l3::vm::Nil> : utils::static_formatter<l3::vm::Nil> {
