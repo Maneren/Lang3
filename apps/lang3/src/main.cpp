@@ -1,5 +1,4 @@
 #include <chrono>
-#include <cli/cli.hpp>
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
@@ -7,11 +6,12 @@
 #include <print>
 #include <vm/vm.hpp>
 
+import cli;
 import l3.ast;
 
 namespace {
 
-cli::Parser cli_parser() {
+constexpr cli::Parser cli_parser() {
   return cli::Parser{}
       .flag("d", "debug")
       .flag("O", "optimize")

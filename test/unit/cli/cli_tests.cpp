@@ -1,21 +1,22 @@
-#include <cli/cli.hpp>
 #include <gtest/gtest.h>
-#include <vector>
+
+import cli;
 
 using namespace cli;
 
 // Helper to create argv-style array from vector of strings
 class ArgvHelper {
 public:
-  explicit ArgvHelper(std::initializer_list<const char *> args)
-      : args_(args), argv_(args_.data()) {}
+  constexpr explicit ArgvHelper(std::initializer_list<const char *> args)
+      : args_(args) {}
 
-  [[nodiscard]] int argc() const { return static_cast<int>(args_.size()); }
-  const char **argv() { return argv_; }
+  [[nodiscard]] constexpr int argc() const {
+    return static_cast<int>(args_.size());
+  }
+  constexpr const char *const *argv() { return args_.data(); }
 
 private:
   std::vector<const char *> args_;
-  const char **argv_;
 };
 
 class CliParserTest : public ::testing::Test {
@@ -23,7 +24,7 @@ protected:
   Parser parser;
 };
 
-// ==================== Basic Flag Tests ====================
+// Basic flags
 
 TEST_F(CliParserTest, ShortFlagRecognized) {
   parser.short_flag("d");
@@ -55,7 +56,6 @@ TEST_F(CliParserTest, FlagWithBothNames) {
 
   ASSERT_TRUE(result1.has_value());
   ASSERT_TRUE(result2.has_value());
-  // Both should store under the long name
   EXPECT_TRUE(result1->has_flag("debug"));
   EXPECT_TRUE(result2->has_flag("debug"));
 }
@@ -82,7 +82,7 @@ TEST_F(CliParserTest, MultipleFlagsPresent) {
   EXPECT_TRUE(result->has_flag("debug-parser"));
 }
 
-// ==================== Combined Short Flags Tests ====================
+// Combined short flags
 
 TEST_F(CliParserTest, CombinedShortFlags) {
   parser.short_flag("a").short_flag("b").short_flag("c");
@@ -108,7 +108,7 @@ TEST_F(CliParserTest, CombinedFlagsWithLongNames) {
   EXPECT_TRUE(result->has_flag("gamma"));
 }
 
-// ==================== Option Tests ====================
+// Options
 
 TEST_F(CliParserTest, ShortOptionWithValue) {
   parser.short_option("o");
@@ -153,7 +153,6 @@ TEST_F(CliParserTest, OptionWithBothNames) {
   auto result = parser.parse(args.argc(), args.argv());
 
   ASSERT_TRUE(result.has_value());
-  // Should store under long name
   auto value = result->get_value("output");
   ASSERT_TRUE(value.has_value());
   EXPECT_EQ(*value, "file.txt");
@@ -169,7 +168,7 @@ TEST_F(CliParserTest, OptionNotPresent) {
   EXPECT_FALSE(result->get_value("output").has_value());
 }
 
-// ==================== Positional Arguments Tests ====================
+// Positional arguments
 
 TEST_F(CliParserTest, SinglePositionalArgument) {
   ArgvHelper args{"prog", "input.txt"};
@@ -234,7 +233,7 @@ TEST_F(CliParserTest, SingleDashAsPositional) {
   EXPECT_EQ(positional[0], "-");
 }
 
-// ==================== Error Cases ====================
+// Error cases
 
 TEST_F(CliParserTest, UnknownShortFlag) {
   parser.short_flag("d");
@@ -299,7 +298,7 @@ TEST_F(CliParserTest, LongFlagWithUnexpectedValue) {
   );
 }
 
-// ==================== Complex Scenarios ====================
+// Complex scenarios
 
 TEST_F(CliParserTest, RealWorldUsageScenario) {
   parser.flag("d", "debug")
