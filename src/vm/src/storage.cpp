@@ -58,6 +58,8 @@ void GCValue::mark() {
 }
 
 GCValue GCStorage::NIL{Value()};
+GCValue GCStorage::TRUE{Value{Primitive{true}}};
+GCValue GCStorage::FALSE{Value{Primitive{false}}};
 
 RefValue::RefValue(GCValue &gc_value) : gc_value{gc_value} {}
 [[nodiscard]] const Value &RefValue::get() const {

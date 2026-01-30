@@ -32,6 +32,8 @@ public:
       const Identifier &id, Mutability mutability, GCValue &gc_value = GCStorage::nil()
   );
   static RefValue nil();
+  static RefValue _true();
+  static RefValue _false();
 
   size_t run_gc();
 

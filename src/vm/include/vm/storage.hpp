@@ -49,6 +49,8 @@ public:
   GCValue &emplace(std::unique_ptr<Value> &&value);
 
   static GCValue &nil() { return NIL; }
+  static GCValue &_true() { return TRUE; }
+  static GCValue &_false() { return FALSE; }
 
   DEFINE_VALUE_ACCESSOR_X(debug);
 
@@ -61,6 +63,8 @@ private:
   }
 
   static GCValue NIL;
+  static GCValue TRUE;
+  static GCValue FALSE;
 };
 
 } // namespace l3::vm

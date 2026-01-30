@@ -503,6 +503,8 @@ void VM::execute(const ast::NameAssignment &assignment) {
 }
 
 RefValue VM::nil() { return RefValue{GCStorage::nil()}; }
+RefValue VM::_true() { return RefValue{GCStorage::_true()}; }
+RefValue VM::_false() { return RefValue{GCStorage::_false()}; }
 
 RefValue VM::evaluate(const ast::IfExpression &if_expr) {
   std::optional<RefValue> result;
