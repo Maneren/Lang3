@@ -4,6 +4,7 @@
 #include "vm/stack.hpp"
 #include "vm/storage.hpp"
 #include "vm/value.hpp"
+#include <chrono>
 #include <memory>
 #include <print>
 #include <vector>
@@ -82,7 +83,7 @@ private:
 
   template <typename... Ts>
   void debug_print(std::format_string<Ts...> message, Ts &&...args) const {
-    if (debug) {
+    if (debug) [[unlikely]] {
       std::println(std::cerr, message, std::forward<Ts>(args)...);
     }
   }

@@ -69,7 +69,7 @@ std::optional<RefValue> Scope::get_builtin(const Identifier &id) {
 Scope::Scope(VariableMap &&variables) : variables{std::move(variables)} {};
 
 void Scope::mark_gc() {
-  for (auto &[name, it] : variables) {
+  for (auto &[_, it] : variables) {
     it->get_gc_mut().mark();
   }
 }

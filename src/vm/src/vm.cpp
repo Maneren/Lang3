@@ -225,6 +225,7 @@ RefValue VM::evaluate(const ast::FunctionCall &function_call) {
 void VM::execute(const ast::Statement &statement) {
   debug_print("Executing statement");
   statement.visit([this](const auto &stmt) { execute(stmt); });
+  run_gc();
 }
 void VM::execute(const ast::Program &program) {
   try {
@@ -238,7 +239,7 @@ void VM::execute(const ast::Program &program) {
 
 void VM::execute(const ast::Block &block) {
   debug_print("Evaluating block");
-  stack.push_frame();
+  const auto frame_guard = stack.with_frame();
   scopes.push_back(std::make_shared<Scope>());
   for (const auto &statement : block.get_statements()) {
     execute(statement);
@@ -249,13 +250,7 @@ void VM::execute(const ast::Block &block) {
   if (last_statement) {
     execute(*last_statement);
   }
-  const auto created_values =
-      stack.top_frame().size() + scopes.back()->get_variables().size();
-  stack.pop_frame();
   scopes.pop_back();
-  if (created_values > 0) {
-    run_gc();
-  }
 }
 
 RefValue VM::read_variable(const Identifier &id) {
@@ -339,9 +334,7 @@ RefValue VM::evaluate_function_body(
   scopes = std::move(unused_scopes.back());
   unused_scopes.pop_back();
 
-  auto value = stack.push_value(return_value.value_or(nil()));
-  run_gc();
-  return value;
+  return stack.push_value(return_value.value_or(nil()));
 }
 
 void VM::execute(const ast::LastStatement &last_statement) {
@@ -396,7 +389,13 @@ RefValue &VM::evaluate_mut(const ast::IndexExpression &index_expression) {
 VM::VM(bool debug) : debug{debug}, stack{debug}, gc_storage{debug} {}
 
 size_t VM::run_gc() {
-  debug_print("Running GC");
+  auto since_last_sweep = gc_storage.get_added_since_last_sweep();
+  if (since_last_sweep < 10000) {
+    debug_print("[GC] Skipping... only {} values", since_last_sweep);
+    return 0;
+  }
+
+  debug_print("[GC] Running");
   for (auto &scope : scopes) {
     scope->mark_gc();
   }
@@ -407,7 +406,19 @@ size_t VM::run_gc() {
   }
   stack.mark_gc();
   auto erased = gc_storage.sweep();
-  debug_print("[GC] Swept {} values", erased);
+  if (debug) {
+    debug_print(
+        "[GC] Swept {} values, keeping {}", erased, gc_storage.get_size()
+    );
+    debug_print("Stack:");
+    for (const auto &frame : stack.get_frames()) {
+      debug_print("  {}", frame.size());
+    }
+    debug_print("Scopes:");
+    for (auto &scope : scopes) {
+      debug_print("  {}", scope->get_variables().size());
+    }
+  }
   return erased;
 }
 
@@ -418,8 +429,14 @@ Variable &VM::declare_variable(
 }
 
 RefValue VM::store_value(Value &&value) {
-  auto &gc_value = gc_storage.emplace(std::move(value));
-  auto ref_value = RefValue{gc_value};
+  if (auto boolean = value.as_primitive().and_then(&Primitive::as_bool)) {
+    if (*boolean) {
+      return _true();
+    }
+    return _false();
+  }
+
+  auto ref_value = RefValue{gc_storage.emplace(std::move(value))};
   stack.push_value(ref_value);
   return ref_value;
 }

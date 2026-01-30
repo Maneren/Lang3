@@ -40,19 +40,24 @@ public:
 class GCStorage {
   bool debug;
   std::forward_list<GCValue> backing_store;
+  size_t sweep_count = 0;
+  size_t size = 0;
+  size_t added_since_last_sweep = 0;
 
 public:
   GCStorage(bool debug = false) : debug{debug} {}
   size_t sweep();
 
   GCValue &emplace(Value &&value);
-  GCValue &emplace(std::unique_ptr<Value> &&value);
 
   static GCValue &nil() { return NIL; }
   static GCValue &_true() { return TRUE; }
   static GCValue &_false() { return FALSE; }
 
   DEFINE_VALUE_ACCESSOR_X(debug);
+  DEFINE_VALUE_ACCESSOR_X(size);
+  DEFINE_VALUE_ACCESSOR_X(sweep_count);
+  DEFINE_VALUE_ACCESSOR_X(added_since_last_sweep);
 
 private:
   template <typename... Ts>
