@@ -38,4 +38,7 @@ let mut i = 0
 while i < 10 do
   println(random(100))
   i += 1
+  if i == 5 then
+    break
+  end
 end

@@ -35,6 +35,17 @@ else
   println("currying doesn't work")
 end
 
+# Loops
+let mut i = 0
+while i < 10 do
+  println(i)
+  i += 1
+
+  if i == 5 then
+    break
+  end
+end
+
 # Error handling via abort
 fn div(a, b)
   assert(b != 0, "cannot divide by zero")
@@ -66,3 +77,5 @@ fn stringify(arr)
 end
 
 println(stringify(arr))
+
+println(sum(map(int, ["1", "2", "3", "4"])))
