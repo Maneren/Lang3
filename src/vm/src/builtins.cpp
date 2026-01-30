@@ -4,6 +4,7 @@
 #include "vm/vm.hpp"
 #include <random>
 #include <ranges>
+#include <thread>
 
 namespace l3::vm::builtins {
 
@@ -310,6 +311,19 @@ RefValue random(VM &vm, L3Args args) {
   return vm.store_value(Value{Primitive{distribution(gen)}});
 }
 
+RefValue sleep(VM & /*vm*/, L3Args args) {
+  if (args.size() != 1) {
+    throw RuntimeError("sleep takes one argument");
+  }
+  auto duration_opt = args[0]->as_primitive().and_then(&Primitive::as_integer);
+  if (!duration_opt) {
+    throw TypeError("sleep takes only an integer as an duration argument");
+  }
+  auto duration = *duration_opt;
+  std::this_thread::sleep_for(std::chrono::milliseconds(duration));
+  return VM::nil();
+}
+
 const std::initializer_list<std::pair<std::string_view, BuiltinFunction::Body>>
     BUILTINS{
         {"print", print},
@@ -327,6 +341,7 @@ const std::initializer_list<std::pair<std::string_view, BuiltinFunction::Body>>
         {"take", take},
         {"slice", slice},
         {"random", random},
+        {"sleep", sleep},
     };
 
 } // namespace l3::vm::builtins
