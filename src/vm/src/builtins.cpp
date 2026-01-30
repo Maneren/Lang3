@@ -35,7 +35,7 @@ RefValue builtin_println(VM &vm, L3Args args) {
 
 RefValue builtin_trigger_gc(VM &vm, L3Args args) {
   if (args.size() > 0) {
-    throw RuntimeError("trigger_gc takes no arguments");
+    throw RuntimeError("trigger_gc() takes no arguments");
   }
   vm.run_gc();
   return VM::nil();
@@ -67,16 +67,16 @@ RefValue builtin_input(VM &vm, L3Args args) {
 
 RefValue builtin_int(VM &vm, L3Args args) {
   if (args.empty()) {
-    throw RuntimeError("to_int takes at least one arguments");
+    throw RuntimeError("int() takes at least one arguments");
   }
 
   auto primitive = args[0]->as_primitive();
   if (!primitive) {
-    throw RuntimeError("to_int takes only primitive values");
+    throw RuntimeError("int() takes only primitive values");
   }
 
   if (args.size() > 2) {
-    throw RuntimeError("to_int takes at most two arguments");
+    throw RuntimeError("int() takes at most two arguments");
   }
 
   auto base_value =
@@ -90,11 +90,11 @@ RefValue builtin_int(VM &vm, L3Args args) {
         base_value.value()->as_primitive().and_then(&Primitive::as_integer);
 
     if (!base_primitive) {
-      throw RuntimeError("to_int takes only an integer as a base argument");
+      throw RuntimeError("int() takes only an integer as a base argument");
     }
 
     if (*base_primitive < 2 || *base_primitive > 36) {
-      throw RuntimeError("to_int takes a base between 2 and 36");
+      throw RuntimeError("int() takes a base between 2 and 36");
     }
 
     base = static_cast<int>(*base_primitive);
@@ -121,7 +121,7 @@ RefValue builtin_int(VM &vm, L3Args args) {
 
 RefValue builtin_str(VM &vm, L3Args args) {
   if (args.size() != 1) {
-    throw RuntimeError("to_string takes one arguments");
+    throw RuntimeError("str() takes one arguments");
   }
 
   std::string result;
@@ -132,7 +132,7 @@ RefValue builtin_str(VM &vm, L3Args args) {
 
 RefValue builtin_head(VM &vm, L3Args args) {
   if (args.empty()) {
-    throw RuntimeError("head takes at least one arguments");
+    throw RuntimeError("head() takes at least one arguments");
   }
 
   auto argument = args[0];
@@ -141,7 +141,7 @@ RefValue builtin_head(VM &vm, L3Args args) {
     const auto &vector = vector_opt->get();
 
     if (vector.empty()) {
-      throw RuntimeError("head takes a non-empty vector");
+      throw RuntimeError("head() takes a non-empty vector");
     }
 
     auto head = vector.front();
@@ -157,7 +157,7 @@ RefValue builtin_head(VM &vm, L3Args args) {
     const auto &string = string_opt->get();
 
     if (string.empty()) {
-      throw RuntimeError("head takes a non-empty string");
+      throw RuntimeError("head() takes a non-empty string");
     }
 
     auto head = vm.store_new_value({Primitive{std::string{string.front()}}});
@@ -166,12 +166,12 @@ RefValue builtin_head(VM &vm, L3Args args) {
     return vm.store_new_value({Value::vector_type{head, rest}});
   }
 
-  throw TypeError("head takes only vector and string values");
+  throw TypeError("head() takes only vector and string values");
 }
 
 RefValue builtin_tail(VM &vm, L3Args args) {
   if (args.empty()) {
-    throw RuntimeError("tail takes at least one arguments");
+    throw RuntimeError("tail() takes at least one arguments");
   }
 
   auto argument = args[0];
@@ -180,7 +180,7 @@ RefValue builtin_tail(VM &vm, L3Args args) {
     const auto &vector = vector_opt->get();
 
     if (vector.empty()) {
-      throw RuntimeError("tail takes a non-empty vector");
+      throw RuntimeError("tail() takes a non-empty vector");
     }
 
     auto tail = vector.back();
@@ -196,7 +196,7 @@ RefValue builtin_tail(VM &vm, L3Args args) {
     const auto &string = string_opt->get();
 
     if (string.empty()) {
-      throw RuntimeError("tail takes a non-empty string");
+      throw RuntimeError("tail() takes a non-empty string");
     }
 
     auto tail = vm.store_value({Primitive{std::string{string.back()}}});
@@ -206,12 +206,12 @@ RefValue builtin_tail(VM &vm, L3Args args) {
     return vm.store_value({Value::vector_type{rest, tail}});
   }
 
-  throw TypeError("tail takes only vector and string values");
+  throw TypeError("tail() takes only vector and string values");
 }
 
 RefValue builtin_len(VM &vm, L3Args args) {
   if (args.size() != 1) {
-    throw RuntimeError("len takes exactly one arguments");
+    throw RuntimeError("len() takes exactly one arguments");
   }
   return args[0]->visit(
       [&vm](const Value::vector_ptr_type &vector) -> RefValue {
@@ -226,23 +226,23 @@ RefValue builtin_len(VM &vm, L3Args args) {
           );
         }
         throw TypeError(
-            "len does not support {} values", primitive.type_name()
+            "len() does not support {} values", primitive.type_name()
         );
       },
       [](const auto &) -> RefValue {
-        throw TypeError("len does not support {} values");
+        throw TypeError("len() does not support {} values");
       }
   );
 }
 
 RefValue builtin_drop(VM &vm, L3Args args) {
   if (args.size() != 2) {
-    throw RuntimeError("drop takes two arguments");
+    throw RuntimeError("drop() takes two arguments");
   }
 
   auto index_opt = args[1]->as_primitive().and_then(&Primitive::as_integer);
   if (!index_opt) {
-    throw TypeError("drop takes only an integer as an index argument");
+    throw TypeError("drop() takes only an integer as an index argument");
   }
   auto index = *index_opt;
 
@@ -251,12 +251,12 @@ RefValue builtin_drop(VM &vm, L3Args args) {
 
 RefValue builtin_take(VM &vm, L3Args args) {
   if (args.size() != 2) {
-    throw RuntimeError("take takes two arguments");
+    throw RuntimeError("take() takes two arguments");
   }
 
   auto index_opt = args[1]->as_primitive().and_then(&Primitive::as_integer);
   if (!index_opt) {
-    throw TypeError("take takes only an integer as an index argument");
+    throw TypeError("take() takes only an integer as an index argument");
   }
   auto index = *index_opt;
 
@@ -265,13 +265,13 @@ RefValue builtin_take(VM &vm, L3Args args) {
 
 RefValue builtin_slice(VM &vm, L3Args args) {
   if (args.size() != 3) {
-    throw RuntimeError("slice takes three arguments");
+    throw RuntimeError("slice() takes three arguments");
   }
 
   auto start_opt = args[1]->as_primitive().and_then(&Primitive::as_integer);
   auto end_opt = args[2]->as_primitive().and_then(&Primitive::as_integer);
   if (!start_opt || !end_opt) {
-    throw TypeError("slice takes only integers as index arguments");
+    throw TypeError("slice() takes only integers as index arguments");
   }
   auto start = *start_opt;
   auto end = *end_opt;
@@ -284,7 +284,7 @@ RefValue builtin_random(VM &vm, L3Args args) {
   static std::mt19937 gen(rd());
 
   if (args.empty() || args.size() > 2) {
-    throw RuntimeError("random takes one or two arguments");
+    throw RuntimeError("random() takes one or two arguments");
   }
 
   std::optional<std::int64_t> min_opt, max_opt;
@@ -298,7 +298,7 @@ RefValue builtin_random(VM &vm, L3Args args) {
   }
 
   if (!min_opt || !max_opt) {
-    throw TypeError("random takes only integers as arguments");
+    throw TypeError("random() takes only integers as arguments");
   }
 
   auto min = *min_opt;
@@ -311,11 +311,11 @@ RefValue builtin_random(VM &vm, L3Args args) {
 
 RefValue builtin_sleep(VM & /*vm*/, L3Args args) {
   if (args.size() != 1) {
-    throw RuntimeError("sleep takes one argument");
+    throw RuntimeError("sleep() takes one argument");
   }
   auto duration_opt = args[0]->as_primitive().and_then(&Primitive::as_integer);
   if (!duration_opt) {
-    throw TypeError("sleep takes only an integer as an duration argument");
+    throw TypeError("sleep() takes only an integer as an duration argument");
   }
   auto duration = *duration_opt;
   std::this_thread::sleep_for(std::chrono::milliseconds(duration));
@@ -469,6 +469,50 @@ RefValue builtin_identity(VM & /*vm*/, L3Args args) {
   return args[0];
 }
 
+RefValue builtin_range(VM &vm, L3Args args) {
+  std::int64_t start = 0;
+  std::int64_t end = 0;
+  std::int64_t step = 1;
+
+  switch (args.size()) {
+  case 1:
+    start = 0;
+    end = args[0]->as_primitive().and_then(&Primitive::as_integer).value();
+    break;
+  case 2:
+    start = args[0]->as_primitive().and_then(&Primitive::as_integer).value();
+    end = args[1]->as_primitive().and_then(&Primitive::as_integer).value();
+    break;
+  case 3:
+    start = args[0]->as_primitive().and_then(&Primitive::as_integer).value();
+    end = args[1]->as_primitive().and_then(&Primitive::as_integer).value();
+    step = args[2]->as_primitive().and_then(&Primitive::as_integer).value();
+    break;
+  default:
+    throw TypeError("range() takes 1, 2 or 3 arguments");
+  }
+
+  if (step == 0) {
+    throw ValueError("range() step cannot be 0");
+  }
+
+  if (step > 0) {
+    if (start > end) {
+      throw ValueError("range() start > end");
+    }
+  } else {
+    if (start < end) {
+      throw ValueError("range() start < end with negative step");
+    }
+  }
+
+  Value::vector_type result;
+  for (std::int64_t i = start; step > 0 ? i < end : i > end; i += step) {
+    result.push_back(vm.store_value(Primitive{i}));
+  }
+  return vm.store_value(std::move(result));
+}
+
 const std::initializer_list<std::pair<std::string_view, BuiltinFunction::Body>>
     BUILTINS{
         {"print", builtin_print},   {"println", builtin_println},
@@ -482,6 +526,7 @@ const std::initializer_list<std::pair<std::string_view, BuiltinFunction::Body>>
         {"filter", builtin_filter}, {"sum", builtin_sum},
         {"all", builtin_all},       {"any", builtin_any},
         {"count", builtin_count},   {"id", builtin_identity},
+        {"range", builtin_range},
     };
 
 } // namespace l3::vm::builtins
