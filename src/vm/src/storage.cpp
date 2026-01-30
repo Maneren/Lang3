@@ -48,12 +48,25 @@ size_t GCStorage::sweep() {
 }
 
 void GCValue::mark() {
+  if (marked) {
+    return;
+  }
+
   marked = true;
 
   if (auto vec = get_value_mut().as_mut_vector()) {
     for (auto &item : vec->get()) {
       item.get_gc_mut().mark();
     }
+  } else if (auto fn = get_value_mut().as_function()) {
+    fn->get()->visit(
+        [](L3Function &function) {
+          for (auto &scope : function.get_captures_mut()) {
+            scope->mark_gc();
+          }
+        },
+        [](BuiltinFunction & /*function*/) {}
+    );
   }
 }
 
@@ -65,6 +78,9 @@ RefValue::RefValue(GCValue &gc_value) : gc_value{gc_value} {}
 [[nodiscard]] const Value &RefValue::get() const {
   return get_gc().get_value();
 }
-[[nodiscard]] Value &RefValue::get() { return get_gc_mut().get_value_mut(); }
+[[nodiscard]] Value &RefValue::get() {
+  // std::println("Mutably referencing {}", get_gc().get_value());
+  return get_gc_mut().get_value_mut();
+}
 
 } // namespace l3::vm

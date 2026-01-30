@@ -135,7 +135,7 @@ void VM::execute(const ast::OperatorAssignment &assignment) {
 
   switch (assignment.get_operator()) {
   case ast::AssignmentOperator::Assign:
-    lhs = rhs;
+    lhs = store_value(rhs->clone());
     break;
   case ast::AssignmentOperator::Plus:
     lhs = store_value(lhs->add(*rhs));
@@ -159,9 +159,7 @@ void VM::execute(const ast::OperatorAssignment &assignment) {
   }
   debug_print("Assigned: {}", lhs);
 }
-void VM::execute(const ast::FunctionCall &function_call) {
-  auto _ = evaluate(function_call);
-}
+
 bool VM::execute(const ast::ElseIfList &elseif_list) {
   return std::ranges::any_of(
       elseif_list.get_elseifs(), std::bind_front(&VM::evaluate_if_branch, this)
@@ -184,6 +182,9 @@ void VM::execute(const ast::IfElseBase &if_else_base) {
       execute(if_else_base.get_elseif())) {
     return;
   }
+}
+void VM::execute(const ast::FunctionCall &function_call) {
+  auto _ = evaluate(function_call);
 }
 RefValue VM::evaluate(const ast::FunctionCall &function_call) {
   const auto &function = function_call.get_name();
@@ -226,9 +227,7 @@ void VM::execute(const ast::Statement &statement) {
 }
 void VM::execute(const ast::Program &program) {
   try {
-    for (const auto &statement : program.get_statements()) {
-      execute(statement);
-    }
+    execute(static_cast<const ast::Block &>(program));
   } catch (const RuntimeError &error) {
     std::println(std::cerr, "{}: {}", error.type(), error.what());
   } catch (const ReturnException &error) {
@@ -258,12 +257,13 @@ void VM::execute(const ast::Block &block) {
   }
 }
 
-RefValue VM::read_variable(const Identifier &id) const {
+RefValue VM::read_variable(const Identifier &id) {
   debug_print("Reading variable {}", id.get_name());
   for (const auto &it : std::views::reverse(scopes)) {
     const auto &scope = *it;
     if (auto variable = scope.get_variable(id)) {
-      return *variable->get();
+      const auto ref_value = *variable->get();
+      return store_value(ref_value->clone());
     }
   }
   if (auto value = Scope::get_builtin(id)) {
@@ -305,16 +305,17 @@ bool VM::evaluate_if_branch(const ast::IfBase &if_base) {
 void VM::execute(const ast::NamedFunction &named_function) {
   debug_print("Declaring named function");
   const auto &name = named_function.get_name();
-  *declare_variable(name, Mutability::Immutable) =
-      store_value({Function{L3Function{scopes, named_function}}});
+  declare_variable(
+      name,
+      Mutability::Immutable,
+      store_value({Function{L3Function{scopes, named_function}}})
+  );
 
   debug_print("Declared function {}", name.get_name());
 }
 
 RefValue VM::evaluate_function_body(
-    std::span<std::shared_ptr<Scope>> captured,
-    Scope &&arguments,
-    const ast::FunctionBody &body
+    const ScopeStack &captured, Scope &&arguments, const ast::FunctionBody &body
 ) {
   for (const auto &capture : captured) {
     debug_print("captured: {}", capture->get_variables());
@@ -323,7 +324,7 @@ RefValue VM::evaluate_function_body(
 
   unused_scopes.emplace_back(std::move(scopes));
 
-  scopes = captured | std::ranges::to<std::vector>();
+  scopes = captured.clone(*this);
   scopes.push_back(std::make_shared<Scope>(std::move(arguments)));
 
   std::optional<RefValue> return_value;
@@ -391,9 +392,7 @@ RefValue &VM::evaluate_mut(const ast::IndexExpression &index_expression) {
   return base->index_mut(*index);
 }
 
-VM::VM(bool debug)
-    : debug{debug}, scopes{std::make_shared<Scope>()}, stack{debug},
-      gc_storage{debug} {}
+VM::VM(bool debug) : debug{debug}, stack{debug}, gc_storage{debug} {}
 
 size_t VM::run_gc() {
   debug_print("Running GC");
@@ -412,9 +411,9 @@ size_t VM::run_gc() {
 }
 
 Variable &VM::declare_variable(
-    const Identifier &id, Mutability mutability, GCValue &gc_value
+    const Identifier &id, Mutability mutability, RefValue ref_value
 ) {
-  return scopes.back()->declare_variable(id, RefValue{gc_value}, mutability);
+  return scopes.back()->declare_variable(id, ref_value, mutability);
 }
 
 RefValue VM::store_value(Value &&value) {
@@ -432,9 +431,67 @@ RefValue VM::store_new_value(NewValue &&value) {
   );
 }
 
-void assign_variables(
-    std::span<std::reference_wrapper<RefValue>> variables, RefValue value
-) {
+void VM::execute(const ast::Declaration &declaration) {
+  const auto &names = declaration.get_names();
+  debug_print(
+      "Executing declaration of {}",
+      std::views::transform(names, &Identifier::get_name) |
+          std::ranges::to<std::vector>()
+  );
+
+  const auto mutability = declaration.get_mutability();
+
+  const auto &expr_opt = declaration.get_expression();
+  if (!expr_opt) {
+    // No initializer, assign nil to all variables
+    for (const auto &name : names) {
+      declare_variable(name, mutability);
+    }
+    return;
+  }
+
+  auto value = evaluate(*expr_opt);
+
+  if (names.size() == 1) {
+    declare_variable(names.front(), mutability, value);
+    return;
+  }
+
+  const auto value_vector_opt = value->as_vector();
+  if (!value_vector_opt) {
+    throw ValueError("Destructuring declaration only works with vectors");
+  }
+  const auto &value_vector = value_vector_opt->get();
+
+  if (value_vector.size() != names.size()) {
+    throw ValueError(
+        "Destructuring declaration expected {} values but got {}",
+        names.size(),
+        value_vector.size()
+    );
+  }
+
+  for (const auto [name, value] : std::views::zip(names, value_vector)) {
+    declare_variable(name, mutability, value);
+  }
+}
+
+void VM::execute(const ast::NameAssignment &assignment) {
+  const auto &names = assignment.get_names();
+  const auto value = evaluate(assignment.get_expression());
+  debug_print(
+      "Executing name assignment {} = {}",
+      std::views::transform(names, &Identifier::get_name) |
+          std::ranges::to<std::vector>(),
+      value
+  );
+
+  auto variables =
+      std::views::transform(
+          names,
+          [&, this](const auto &id) { return std::ref(evaluate_mut(id)); }
+      ) |
+      std::ranges::to<std::vector>();
 
   if (variables.size() == 1) {
     variables.begin()->get() = value;
@@ -461,56 +518,6 @@ void assign_variables(
        std::views::zip(variables, value_vector)) {
     variable.get() = value;
   }
-}
-
-void VM::execute(const ast::Declaration &declaration) {
-  const auto &names = declaration.get_names();
-  debug_print(
-      "Executing declaration of {}",
-      std::views::transform(names, &Identifier::get_name) |
-          std::ranges::to<std::vector>()
-  );
-
-  auto mutability = declaration.get_mutability();
-
-  auto variables = std::views::transform(
-                       names,
-                       [&, this](const auto &id) {
-                         return std::ref(*declare_variable(id, mutability));
-                       }
-                   ) |
-                   std::ranges::to<std::vector>();
-
-  const auto &expr_opt = declaration.get_expression();
-  if (expr_opt.has_value()) {
-    assign_variables(variables, evaluate(*expr_opt));
-  } else {
-    // Assign nil to all variables
-    auto nil_value = nil();
-    for (auto &var : variables) {
-      var.get() = nil_value;
-    }
-  }
-}
-
-void VM::execute(const ast::NameAssignment &assignment) {
-  const auto &names = assignment.get_names();
-  const auto value = evaluate(assignment.get_expression());
-  debug_print(
-      "Executing name assignment {} = {}",
-      std::views::transform(names, &Identifier::get_name) |
-          std::ranges::to<std::vector>(),
-      value
-  );
-
-  auto variables =
-      std::views::transform(
-          names,
-          [&, this](const auto &id) { return std::ref(evaluate_mut(id)); }
-      ) |
-      std::ranges::to<std::vector>();
-
-  assign_variables(variables, value);
 }
 
 RefValue VM::nil() { return RefValue{GCStorage::nil()}; }

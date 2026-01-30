@@ -25,7 +25,7 @@ public:
 
 private:
   bool debug;
-  std::vector<std::vector<RefValue>> frames{{}};
+  std::vector<std::vector<RefValue>> frames;
 };
 
 } // namespace l3::vm

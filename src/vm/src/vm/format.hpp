@@ -72,7 +72,12 @@ template <>
 struct std::formatter<l3::vm::L3Function>
     : utils::static_formatter<l3::vm::L3Function> {
   static constexpr auto format(const auto &obj, std::format_context &ctx) {
-    return std::format_to(ctx.out(), "function <{}>", obj.get_name());
+    return std::format_to(
+        ctx.out(),
+        "function <{}>{}",
+        obj.get_name(),
+        obj.get_curried_arguments()
+    );
   }
 };
 
@@ -88,14 +93,9 @@ template <>
 struct std::formatter<l3::vm::Function>
     : utils::static_formatter<l3::vm::Function> {
   static constexpr auto format(const auto &value, std::format_context &ctx) {
-    return value.visit(
-        [&ctx](const l3::vm::L3Function &value) {
-          return std::format_to(ctx.out(), "{}", value);
-        },
-        [&ctx](const l3::vm::BuiltinFunction &value) {
-          return std::format_to(ctx.out(), "{}", value);
-        }
-    );
+    return value.visit([&ctx](const auto &value) {
+      return std::format_to(ctx.out(), "{}", value);
+    });
   }
 };
 
@@ -116,6 +116,13 @@ struct std::formatter<l3::vm::Variable>
 };
 
 template <>
+struct std::formatter<l3::vm::Scope> : utils::static_formatter<l3::vm::Scope> {
+  static constexpr auto format(const auto &value, std::format_context &ctx) {
+    return std::format_to(ctx.out(), "{}", value.get_variables());
+  }
+};
+
+template <>
 struct std::formatter<l3::vm::Value> : utils::static_formatter<l3::vm::Value> {
   static constexpr auto format(const auto &value, std::format_context &ctx) {
     return value.visit(
@@ -128,7 +135,7 @@ struct std::formatter<l3::vm::Value> : utils::static_formatter<l3::vm::Value> {
         [&ctx](const l3::vm::Value::function_type &function) {
           return std::format_to(ctx.out(), "{}", *function);
         },
-        [&ctx](const l3::vm::Value::vector_type &vector) {
+        [&ctx](const l3::vm::Value::vector_ptr_type &vector) {
           return std::format_to(ctx.out(), "{}", vector);
         }
     );
@@ -151,7 +158,7 @@ struct std::formatter<l3::vm::ValuePrettyPrinter>
         [&ctx](const l3::vm::Value::function_type &function) {
           return std::format_to(ctx.out(), "{}", *function);
         },
-        [&ctx](const l3::vm::Value::vector_type &vector) {
+        [&ctx](const l3::vm::Value::vector_ptr_type &vector) {
           return std::format_to(ctx.out(), "{}", vector);
         }
     );

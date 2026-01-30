@@ -28,7 +28,7 @@ public:
   RefValue *operator->() { return &get(); }
   const RefValue *operator->() const { return &get(); }
 
-  DEFINE_ACCESSOR_X(mutability);
+  DEFINE_VALUE_ACCESSOR_X(mutability);
 
   [[nodiscard]] bool is_const() const {
     return mutability == Mutability::Immutable;
@@ -37,6 +37,8 @@ public:
     return mutability == Mutability::Mutable;
   }
 };
+
+class VM;
 
 class Scope {
 public:
@@ -51,8 +53,6 @@ public:
   Scope() = default;
   Scope(VariableMap &&variables);
 
-  // static const Scope &builtins();
-
   Variable &declare_variable(
       const Identifier &id, RefValue gc_value, Mutability mutability
   );
@@ -61,12 +61,23 @@ public:
   utils::optional_ref<Variable> get_variable_mut(const Identifier &id);
 
   bool has_variable(const Identifier &id) const;
+  size_t size() const { return variables.size(); }
 
   DEFINE_ACCESSOR_X(variables);
 
   void mark_gc();
 
   static std::optional<RefValue> get_builtin(const Identifier &id);
+
+  [[nodiscard]] Scope clone(VM &vm) const;
+};
+
+class ScopeStack : public std::vector<std::shared_ptr<Scope>> {
+public:
+  [[nodiscard]] const Scope &top() const { return *back(); }
+  [[nodiscard]] Scope &top() { return *back(); }
+
+  [[nodiscard]] ScopeStack clone(VM &vm) const;
 };
 
 } // namespace l3::vm

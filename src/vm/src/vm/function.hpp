@@ -2,11 +2,11 @@
 
 #include "utils/accessor.h"
 #include "vm/identifier.hpp"
+#include "vm/scope.hpp"
 #include "vm/value.hpp"
 #include <memory>
 #include <optional>
 #include <span>
-#include <vector>
 
 import l3.ast;
 
@@ -18,8 +18,9 @@ class VM;
 using L3Args = std::span<RefValue>;
 
 class L3Function {
-  std::vector<std::shared_ptr<Scope>> capture_scopes;
-  ast::FunctionBody body;
+  ScopeStack captures;
+  std::shared_ptr<Scope> curried_arguments;
+  std::shared_ptr<ast::FunctionBody> body;
   std::optional<Identifier> name;
 
 public:
@@ -27,17 +28,14 @@ public:
   L3Function(L3Function &&) = default;
   L3Function &operator=(const L3Function &) = delete;
   L3Function &operator=(L3Function &&) = default;
+  L3Function(const ScopeStack &captures, const ast::NamedFunction &function);
   L3Function(
-      const std::vector<std::shared_ptr<Scope>> &active_scopes,
-      const ast::NamedFunction &function
+      const ScopeStack &captures, const ast::AnonymousFunction &function
   );
   L3Function(
-      const std::vector<std::shared_ptr<Scope>> &active_scopes,
-      const ast::AnonymousFunction &function
-  );
-  L3Function(
-      std::vector<std::shared_ptr<Scope>> &&active_scopes,
-      ast::FunctionBody body,
+      ScopeStack captures,
+      Scope &&curried_arguments,
+      std::shared_ptr<ast::FunctionBody> body,
       std::optional<Identifier> name
   );
   ~L3Function();
@@ -45,6 +43,8 @@ public:
   RefValue operator()(VM &vm, L3Args args);
 
   DEFINE_ACCESSOR_X(body);
+  DEFINE_ACCESSOR_X(captures);
+  DEFINE_PTR_ACCESSOR_X(curried_arguments);
   [[nodiscard]] const Identifier &get_name() const;
 
 private:
@@ -53,19 +53,18 @@ private:
 
 class BuiltinFunction {
 public:
-  using Body = std::function<RefValue(VM &vm, L3Args args)>;
+  using Body = RefValue (*)(VM &vm, L3Args args);
 
 private:
   Identifier name;
   Body body;
 
 public:
-  BuiltinFunction(Identifier &&name, Body &&body);
+  BuiltinFunction(Identifier &&name, Body body);
 
-  RefValue operator()(VM &vm, std::span<RefValue> args) const;
+  RefValue operator()(VM &vm, L3Args args) const;
 
   DEFINE_ACCESSOR_X(name);
-  DEFINE_ACCESSOR_X(body);
 };
 
 class Function {

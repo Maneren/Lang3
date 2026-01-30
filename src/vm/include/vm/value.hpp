@@ -74,6 +74,8 @@ class Value {
 public:
   using function_type = std::shared_ptr<Function>;
   using vector_type = std::vector<RefValue>;
+  using vector_ptr_type = std::shared_ptr<vector_type>;
+
   Value();
 
   Value(const Value &) = delete;
@@ -85,8 +87,11 @@ public:
   Value(Nil /*unused*/);
   Value(Primitive &&primitive);
   Value(Function &&function);
-  Value(function_type function);
+  Value(function_type &&function);
+  Value(vector_ptr_type &&vector);
   Value(vector_type &&vector);
+
+  [[nodiscard]] Value clone() const;
 
   [[nodiscard]] Value add(const Value &other) const;
   [[nodiscard]] Value sub(const Value &other) const;
@@ -118,6 +123,7 @@ public:
   [[nodiscard]] utils::optional_ref<vector_type> as_mut_vector();
 
   [[nodiscard]] bool is_truthy() const;
+  [[nodiscard]] bool is_falsy() const { return !is_truthy(); }
 
   [[nodiscard]] NewValue index(const Value &index) const;
   [[nodiscard]] NewValue index(size_t index) const;
@@ -136,7 +142,7 @@ private:
       const std::string &op_name
   ) const;
 
-  std::variant<Nil, Primitive, function_type, vector_type> inner;
+  std::variant<Nil, Primitive, function_type, vector_ptr_type> inner;
 };
 
 } // namespace l3::vm

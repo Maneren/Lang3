@@ -21,7 +21,7 @@ public:
   void execute(const ast::Program &program);
 
   RefValue evaluate_function_body(
-      std::span<std::shared_ptr<Scope>> captured,
+      const ScopeStack &captured,
       Scope &&arguments,
       const ast::FunctionBody &body
   );
@@ -29,7 +29,9 @@ public:
   RefValue store_value(Value &&value);
   RefValue store_new_value(NewValue &&value);
   Variable &declare_variable(
-      const Identifier &id, Mutability mutability, GCValue &gc_value = GCStorage::nil()
+      const Identifier &id,
+      Mutability mutability,
+      RefValue ref_value = RefValue{GCStorage::nil()}
   );
   static RefValue nil();
   static RefValue _true();
@@ -64,16 +66,17 @@ private:
 
   [[nodiscard]] RefValue &evaluate_mut(const ast::Variable &index_expression);
   [[nodiscard]] RefValue &evaluate_mut(const ast::Identifier &index_expression);
-  [[nodiscard]] RefValue &evaluate_mut(const ast::IndexExpression &index_expression);
+  [[nodiscard]] RefValue &
+  evaluate_mut(const ast::IndexExpression &index_expression);
 
-  [[nodiscard]] RefValue read_variable(const Identifier &id) const;
+  [[nodiscard]] RefValue read_variable(const Identifier &id);
   [[nodiscard]] RefValue &read_write_variable(const Identifier &id);
 
   bool evaluate_if_branch(const ast::IfBase &if_base);
 
   bool debug;
-  std::vector<std::shared_ptr<Scope>> scopes;
-  std::vector<std::vector<std::shared_ptr<Scope>>> unused_scopes;
+  ScopeStack scopes;
+  std::vector<ScopeStack> unused_scopes;
   Stack stack;
   GCStorage gc_storage;
 

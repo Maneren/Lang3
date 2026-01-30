@@ -1,6 +1,9 @@
 #include "vm/scope.hpp"
 #include "vm/builtins.hpp"
 #include "vm/error.hpp"
+#include "vm/format.hpp"
+#include "vm/vm.hpp"
+#include <print>
 
 namespace l3::vm {
 
@@ -64,7 +67,6 @@ std::optional<RefValue> Scope::get_builtin(const Identifier &id) {
 }
 
 Scope::Scope(VariableMap &&variables) : variables{std::move(variables)} {};
-// const Scope &Scope::builtins() { return _builtins; }
 
 void Scope::mark_gc() {
   for (auto &[name, it] : variables) {
@@ -75,4 +77,23 @@ bool Scope::has_variable(const Identifier &id) const {
   return variables.contains(id);
 }
 
+Scope Scope::clone(VM &vm) const {
+  Scope cloned;
+  cloned.variables.reserve(size());
+  for (const auto &[name, var] : variables) {
+    cloned.declare_variable(
+        name, vm.store_value(var.get()->clone()), var.get_mutability()
+    );
+  }
+  return cloned;
+}
+
+ScopeStack ScopeStack::clone(VM &vm) const {
+  ScopeStack cloned;
+  cloned.reserve(size());
+  for (const auto &scope : *this) {
+    cloned.push_back(std::make_shared<Scope>(scope->clone(vm)));
+  }
+  return cloned;
+}
 } // namespace l3::vm
