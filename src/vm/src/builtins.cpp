@@ -22,18 +22,18 @@ void format_args(const std::output_iterator<char> auto &out, L3Args args) {
 
 } // namespace
 
-RefValue print(VM & /*vm*/, L3Args args) {
+RefValue builtin_print(VM & /*vm*/, L3Args args) {
   format_args(std::ostream_iterator<char>(std::cout), args);
   return VM::nil();
 }
 
-RefValue println(VM &vm, L3Args args) {
-  print(vm, args);
+RefValue builtin_println(VM &vm, L3Args args) {
+  builtin_print(vm, args);
   std::print("\n");
   return VM::nil();
 }
 
-RefValue trigger_gc(VM &vm, L3Args args) {
+RefValue builtin_trigger_gc(VM &vm, L3Args args) {
   if (args.size() > 0) {
     throw RuntimeError("trigger_gc takes no arguments");
   }
@@ -41,7 +41,7 @@ RefValue trigger_gc(VM &vm, L3Args args) {
   return VM::nil();
 }
 
-RefValue l3_assert(VM & /*vm*/, L3Args args) {
+RefValue builtin_assert(VM & /*vm*/, L3Args args) {
   if (args[0]->is_truthy()) {
     return VM::nil();
   }
@@ -50,22 +50,22 @@ RefValue l3_assert(VM & /*vm*/, L3Args args) {
   throw RuntimeError("{}", result);
 }
 
-RefValue error(VM & /*vm*/, L3Args args) {
+RefValue builtin_error(VM & /*vm*/, L3Args args) {
   std::string result;
   format_args(std::back_inserter(result), args);
   throw RuntimeError("{}", result);
 }
 
-RefValue input(VM &vm, L3Args args) {
+RefValue builtin_input(VM &vm, L3Args args) {
   if (args.size() > 0) {
-    println(vm, args);
+    builtin_println(vm, args);
   }
   std::string input;
   std::getline(std::cin, input);
   return vm.store_value({Primitive{std::move(input)}});
 }
 
-RefValue to_int(VM &vm, L3Args args) {
+RefValue builtin_int(VM &vm, L3Args args) {
   if (args.empty()) {
     throw RuntimeError("to_int takes at least one arguments");
   }
@@ -119,7 +119,7 @@ RefValue to_int(VM &vm, L3Args args) {
   return vm.store_value({Primitive{value}});
 }
 
-RefValue to_string(VM &vm, L3Args args) {
+RefValue builtin_str(VM &vm, L3Args args) {
   if (args.size() != 1) {
     throw RuntimeError("to_string takes one arguments");
   }
@@ -130,7 +130,7 @@ RefValue to_string(VM &vm, L3Args args) {
   return vm.store_value({Primitive{std::move(result)}});
 }
 
-RefValue head(VM &vm, L3Args args) {
+RefValue builtin_head(VM &vm, L3Args args) {
   if (args.empty()) {
     throw RuntimeError("head takes at least one arguments");
   }
@@ -169,7 +169,7 @@ RefValue head(VM &vm, L3Args args) {
   throw TypeError("head takes only vector and string values");
 }
 
-RefValue tail(VM &vm, L3Args args) {
+RefValue builtin_tail(VM &vm, L3Args args) {
   if (args.empty()) {
     throw RuntimeError("tail takes at least one arguments");
   }
@@ -209,7 +209,7 @@ RefValue tail(VM &vm, L3Args args) {
   throw TypeError("tail takes only vector and string values");
 }
 
-RefValue len(VM &vm, L3Args args) {
+RefValue builtin_len(VM &vm, L3Args args) {
   if (args.size() != 1) {
     throw RuntimeError("len takes exactly one arguments");
   }
@@ -235,7 +235,7 @@ RefValue len(VM &vm, L3Args args) {
   );
 }
 
-RefValue drop(VM &vm, L3Args args) {
+RefValue builtin_drop(VM &vm, L3Args args) {
   if (args.size() != 2) {
     throw RuntimeError("drop takes two arguments");
   }
@@ -249,7 +249,7 @@ RefValue drop(VM &vm, L3Args args) {
   return vm.store_value(args[0]->slice(Slice{index, std::nullopt}));
 }
 
-RefValue take(VM &vm, L3Args args) {
+RefValue builtin_take(VM &vm, L3Args args) {
   if (args.size() != 2) {
     throw RuntimeError("take takes two arguments");
   }
@@ -263,7 +263,7 @@ RefValue take(VM &vm, L3Args args) {
   return vm.store_value(args[0]->slice(Slice{std::nullopt, index}));
 }
 
-RefValue slice(VM &vm, L3Args args) {
+RefValue builtin_slice(VM &vm, L3Args args) {
   if (args.size() != 3) {
     throw RuntimeError("slice takes three arguments");
   }
@@ -279,7 +279,7 @@ RefValue slice(VM &vm, L3Args args) {
   return vm.store_value(args[0]->slice(Slice{start, end}));
 }
 
-RefValue random(VM &vm, L3Args args) {
+RefValue builtin_random(VM &vm, L3Args args) {
   static std::random_device rd;
   static std::mt19937 gen(rd());
 
@@ -309,7 +309,7 @@ RefValue random(VM &vm, L3Args args) {
   return vm.store_value(Value{Primitive{distribution(gen)}});
 }
 
-RefValue sleep(VM & /*vm*/, L3Args args) {
+RefValue builtin_sleep(VM & /*vm*/, L3Args args) {
   if (args.size() != 1) {
     throw RuntimeError("sleep takes one argument");
   }
@@ -339,17 +339,37 @@ RefValue builtin_map(VM &vm, L3Args args) {
   }
   const auto &list = list_opt->get();
 
-  std::vector<RefValue> result;
-  std::vector<RefValue> func_args;
-  result.reserve(list.size());
-  for (const auto &item : list) {
-    func_args.push_back(item);
-    auto mapped_value = func(vm, func_args);
-    func_args.pop_back();
-    result.push_back(mapped_value);
+  return vm.store_value(
+      {list | std::views::transform([&vm, &func](const auto &item) {
+         return func(vm, {item});
+       }) |
+       std::ranges::to<std::vector>()}
+  );
+}
+
+RefValue builtin_filter(VM &vm, L3Args args) {
+  if (args.size() != 2) {
+    throw TypeError("filter() takes exactly 2 arguments");
   }
 
-  return vm.store_value(Value{std::move(result)});
+  auto func_opt = args[0]->as_function();
+  if (!func_opt) {
+    throw TypeError("filter() first argument must be a function");
+  }
+  auto &func = *func_opt->get();
+
+  const auto list_opt = args[1]->as_vector();
+  if (!list_opt) {
+    throw TypeError("filter() second argument must be a vector");
+  }
+  const auto &list = list_opt->get();
+
+  return vm.store_value(
+      {list | std::views::filter([&vm, &func](const auto &item) {
+         return func(vm, {item})->is_truthy();
+       }) |
+       std::ranges::to<std::vector>()}
+  );
 }
 
 RefValue builtin_sum(VM &vm, L3Args args) {
@@ -415,18 +435,53 @@ RefValue builtin_any(VM & /*vm*/, L3Args args) {
   return VM::_false();
 }
 
+RefValue builtin_count(VM &vm, L3Args args) {
+  if (args.size() != 2) {
+    throw TypeError("count() takes exactly 2 arguments");
+  }
+
+  const auto fn_opt = args[0]->as_function();
+  if (!fn_opt) {
+    throw TypeError("count() first argument must be a function");
+  }
+  auto &fn = *fn_opt->get();
+
+  const auto list_opt = args[1]->as_vector();
+  if (!list_opt) {
+    throw TypeError("count() second argument must be a vector");
+  }
+  const auto &list = list_opt->get();
+
+  std::int64_t count = 0;
+  for (const auto &item : list) {
+    if (fn(vm, {item})->is_truthy()) {
+      ++count;
+    }
+  }
+
+  return vm.store_value(Primitive{count});
+}
+
+RefValue builtin_identity(VM & /*vm*/, L3Args args) {
+  if (args.size() != 1) {
+    throw TypeError("id() takes exactly 1 argument");
+  }
+  return args[0];
+}
+
 const std::initializer_list<std::pair<std::string_view, BuiltinFunction::Body>>
     BUILTINS{
-        {"print", print},     {"println", println},
-        {"error", error},     {"assert", l3_assert},
-        {"input", input},     {"__trigger_gc", trigger_gc},
-        {"int", to_int},      {"str", to_string},
-        {"head", head},       {"tail", tail},
-        {"len", len},         {"drop", drop},
-        {"take", take},       {"slice", slice},
-        {"random", random},   {"sleep", sleep},
-        {"map", builtin_map}, {"sum", builtin_sum},
-        {"all", builtin_all}, {"any", builtin_any},
+        {"print", builtin_print},   {"println", builtin_println},
+        {"assert", builtin_assert}, {"error", builtin_error},
+        {"input", builtin_input},   {"int", builtin_int},
+        {"str", builtin_str},       {"head", builtin_head},
+        {"tail", builtin_tail},     {"len", builtin_len},
+        {"drop", builtin_drop},     {"take", builtin_take},
+        {"slice", builtin_slice},   {"random", builtin_random},
+        {"sleep", builtin_sleep},   {"map", builtin_map},
+        {"filter", builtin_filter}, {"sum", builtin_sum},
+        {"all", builtin_all},       {"any", builtin_any},
+        {"count", builtin_count},   {"id", builtin_identity},
     };
 
 } // namespace l3::vm::builtins

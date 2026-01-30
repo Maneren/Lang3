@@ -15,7 +15,7 @@ namespace l3::vm {
 class Scope;
 class VM;
 
-using L3Args = std::span<RefValue>;
+using L3Args = std::span<const RefValue>;
 
 class L3Function {
   ScopeStack captures;

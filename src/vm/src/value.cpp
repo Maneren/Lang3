@@ -439,11 +439,11 @@ NewValue Value::index(const Value &index_value) const {
 }
 NewValue Value::index(size_t index) const {
   return visit(
-      [&index](const std::vector<RefValue> &values) -> NewValue {
-        if (index >= values.size()) {
+      [&index](const vector_ptr_type &values) -> NewValue {
+        if (index >= values->size()) {
           throw ValueError("index out of bounds");
         }
-        return values[index];
+        return (*values)[index];
       },
       [&index](const Primitive &primitive) -> NewValue {
         const auto string_opt = primitive.as_string();
@@ -471,11 +471,11 @@ RefValue &Value::index_mut(const Value &index) {
 }
 RefValue &Value::index_mut(size_t index) {
   return visit(
-      [&index](std::vector<RefValue> &values) -> RefValue & {
-        if (index >= values.size()) {
+      [&index](const vector_ptr_type &values) -> RefValue & {
+        if (index >= values->size()) {
           throw ValueError("index out of bounds");
         }
-        return values[index];
+        return (*values)[index];
       },
       [this](const auto & /*value*/) -> RefValue & {
         throw TypeError("cannot mutaly index a {} value", type_name());
