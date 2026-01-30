@@ -72,4 +72,4 @@ fn rle_decoder(data)
   return x + rle_decoder(xs)
 end
 
-rle_decoder(input())
+println(rle_decoder(input()))

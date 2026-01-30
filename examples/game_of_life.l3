@@ -1,0 +1,157 @@
+#!/bin/env lang3
+
+# Conway's Game of Life
+
+let WIDTH = 40
+let HEIGHT = 20
+let GENERATIONS = 100
+let DELAY = 500 # milliseconds (2 generations per second)
+
+fn create_board()
+  let mut board = []
+  let mut i = 0
+  while i < HEIGHT do
+    let mut row = []
+    let mut j = 0
+    while j < WIDTH do
+      row += [false]
+      j += 1
+    end
+    board += [row]
+    i += 1
+  end
+  return board
+end
+
+fn randomize_board(board)
+  let mut i = 0
+  while i < HEIGHT do
+    let mut j = 0
+    while j < WIDTH do
+      # make ~30% cells alive
+      board[i][j] = random(10) < 3
+      j += 1
+    end
+    i += 1
+  end
+end
+
+fn count_neighbors(board, row, col)
+  let mut count = 0
+  let mut i = -1
+
+  while i <= 1 do
+    let mut j = -1
+    while j <= 1 do
+      # Skip the cell itself
+      if not (i == 0 and j == 0) then
+        let ni = row + i
+        let nj = col + j
+
+        if 0 <= ni and ni < HEIGHT and 0 <= nj and nj < WIDTH then
+          if board[ni][nj] then
+            count += 1
+          end
+        end
+      end
+      j += 1
+    end
+    i += 1
+  end
+
+  return count
+end
+
+fn next_generation(board)
+  let mut new_board = create_board()
+
+  let mut i = 0
+  while i < HEIGHT do
+    let mut j = 0
+    while j < WIDTH do
+      let neighbors = count_neighbors(board, i, j)
+      let alive = board[i][j]
+
+      # Game of Life rules:
+      # 1. Any live cell with 2-3 neighbors survives
+      # 2. Any dead cell with exactly 3 neighbors becomes alive
+      # 3. All other cells die or stay dead
+      if alive then
+        new_board[i][j] = neighbors == 2 or neighbors == 3
+      else
+        new_board[i][j] = neighbors == 3
+      end
+
+      j += 1
+    end
+    i += 1
+  end
+
+  return new_board
+end
+
+fn display_board(board, generation)
+  # Clear screen
+  # println("\x1b[2J\x1b[H")
+
+  println("Conway's Game of Life - Generation: " + str(generation))
+  println()
+
+  # Top border
+  print("+")
+  let mut k = 0
+  while k < WIDTH do
+    print("-")
+    k += 1
+  end
+  println("+")
+
+  # Board content
+  let mut i = 0
+  while i < HEIGHT do
+    print("|")
+    let mut j = 0
+    while j < WIDTH do
+      if board[i][j] then
+        print("█")
+      else
+        print(" ")
+      end
+      j += 1
+    end
+    println("|")
+    i += 1
+  end
+
+  # Bottom border
+  print("+")
+  k = 0
+  while k < WIDTH do
+    print("-")
+    k += 1
+  end
+  println("+")
+end
+
+# Main simulation
+fn main()
+  let mut board = create_board()
+  randomize_board(board)
+
+  let mut gen = 0
+  while gen <= GENERATIONS do
+    display_board(board, gen)
+
+    if gen < GENERATIONS then
+      # sleep(DELAY)
+      board = next_generation(board)
+    end
+
+    gen += 1
+  end
+
+  println()
+  println("Simulation complete!")
+end
+
+main()
