@@ -60,7 +60,7 @@ end
 # div(10, 0)
 
 # Conditional expression
-let message = if not (0 <= c and c < 10 or not (b == 0 and a == 0)) then
+let message = if not (0 <= c < 10) and a == b == 0 then
   return "valid"
 else
   return "invalid"

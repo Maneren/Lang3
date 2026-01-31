@@ -44,16 +44,16 @@ fn count_neighbors(board, row, col)
   for i in NEIGHBOR_RANGE do
     for j in NEIGHBOR_RANGE do
       # Skip the cell itself
-      if  (i == 0 and j == 0) then continue end
+      if (i == j == 0) then continue end
 
       let ni = row + i
       let nj = col + j
 
-      if 0 <= ni and ni < HEIGHT and
-         0 <= nj and nj < WIDTH
-      then
-        count += int(board[ni][nj])
-      end
+      count += int(
+        0 <= ni < HEIGHT and
+        0 <= nj < WIDTH and
+        board[ni][nj]
+      )
     end
   end
 
