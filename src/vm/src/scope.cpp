@@ -1,11 +1,19 @@
-#include "vm/scope.hpp"
-#include "vm/builtins.hpp"
-#include "vm/error.hpp"
-#include "vm/format.hpp"
-#include "vm/vm.hpp"
-#include <exception>
-#include <print>
+module;
+
+#include <memory>
 #include <ranges>
+#include <unordered_map>
+#include <utility>
+#include <vector>
+
+module l3.vm;
+
+import l3.ast;
+import utils;
+import :builtins;
+import :gc_value;
+import :variable;
+import :formatting;
 
 namespace l3::vm {
 
@@ -42,7 +50,7 @@ std::pair<Identifier, GCValue>
 wrap_native_function(std::string_view name, BuiltinFunction::Body function) {
   return {
       Identifier{name},
-      GCValue{Value{BuiltinFunction{Identifier{name}, std::move(function)}}}
+      GCValue{Value{BuiltinFunction{Identifier{name}, function}}}
   };
 }
 

@@ -1,18 +1,27 @@
-#include "vm/vm.hpp"
-#include "vm/error.hpp"
-#include "vm/format.hpp"
-#include "vm/scope.hpp"
-#include "vm/value.hpp"
+module;
+
 #include <algorithm>
 #include <functional>
 #include <iostream>
+#include <memory>
 #include <optional>
 #include <print>
 #include <ranges>
 #include <utility>
 #include <vector>
 
+module l3.vm;
+
 import utils;
+import l3.ast;
+import :error;
+import :identifier;
+import :ref_value;
+import :scope;
+import :stack;
+import :storage;
+import :value;
+import :variable;
 
 namespace l3::vm {
 
@@ -258,7 +267,7 @@ RefValue VM::read_variable(const Identifier &id) {
                    .transform([this](const auto &variable) {
                      return store_value(variable->clone());
                    })
-                   .or_else([&id] { return Scope::get_builtin(id); });
+                   .or_else([&id, this] { return Scope::get_builtin(id); });
   if (value) {
     return *value;
   }

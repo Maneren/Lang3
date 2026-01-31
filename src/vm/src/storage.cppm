@@ -1,41 +1,17 @@
-#pragma once
+module;
 
-#include "utils/accessor.h"
-#include "vm/value.hpp"
+#include <format>
 #include <forward_list>
 #include <iostream>
-#include <memory>
 #include <print>
+#include <utils/accessor.h>
 
-namespace l3::vm {
+export module l3.vm:storage;
 
-class GCValue {
-  bool marked = false;
-  Value value;
+export namespace l3::vm {
 
-public:
-  GCValue(Value &&value);
-  GCValue(const GCValue &) = delete;
-  GCValue(GCValue &&other) noexcept
-      : marked{other.marked}, value{std::move(other.value)} {
-    other.marked = false;
-  }
-  GCValue &operator=(const GCValue &) = delete;
-  GCValue &operator=(GCValue &&other) noexcept {
-    marked = other.marked;
-    value = std::move(other.value);
-    other.marked = false;
-    return *this;
-  }
-  ~GCValue() = default;
-
-  void mark();
-  void unmark() { marked = false; }
-
-  [[nodiscard]] bool is_marked() const { return marked; }
-
-  DEFINE_ACCESSOR_X(value);
-};
+class GCValue;
+class Value;
 
 class GCStorage {
   bool debug;
@@ -45,7 +21,14 @@ class GCStorage {
   size_t added_since_last_sweep = 0;
 
 public:
-  GCStorage(bool debug = false) : debug{debug} {}
+  GCStorage(bool debug = false);
+
+  GCStorage(const GCStorage &) = delete;
+  GCStorage(GCStorage &&) noexcept;
+  GCStorage &operator=(const GCStorage &) = delete;
+  GCStorage &operator=(GCStorage &&) noexcept;
+  ~GCStorage();
+
   size_t sweep();
 
   GCValue &emplace(Value &&value);

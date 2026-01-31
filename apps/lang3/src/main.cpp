@@ -4,10 +4,10 @@
 #include <iostream>
 #include <parser/lexer.hpp>
 #include <print>
-#include <vm/vm.hpp>
 
 import cli;
 import l3.ast;
+import l3.vm;
 
 namespace {
 

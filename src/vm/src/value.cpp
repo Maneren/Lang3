@@ -1,197 +1,22 @@
-#include "vm/value.hpp"
-#include "vm/error.hpp"
-#include "vm/function.hpp"
+module;
+#include <format>
+
+#include <functional>
 #include <memory>
+#include <string>
 #include <string_view>
 #include <tuple>
 #include <utility>
 #include <variant>
 
+module l3.vm;
+
+import utils;
+import :error;
+import :primitive;
+import :ref_value;
+
 namespace l3::vm {
-
-namespace {
-
-template <typename Result, typename... Handlers>
-auto handle_bin_op(
-    std::string_view name,
-    const Primitive &lhs,
-    const Primitive &rhs,
-    Handlers... handlers
-) {
-  return match::match(
-      std::forward_as_tuple(lhs.get_inner(), rhs.get_inner()),
-      handlers...,
-      [name](const auto &lhs, const auto &rhs) -> Result {
-        throw UnsupportedOperation(name, lhs, rhs);
-      }
-  );
-}
-
-template <typename Result, typename... Handlers>
-auto handle_un_op(
-    std::string_view name, const Primitive &value, Handlers... handlers
-) {
-  return value.visit(handlers..., [name](const auto &value) -> Result {
-    throw UnsupportedOperation(name, value);
-  });
-}
-
-} // namespace
-
-Primitive operator+(const Primitive &lhs, const Primitive &rhs) {
-  return handle_bin_op<Primitive>(
-      "addition",
-      lhs,
-      rhs,
-      []<typename T>(const T &lhs, const T &rhs) -> Primitive
-        requires(!std::is_same_v<T, bool>)
-      { return Primitive{lhs + rhs}; }
-      );
-}
-
-Primitive operator-(const Primitive &lhs, const Primitive &rhs) {
-  return handle_bin_op<Primitive>(
-      "subtraction",
-      lhs,
-      rhs,
-      []<typename T>(const T &lhs, const T &rhs) -> Primitive
-        requires requires(T lhs, T rhs) { lhs - rhs; } &&
-                 (!std::is_same_v<T, bool>)
-      { return Primitive{lhs - rhs}; }
-      );
-}
-
-Primitive operator*(const Primitive &lhs, const Primitive &rhs) {
-  return handle_bin_op<Primitive>(
-      "multiplication",
-      lhs,
-      rhs,
-      []<typename T>(const T &lhs, const T &rhs) -> Primitive
-        requires requires(T lhs, T rhs) { lhs * rhs; } &&
-                     (!std::is_same_v<T, bool>)
-      { return Primitive{lhs * rhs}; },
-      [](const std::int64_t &lhs, const std::string &rhs) -> Primitive {
-        if (lhs < 0) {
-          throw UnsupportedOperation(
-              "negative string multiplication not supported"
-          );
-        }
-        std::string result;
-        result.reserve(static_cast<std::size_t>(lhs) * rhs.size());
-        for (std::size_t i = 0; i < static_cast<std::size_t>(lhs); ++i) {
-          result += rhs;
-        }
-        return Primitive{result};
-      }
-      );
-}
-
-Primitive operator/(const Primitive &lhs, const Primitive &rhs) {
-  return handle_bin_op<Primitive>(
-      "division",
-      lhs,
-      rhs,
-      []<typename T>(const T &lhs, const T &rhs) -> Primitive
-        requires requires(T lhs, T rhs) { lhs / rhs; } &&
-                 (!std::is_same_v<T, bool>)
-      {
-        if (rhs == static_cast<T>(0)) {
-          throw UnsupportedOperation("division by zero");
-        }
-        return Primitive{lhs / rhs};
-      }
-      );
-}
-
-Primitive operator%(const Primitive &lhs, const Primitive &rhs) {
-  return handle_bin_op<Primitive>(
-      "modulo",
-      lhs,
-      rhs,
-      []<typename T>(const T &lhs, const T &rhs) -> Primitive
-        requires requires(T lhs, T rhs) { lhs % rhs; } &&
-                 (!std::is_same_v<T, bool>)
-      { return Primitive{lhs % rhs}; }
-      );
-}
-
-Primitive operator&&(const Primitive &lhs, const Primitive &rhs) {
-  return Primitive{lhs.is_truthy() && rhs.is_truthy()};
-}
-
-Primitive operator||(const Primitive &lhs, const Primitive &rhs) {
-  return Primitive{lhs.is_truthy() || rhs.is_truthy()};
-}
-
-Primitive operator!(const Primitive &value) {
-  return Primitive{!value.is_truthy()};
-}
-
-Primitive operator-(const Primitive &value) {
-  return handle_un_op<Primitive>(
-      "minus",
-      value,
-      []<typename T>(const T &value) -> Primitive
-        requires requires(T value) { -value; } && (!std::is_same_v<T, bool>)
-      { return Primitive{-value}; }
-      );
-}
-
-Primitive operator+(const Primitive &value) {
-  return handle_un_op<Primitive>(
-      "plus",
-      value,
-      []<typename T>(const T &value) -> Primitive
-        requires requires(T value) { +value; } && (!std::is_same_v<T, bool>)
-      { return Primitive{+value}; }
-      );
-}
-
-namespace {
-int operator<=>(const Primitive &lhs, const Primitive &rhs) {
-  return handle_bin_op<int>(
-      "comparison",
-      lhs,
-      rhs,
-      []<typename T>(const T &lhs, const T &rhs) -> int
-        requires(!std::is_same_v<T, bool>)
-      {
-        auto result = lhs <=> rhs;
-        if (result < 0) {
-          return -1;
-        }
-        if (result > 0) {
-          return 1;
-        }
-        return 0;
-      }
-      );
-}
-} // namespace
-
-Primitive operator!=(const Primitive &lhs, const Primitive &rhs) {
-  return Primitive{(lhs <=> rhs) != 0};
-}
-
-Primitive operator==(const Primitive &lhs, const Primitive &rhs) {
-  return Primitive{(lhs <=> rhs) == 0};
-}
-
-Primitive operator<(const Primitive &lhs, const Primitive &rhs) {
-  return Primitive{(lhs <=> rhs) < 0};
-}
-
-Primitive operator>(const Primitive &lhs, const Primitive &rhs) {
-  return Primitive{(lhs <=> rhs) > 0};
-}
-
-Primitive operator<=(const Primitive &lhs, const Primitive &rhs) {
-  return Primitive{(lhs <=> rhs) <= 0};
-}
-
-Primitive operator>=(const Primitive &lhs, const Primitive &rhs) {
-  return Primitive{(lhs <=> rhs) >= 0};
-}
 
 Value Value::add(const Value &other) const {
   return match::match(
@@ -310,16 +135,6 @@ Value Value::less_equal(const Value &other) const {
   );
 }
 
-bool Primitive::is_truthy() const {
-  return visit(
-      [](const bool &value) { return value; },
-      [](const std::int64_t &value) { return value != 0; },
-      [](const string_type &value) { return !value.empty(); },
-      [](const double & /*value*/) -> bool {
-        throw RuntimeError("cannot convert a floating point number to bool");
-      }
-  );
-}
 bool Value::is_truthy() const {
   return visit(
       [](const Primitive &primitive) { return primitive.is_truthy(); },
@@ -334,43 +149,6 @@ bool Value::is_truthy() const {
   );
 }
 
-std::optional<std::reference_wrapper<const Primitive::string_type>>
-Primitive::as_string() const {
-  return visit(
-      [](const string_type &value) -> utils::optional_cref<string_type> {
-        return std::cref(value);
-      },
-      [](const auto &) -> utils::optional_cref<string_type> {
-        return std::nullopt;
-      }
-  );
-}
-std::optional<double> Primitive::as_double() const {
-  return visit(
-      [](const double &value) -> std::optional<double> { return value; },
-      [](const auto &) -> std::optional<double> { return std::nullopt; }
-  );
-}
-std::optional<std::int64_t> Primitive::as_integer() const {
-  return visit(
-      [](const std::int64_t &value) -> std::optional<std::int64_t> {
-        return value;
-      },
-      [](const auto &) -> std::optional<std::int64_t> { return std::nullopt; }
-  );
-}
-std::optional<bool> Primitive::as_bool() const {
-  return visit(
-      [](const bool &value) -> std::optional<bool> { return value; },
-      [](const auto &) -> std::optional<bool> { return std::nullopt; }
-  );
-}
-
-Primitive::Primitive(bool value) : inner{value} {}
-Primitive::Primitive(std::int64_t value) : inner{value} {}
-Primitive::Primitive(double value) : inner{value} {}
-Primitive::Primitive(const std::string &value) : inner{value} {}
-Primitive::Primitive(std::string &&value) : inner{std::move(value)} {}
 Value::Value() : inner{Nil{}} {}
 Value::Value(Nil /*unused*/) : inner{Nil{}} {}
 Value::Value(Primitive &&primitive) : inner{std::move(primitive)} {}
@@ -614,16 +392,6 @@ Value Value::negative() const {
   );
 }
 
-[[nodiscard]] std::string_view Primitive::type_name() const {
-  using std::string_view_literals::operator""sv;
-  return visit(
-      [](const bool & /*value*/) { return "bool"sv; },
-      [](const std::int64_t & /*value*/) { return "integer"sv; },
-      [](const double & /*value*/) { return "double"sv; },
-      [](const std::string & /*value*/) { return "string"sv; }
-  );
-}
-
 [[nodiscard]] std::string_view Value::type_name() const {
   using std::string_view_literals::operator""sv;
   return visit(
@@ -635,3 +403,6 @@ Value Value::negative() const {
 }
 
 } // namespace l3::vm
+
+// Formatters for Value types
+namespace l3::vm {} // namespace l3::vm

@@ -1,10 +1,24 @@
-#include "vm/builtins.hpp"
-#include "vm/error.hpp"
-#include "vm/format.hpp"
-#include "vm/vm.hpp"
+module;
+
+#include <algorithm>
+#include <cstdint>
+#include <exception>
+#include <iostream>
+#include <optional>
+#include <print>
 #include <random>
 #include <ranges>
+#include <span>
+#include <string>
+#include <string_view>
 #include <thread>
+#include <unordered_map>
+
+module l3.vm;
+
+import l3.ast;
+import utils;
+import :variable;
 
 namespace l3::vm::builtins {
 
@@ -19,8 +33,6 @@ void format_args(const std::output_iterator<char> auto &out, L3Args args) {
     std::format_to(out, " {}", ValuePrettyPrinter(*arg));
   }
 }
-
-} // namespace
 
 RefValue builtin_print(VM & /*vm*/, L3Args args) {
   format_args(std::ostream_iterator<char>(std::cout), args);
@@ -514,7 +526,10 @@ RefValue builtin_range(VM &vm, L3Args args) {
   return vm.store_value(std::move(result));
 }
 
-const std::initializer_list<std::pair<std::string_view, BuiltinFunction::Body>>
+} // namespace
+
+extern const std::initializer_list<
+    std::pair<std::string_view, BuiltinFunction::Body>>
     BUILTINS{
         {"print", builtin_print},   {"println", builtin_println},
         {"assert", builtin_assert}, {"error", builtin_error},

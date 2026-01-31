@@ -1,9 +1,11 @@
-#pragma once
+module;
 
-#include "utils/accessor.h"
 #include <functional>
+#include <utils/accessor.h>
 
-namespace l3::vm {
+export module l3.vm:ref_value;
+
+export namespace l3::vm {
 
 class GCValue;
 class Value;

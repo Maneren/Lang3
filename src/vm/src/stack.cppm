@@ -1,9 +1,17 @@
-#pragma once
+module;
 
-#include "vm/storage.hpp"
+#include <format>
+#include <iostream>
+#include <print>
+#include <utils/accessor.h>
 #include <vector>
 
-namespace l3::vm {
+export module l3.vm:stack;
+
+import :ref_value;
+import :storage;
+
+export namespace l3::vm {
 
 class Stack {
   bool debug;

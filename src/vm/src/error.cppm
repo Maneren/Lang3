@@ -1,11 +1,16 @@
-#pragma once
+module;
 
-#include "vm/identifier.hpp"
 #include <format>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 
-namespace l3::vm {
+export module l3.vm:error;
+
+import l3.ast;
+import :identifier;
+
+export namespace l3::vm {
 
 class RuntimeError : public std::runtime_error {
 public:
@@ -24,14 +29,12 @@ class UnsupportedOperation : public RuntimeError {
 public:
   using RuntimeError::RuntimeError;
 
-  template <typename T, typename U>
-  UnsupportedOperation(std::string_view operation, T lhs, U rhs)
+  UnsupportedOperation(std::string_view operation, auto lhs, auto rhs)
       : RuntimeError(
             "{} between '{}' and '{}' not supported", operation, lhs, rhs
         ) {}
 
-  template <typename T>
-  UnsupportedOperation(std::string_view operation, T value)
+  UnsupportedOperation(std::string_view operation, auto value)
       : RuntimeError("unary {} of {} not supported", operation, value) {}
 
   [[nodiscard]] constexpr std::string_view type() const override {

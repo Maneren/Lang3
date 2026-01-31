@@ -1,19 +1,28 @@
-#pragma once
+module;
 
-#include "vm/scope.hpp"
-#include "vm/stack.hpp"
-#include "vm/storage.hpp"
-#include "vm/value.hpp"
 #include <chrono>
+#include <format>
+#include <iostream>
 #include <memory>
+#include <optional>
 #include <print>
+#include <string_view>
 #include <vector>
 
-import l3.ast;
+export module l3.vm;
 
-namespace l3::vm {
+import :error;
+import :formatting;
+import :function;
+import :identifier;
+import :primitive;
+import :ref_value;
+import :scope;
+import :stack;
+import :storage;
+import :value;
 
-class Scope;
+export namespace l3::vm {
 
 class VM {
 public:

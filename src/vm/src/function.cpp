@@ -1,13 +1,17 @@
-#include "vm/function.hpp"
-#include "vm/error.hpp"
-#include "vm/scope.hpp"
-#include "vm/value.hpp"
-#include "vm/vm.hpp"
+module;
+#include <format>
+
 #include <memory>
 #include <optional>
 #include <ranges>
+#include <span>
 #include <utility>
 #include <vector>
+
+module l3.vm;
+
+import l3.ast;
+import :variable;
 
 namespace l3::vm {
 

@@ -1,45 +1,24 @@
-#pragma once
+module;
 
-#include "vm/identifier.hpp"
-#include "vm/ref_value.hpp"
-#include "vm/storage.hpp"
-#include "vm/value.hpp"
+#include <memory>
+#include <optional>
+#include <unordered_map>
+#include <utils/accessor.h>
+#include <vector>
 
+export module l3.vm:scope;
+
+import l3.ast;
 import utils;
+import :identifier;
+import :mutability;
 
-namespace l3::vm {
-
-using Mutability = ast::Mutability;
-
-class Variable {
-  RefValue ref_value;
-  Mutability mutability;
-
-public:
-  Variable() = delete;
-  Variable(RefValue ref_value, Mutability mutability)
-      : ref_value(std::move(ref_value)), mutability(mutability) {}
-
-  [[nodiscard]] const RefValue &get() const { return ref_value; }
-  [[nodiscard]] RefValue &get() { return ref_value; }
-
-  [[nodiscard]] RefValue &operator*() { return get(); }
-  [[nodiscard]] const RefValue &operator*() const { return get(); }
-
-  RefValue *operator->() { return &get(); }
-  const RefValue *operator->() const { return &get(); }
-
-  DEFINE_VALUE_ACCESSOR_X(mutability);
-
-  [[nodiscard]] bool is_const() const {
-    return mutability == Mutability::Immutable;
-  }
-  [[nodiscard]] bool is_mutable() const {
-    return mutability == Mutability::Mutable;
-  }
-};
+export namespace l3::vm {
 
 class VM;
+class GCValue;
+class Variable;
+class RefValue;
 
 class Scope {
 public:
@@ -55,7 +34,7 @@ public:
   Scope(VariableMap &&variables);
 
   Variable &declare_variable(
-      const Identifier &id, RefValue gc_value, Mutability mutability
+      const Identifier &id, RefValue ref_value, Mutability mutability
   );
 
   utils::optional_cref<Variable> get_variable(const Identifier &id) const;

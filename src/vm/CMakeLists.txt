@@ -1,7 +1,15 @@
 get_filename_component(LIB_NAME ${CMAKE_CURRENT_SOURCE_DIR} NAME)
 
-auto_create_library(${LIB_NAME}
-  HEADER_DEPS utils
-  PUBLIC_DEPS ast
-  # PRIVATE_DEPS cpptrace
+file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS src/*.cpp)
+file(GLOB_RECURSE MODULES CONFIGURE_DEPENDS src/*.cppm)
+
+add_library(${LIB_NAME} STATIC
+  ${SOURCES}
 )
+
+target_sources(${LIB_NAME} PUBLIC
+  FILE_SET cxx_modules TYPE CXX_MODULES
+  FILES ${MODULES}
+)
+
+target_link_libraries(${LIB_NAME} PUBLIC utils ast)

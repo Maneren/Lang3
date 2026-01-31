@@ -1,4 +1,11 @@
-#include "vm/stack.hpp"
+module;
+
+#include <vector>
+
+module l3.vm;
+
+import :ref_value;
+import :gc_value;
 
 namespace l3::vm {
 

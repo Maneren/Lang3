@@ -1,19 +1,23 @@
-#pragma once
+module;
 
-#include "utils/accessor.h"
-#include "vm/identifier.hpp"
-#include "vm/scope.hpp"
-#include "vm/value.hpp"
 #include <memory>
 #include <optional>
 #include <span>
+#include <utils/accessor.h>
+#include <utils/visit.h>
+#include <variant>
+
+export module l3.vm:function;
 
 import l3.ast;
+import :identifier;
+import :ref_value;
+import :scope;
 
-namespace l3::vm {
+export namespace l3::vm {
 
-class Scope;
 class VM;
+class Value;
 
 using L3Args = std::span<const RefValue>;
 

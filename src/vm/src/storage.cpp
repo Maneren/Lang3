@@ -1,12 +1,20 @@
-#include <ranges>
-#include <vm/format.hpp>
-#include <vm/scope.hpp>
-#include <vm/storage.hpp>
-#include <vm/value.hpp>
+module;
+
+#include <iterator>
+#include <utility>
+
+module l3.vm;
+
+import utils;
+import :gc_value;
+import :value;
 
 namespace l3::vm {
 
-GCValue::GCValue(Value &&value) : value{std::move(value)} {}
+GCStorage::GCStorage(bool debug) : debug{debug} {}
+GCStorage::GCStorage(GCStorage &&) noexcept = default;
+GCStorage &GCStorage::operator=(GCStorage &&) noexcept = default;
+GCStorage::~GCStorage() = default;
 
 GCValue &GCStorage::emplace(Value &&value) {
   size++;
@@ -70,11 +78,5 @@ void GCValue::mark() {
 GCValue GCStorage::NIL{Value()};
 GCValue GCStorage::TRUE{Value{Primitive{true}}};
 GCValue GCStorage::FALSE{Value{Primitive{false}}};
-
-RefValue::RefValue(GCValue &gc_value) : gc_value{gc_value} {}
-[[nodiscard]] const Value &RefValue::get() const {
-  return get_gc().get_value();
-}
-[[nodiscard]] Value &RefValue::get() { return get_gc_mut().get_value_mut(); }
 
 } // namespace l3::vm
