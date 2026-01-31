@@ -89,6 +89,20 @@ private:
     }
   }
 
+  class ScopeStackOverlay {
+    VM &vm;
+
+  public:
+    explicit ScopeStackOverlay(VM &vm, ScopeStack &&overlay_scopes) : vm{vm} {
+      vm.unused_scopes.emplace_back(std::move(vm.scopes));
+      vm.scopes = overlay_scopes;
+    }
+    ~ScopeStackOverlay() {
+      vm.scopes = std::move(vm.unused_scopes.back());
+      vm.unused_scopes.pop_back();
+    }
+  };
+
   struct FlowException {
     virtual constexpr std::string_view type() const { return "<nil>"; }
   };

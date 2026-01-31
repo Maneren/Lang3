@@ -3,6 +3,11 @@
 namespace l3::vm {
 
 Stack::FrameGuard Stack::with_frame() { return FrameGuard(*this); }
+Stack::FrameGuard::FrameGuard(Stack &stack) : stack{stack} {
+  stack.frames.emplace_back();
+  frame_index = stack.frames.size();
+  stack.debug_print("Pushed stack frame {}", frame_index);
+}
 RefValue Stack::push_value(RefValue value) {
   frames.back().push_back(value);
   return value;
@@ -15,4 +20,8 @@ void Stack::mark_gc() {
   }
 }
 
+Stack::FrameGuard::~FrameGuard() {
+  stack.debug_print("Popping stack frame {}", frame_index);
+  stack.frames.pop_back();
+}
 } // namespace l3::vm

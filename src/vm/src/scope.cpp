@@ -6,7 +6,6 @@
 #include <exception>
 #include <print>
 #include <ranges>
-#include <stacktrace>
 
 namespace l3::vm {
 
@@ -102,25 +101,12 @@ ScopeStack ScopeStack::clone(VM &vm) const {
 ScopeStack::FrameGuard::FrameGuard(ScopeStack &scope_stack)
     : scope_stack{scope_stack} {
   scope_stack.push_back(std::make_shared<Scope>());
-  frame_index = scope_stack.size();
 }
 ScopeStack::FrameGuard::FrameGuard(ScopeStack &scope_stack, Scope &&scope)
     : scope_stack{scope_stack} {
   scope_stack.push_back(std::make_shared<Scope>(std::move(scope)));
-  frame_index = scope_stack.size();
 }
-ScopeStack::FrameGuard::~FrameGuard() {
-  if (frame_index != scope_stack.scopes.size()) {
-    std::println(
-        std::cerr,
-        "ScopeStack::FrameGuard frame mismatch: expected {}, got {}",
-        frame_index,
-        scope_stack.scopes.size()
-    );
-    abort();
-  }
-  scope_stack.scopes.pop_back();
-}
+ScopeStack::FrameGuard::~FrameGuard() { scope_stack.scopes.pop_back(); }
 void ScopeStack::pop_back() { scopes.pop_back(); }
 void ScopeStack::push_back(std::shared_ptr<Scope> &&scope) {
   scopes.push_back(scope);

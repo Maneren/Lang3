@@ -95,7 +95,6 @@ public:
 
   class FrameGuard {
     ScopeStack &scope_stack;
-    size_t frame_index;
 
   public:
     explicit FrameGuard(ScopeStack &scope_stack);

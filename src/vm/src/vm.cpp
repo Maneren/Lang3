@@ -310,9 +310,7 @@ RefValue VM::evaluate_function_body(
   }
   debug_print("arguments: {}", arguments.get_variables());
 
-  unused_scopes.emplace_back(std::move(scopes));
-
-  scopes = captured.clone(*this);
+  auto overlay = ScopeStackOverlay{*this, captured.clone(*this)};
   std::optional<RefValue> return_value;
 
   {
@@ -326,9 +324,6 @@ RefValue VM::evaluate_function_body(
       throw RuntimeError("Unexpected {} outside of loop", exception.type());
     }
   }
-
-  scopes = std::move(unused_scopes.back());
-  unused_scopes.pop_back();
 
   return stack.push_value(return_value.value_or(nil()));
 }
