@@ -25,6 +25,8 @@ import :variable;
 
 namespace l3::vm {
 
+constexpr size_t GC_OBJECT_TRIGGER_TRESHOLD = 10000;
+
 RefValue VM::evaluate(const ast::UnaryExpression &unary) {
   debug_print("Evaluating unary expression {}", unary.get_op());
   const auto argument = evaluate(unary.get_expression());
@@ -249,7 +251,7 @@ void VM::execute(const ast::Program &program) {
 void VM::execute(const ast::Block &block) {
   debug_print("Evaluating block");
   const auto frame_guard = stack.with_frame();
-  const auto scope_guard = scopes.with_frame();
+  const auto scope_guard = scopes->with_frame();
   for (const auto &statement : block.get_statements()) {
     execute(statement);
   }
@@ -263,7 +265,7 @@ void VM::execute(const ast::Block &block) {
 
 RefValue VM::read_variable(const Identifier &id) {
   debug_print("Reading variable {}", id.get_name());
-  auto value = scopes.read_variable(id)
+  auto value = scopes->read_variable(id)
                    .transform([this](const auto &variable) {
                      return store_value(variable->clone());
                    })
@@ -276,7 +278,7 @@ RefValue VM::read_variable(const Identifier &id) {
 
 RefValue &VM::read_write_variable(const Identifier &id) {
   debug_print("Writing variable {}", id.get_name());
-  if (auto value = scopes.read_variable_mut(id)) {
+  if (auto value = scopes->read_variable_mut(id)) {
     return *value;
   }
   if (auto value = Scope::get_builtin(id)) {
@@ -312,23 +314,25 @@ void VM::execute(const ast::NamedFunction &named_function) {
 }
 
 RefValue VM::evaluate_function_body(
-    const ScopeStack &captured, Scope &&arguments, const ast::FunctionBody &body
+    const std::shared_ptr<ScopeStack> &captures,
+    Scope &&arguments,
+    const ast::FunctionBody &body
 ) {
-  for (const auto &capture : captured.get_scopes()) {
+  for (const auto &capture : captures->get_scopes()) {
     debug_print("captured: {}", capture->get_variables());
   }
   debug_print("arguments: {}", arguments.get_variables());
 
-  auto overlay = ScopeStackOverlay{*this, captured.clone(*this)};
+  const auto overlay = ScopeStackOverlay{*this, captures};
   std::optional<RefValue> return_value;
 
   {
-    auto scope_guard = scopes.with_frame(std::move(arguments));
+    const auto scope_guard = scopes->with_frame(std::move(arguments));
 
     try {
       execute(body.get_block());
     } catch (const ReturnException &exception) {
-      return_value = exception.value;
+      return_value = exception.get_value();
     } catch (const LoopFlowException &exception) {
       throw RuntimeError("Unexpected {} outside of loop", exception.type());
     }
@@ -376,8 +380,8 @@ RefValue &VM::evaluate_mut(const ast::Variable &variable) {
   });
 }
 
-RefValue &VM::evaluate_mut(const ast::Identifier &ident) {
-  return read_write_variable(ident);
+RefValue &VM::evaluate_mut(const ast::Identifier &identifier) {
+  return read_write_variable(identifier);
 }
 
 RefValue &VM::evaluate_mut(const ast::IndexExpression &index_expression) {
@@ -386,21 +390,23 @@ RefValue &VM::evaluate_mut(const ast::IndexExpression &index_expression) {
   return base->index_mut(*index);
 }
 
-VM::VM(bool debug) : debug{debug}, stack{debug}, gc_storage{debug} {}
+VM::VM(bool debug)
+    : debug{debug}, scopes{std::make_shared<ScopeStack>()}, stack{debug},
+      gc_storage{debug} {}
 
 size_t VM::run_gc() {
-  auto since_last_sweep = gc_storage.get_added_since_last_sweep();
-  if (since_last_sweep < 10000) {
+  const auto since_last_sweep = gc_storage.get_added_since_last_sweep();
+  if (since_last_sweep < GC_OBJECT_TRIGGER_TRESHOLD) {
     debug_print("[GC] Skipping... only {} values", since_last_sweep);
     return 0;
   }
 
   debug_print("[GC] Running");
-  for (auto &scope : scopes.get_scopes()) {
+  for (const auto &scope : scopes->get_scopes()) {
     scope->mark_gc();
   }
   for (auto &scope_stack : unused_scopes) {
-    for (auto &scope : scope_stack.get_scopes()) {
+    for (const auto &scope : scope_stack->get_scopes()) {
       scope->mark_gc();
     }
   }
@@ -415,7 +421,7 @@ size_t VM::run_gc() {
       debug_print("  {}", frame.size());
     }
     debug_print("Scopes:");
-    for (auto &scope : scopes.get_scopes()) {
+    for (const auto &scope : scopes->get_scopes()) {
       debug_print("  {}", scope->get_variables().size());
     }
   }
@@ -425,7 +431,7 @@ size_t VM::run_gc() {
 Variable &VM::declare_variable(
     const Identifier &id, Mutability mutability, RefValue ref_value
 ) {
-  return scopes.top().declare_variable(id, ref_value, mutability);
+  return scopes->top().declare_variable(id, ref_value, mutability);
 }
 
 RefValue VM::store_value(Value &&value) {
@@ -550,7 +556,7 @@ RefValue VM::evaluate(const ast::IfExpression &if_expr) {
     const auto &else_expr = if_expr.get_else_block();
     execute(else_expr);
   } catch (const ReturnException &e) {
-    result = e.value;
+    result = e.get_value();
   }
 
   if (result) {
@@ -583,7 +589,7 @@ void VM::execute(const ast::ForLoop &for_loop) {
 
   auto collection_value = evaluate(collection);
 
-  const auto scope_guard = scopes.with_frame();
+  const auto scope_guard = scopes->with_frame();
   const auto frame_guard = stack.with_frame();
   auto &value = declare_variable(variable, mutability);
   if (auto vector_opt = collection_value->as_vector()) {

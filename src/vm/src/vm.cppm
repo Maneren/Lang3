@@ -28,7 +28,7 @@ public:
   void execute(const ast::Program &program);
 
   RefValue evaluate_function_body(
-      const ScopeStack &captured,
+      const std::shared_ptr<ScopeStack> &captures,
       Scope &&arguments,
       const ast::FunctionBody &body
   );
@@ -72,8 +72,8 @@ private:
   [[nodiscard]] RefValue evaluate(const ast::IfExpression &if_expr);
   [[nodiscard]] RefValue evaluate(const ast::Identifier &identifier);
 
-  [[nodiscard]] RefValue &evaluate_mut(const ast::Variable &index_expression);
-  [[nodiscard]] RefValue &evaluate_mut(const ast::Identifier &index_expression);
+  [[nodiscard]] RefValue &evaluate_mut(const ast::Variable &variable);
+  [[nodiscard]] RefValue &evaluate_mut(const ast::Identifier &identifier);
   [[nodiscard]] RefValue &
   evaluate_mut(const ast::IndexExpression &index_expression);
 
@@ -83,8 +83,8 @@ private:
   bool evaluate_if_branch(const ast::IfBase &if_base);
 
   bool debug;
-  ScopeStack scopes;
-  std::vector<ScopeStack> unused_scopes;
+  std::shared_ptr<ScopeStack> scopes;
+  std::vector<std::shared_ptr<ScopeStack>> unused_scopes;
   Stack stack;
   GCStorage gc_storage;
 
@@ -96,12 +96,20 @@ private:
   }
 
   class ScopeStackOverlay {
-    VM &vm;
+    VM &vm; // NOLINT
 
   public:
-    explicit ScopeStackOverlay(VM &vm, ScopeStack &&overlay_scopes) : vm{vm} {
+    ScopeStackOverlay(const ScopeStackOverlay &) = delete;
+    ScopeStackOverlay(ScopeStackOverlay &&) = delete;
+    ScopeStackOverlay &operator=(const ScopeStackOverlay &) = delete;
+    ScopeStackOverlay &operator=(ScopeStackOverlay &&) = delete;
+
+    explicit ScopeStackOverlay(
+        VM &vm, std::shared_ptr<ScopeStack> overlay_scopes
+    )
+        : vm{vm} {
       vm.unused_scopes.emplace_back(std::move(vm.scopes));
-      vm.scopes = overlay_scopes;
+      vm.scopes = std::move(overlay_scopes);
     }
     ~ScopeStackOverlay() {
       vm.scopes = std::move(vm.unused_scopes.back());
@@ -109,21 +117,66 @@ private:
     }
   };
 
-  struct FlowException {
-    virtual constexpr std::string_view type() const { return "<nil>"; }
+  class FlowException {
+    [[nodiscard]] virtual constexpr std::string_view type() const {
+      return "<nil>";
+    }
+
+  public:
+    FlowException() = default;
+    FlowException(const FlowException &) = default;
+    FlowException(FlowException &&) = default;
+    FlowException &operator=(const FlowException &) = default;
+    FlowException &operator=(FlowException &&) = default;
+    virtual ~FlowException() = default;
   };
-  struct ReturnException final : public FlowException {
+  class ReturnException final : public FlowException {
     std::optional<RefValue> value;
+
+  public:
     explicit ReturnException(std::optional<RefValue> value = {})
         : value(value) {}
-    constexpr std::string_view type() const override { return "return"; }
+    [[nodiscard]] constexpr std::string_view type() const override {
+      return "return";
+    }
+
+    [[nodiscard]] std::optional<RefValue> get_value() const { return value; }
   };
-  struct LoopFlowException : public FlowException {};
+  struct LoopFlowException : public FlowException {
+    explicit LoopFlowException() = default;
+    LoopFlowException(const LoopFlowException &) = default;
+    LoopFlowException(LoopFlowException &&) = default;
+    LoopFlowException &operator=(const LoopFlowException &) = default;
+    LoopFlowException &operator=(LoopFlowException &&) = default;
+    ~LoopFlowException() override = default;
+
+    [[nodiscard]] constexpr std::string_view type() const override {
+      return "loop";
+    };
+  };
   struct BreakLoopException final : public LoopFlowException {
-    constexpr std::string_view type() const override { return "break"; }
+    [[nodiscard]] constexpr std::string_view type() const override {
+      return "break";
+    }
+
+    explicit BreakLoopException() = default;
+    BreakLoopException(const BreakLoopException &) = default;
+    BreakLoopException(BreakLoopException &&) = default;
+    BreakLoopException &operator=(const BreakLoopException &) = default;
+    BreakLoopException &operator=(BreakLoopException &&) = default;
+    ~BreakLoopException() override = default;
   };
   struct ContinueLoopException final : public LoopFlowException {
-    constexpr std::string_view type() const override { return "continue"; }
+    [[nodiscard]] constexpr std::string_view type() const override {
+      return "continue";
+    }
+
+    explicit ContinueLoopException() = default;
+    ContinueLoopException(const ContinueLoopException &) = default;
+    ContinueLoopException(ContinueLoopException &&) = default;
+    ContinueLoopException &operator=(const ContinueLoopException &) = default;
+    ContinueLoopException &operator=(ContinueLoopException &&) = default;
+    ~ContinueLoopException() override = default;
   };
 };
 
