@@ -20,6 +20,7 @@
 
 %define parse.error detailed
 %define parse.trace
+%define parse.lac full
 
 %verbose
 
@@ -48,10 +49,10 @@
 %left  _or
 %left  _and
 %left  _not
+%left  equal_equal not_equal less less_equal greater greater_equal
 %left  plus minus concat
 %left  mul div mod
 %right pow
-%left  equal_equal not_equal less less_equal greater greater_equal
 
 %token _if _else _while _break _continue _return _for in _do _true _false then
        end nil function let equal _not lparen rparen lbrace rbrace lbracket
