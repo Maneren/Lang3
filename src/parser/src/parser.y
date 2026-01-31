@@ -132,11 +132,11 @@ MULTIPLE_NAME_LIST: IDENTIFIER comma NAME_LIST
 
 // Expressions
 UNARY: minus EXPRESSION
-       { $$ = UnaryExpression { UnaryOperator::Minus, std::move($2) }; }
+       { $$ = { UnaryOperator::Minus, std::move($2) }; }
      | _not EXPRESSION
-       { $$ = UnaryExpression { UnaryOperator::Not, std::move($2) }; }
+       { $$ = { UnaryOperator::Not, std::move($2) }; }
      | plus EXPRESSION
-       { $$ = UnaryExpression { UnaryOperator::Plus, std::move($2) }; }
+       { $$ = { UnaryOperator::Plus, std::move($2) }; }
 
 BINARY: EXPRESSION plus EXPRESSION
         { $$ = { std::move($1), BinaryOperator::Plus, std::move($3) }; }
