@@ -459,7 +459,7 @@ void VM::execute(const ast::Declaration &declaration) {
   const auto &names = declaration.get_names();
   debug_print(
       "Executing declaration of {}",
-      std::views::transform(names, &Identifier::get_name) |
+      std::views::transform(names, &ast::Identifier::get_name) |
           std::ranges::to<std::vector>()
   );
 
@@ -505,7 +505,7 @@ void VM::execute(const ast::NameAssignment &assignment) {
   const auto value = evaluate(assignment.get_expression());
   debug_print(
       "Executing name assignment {} = {}",
-      std::views::transform(names, &Identifier::get_name) |
+      std::views::transform(names, &ast::Identifier::get_name) |
           std::ranges::to<std::vector>(),
       value
   );

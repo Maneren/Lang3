@@ -13,6 +13,12 @@ import utils;
 import :identifier;
 import :mutability;
 
+template <> struct std::hash<l3::vm::Identifier> {
+  std::size_t operator()(const auto &id) const {
+    return std::hash<std::string>{}(id.get_name());
+  }
+};
+
 export namespace l3::vm {
 
 class VM;
@@ -30,7 +36,7 @@ private:
   VariableMap variables;
 
 public:
-  Scope() = default;
+  Scope();
   Scope(VariableMap &&variables);
 
   Variable &declare_variable(

@@ -6,6 +6,7 @@ module;
 
 export module l3.ast:statement;
 
+import utils;
 import :assignment;
 import :declaration;
 import :function_call;

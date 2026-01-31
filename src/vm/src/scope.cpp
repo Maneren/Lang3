@@ -73,6 +73,7 @@ std::optional<RefValue> Scope::get_builtin(const Identifier &id) {
   return RefValue{present->second};
 }
 
+Scope::Scope() = default;
 Scope::Scope(VariableMap &&variables) : variables{std::move(variables)} {};
 
 void Scope::mark_gc() {
@@ -123,9 +124,7 @@ const Scope &ScopeStack::top() const { return *scopes.back(); }
 Scope &ScopeStack::top() { return *scopes.back(); }
 size_t ScopeStack::size() const { return scopes.size(); }
 
-ScopeStack::FrameGuard ScopeStack::with_frame() {
-  return FrameGuard(*this);
-}
+ScopeStack::FrameGuard ScopeStack::with_frame() { return FrameGuard(*this); }
 ScopeStack::FrameGuard ScopeStack::with_frame(Scope &&scope) {
   return FrameGuard(*this, std::move(scope));
 }

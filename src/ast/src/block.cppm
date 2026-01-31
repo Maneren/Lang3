@@ -42,8 +42,8 @@ public:
     }
   }
 
-  DEFINE_ACCESSOR(statements, std::deque<Statement>, statements)
-  DEFINE_ACCESSOR(last_statement, std::optional<LastStatement>, last_statement)
+  DEFINE_ACCESSOR_X(statements)
+  DEFINE_ACCESSOR_X(last_statement)
 };
 
 class Program : public Block {

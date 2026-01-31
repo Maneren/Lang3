@@ -6,7 +6,6 @@ module;
 export module l3.ast:expression_parts;
 
 import :identifier;
-import :literal;
 import :operators;
 
 export namespace l3::ast {

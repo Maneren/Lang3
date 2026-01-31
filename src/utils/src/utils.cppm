@@ -1,6 +1,5 @@
 export module utils;
 
-export import :cow;
 export import :debug;
 export import :format;
 export import :functional;

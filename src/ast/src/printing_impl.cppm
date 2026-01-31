@@ -20,6 +20,14 @@ void Array::print(
   }
 }
 
+void NameList::print(
+    std::output_iterator<char> auto &out, std::size_t depth
+) const {
+  for (const auto &name : *this) {
+    name.print(out, depth);
+  }
+}
+
 void UnaryExpression::print(
     std::output_iterator<char> auto &out, std::size_t depth
 ) const {

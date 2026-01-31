@@ -5,6 +5,8 @@ module;
 
 export module l3.ast:mutability;
 
+import utils;
+
 export {
   namespace l3::ast {
 
@@ -15,10 +17,9 @@ export {
 
   } // namespace l3::ast
 
-  template <> struct std::formatter<l3::ast::Mutability> {
-    static constexpr auto parse(std::format_parse_context &ctx) {
-      return ctx.begin();
-    }
+  template <>
+  struct std::formatter<l3::ast::Mutability>
+      : utils::static_formatter<l3::ast::Mutability> {
     static constexpr auto format(auto op, std::format_context &ctx) {
       using namespace l3::ast;
       switch (op) {

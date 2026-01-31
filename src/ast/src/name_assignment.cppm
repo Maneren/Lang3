@@ -8,6 +8,7 @@ export module l3.ast:name_assignment;
 
 import :expression;
 import :name_list;
+import :printing;
 
 export namespace l3::ast {
 

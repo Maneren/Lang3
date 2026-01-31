@@ -19,12 +19,6 @@ public:
   Identifier(std::string &&name) : name(std::move(name)) {};
   Identifier(std::string_view name) : name(name) {}
 
-  Identifier(const Identifier &other) = default;
-  Identifier &operator=(const Identifier &other) = default;
-  Identifier(Identifier &&other) noexcept = default;
-  Identifier &operator=(Identifier &&other) noexcept = default;
-  ~Identifier() = default;
-
   void
   print(std::output_iterator<char> auto &out, std::size_t depth = 0) const {
     format_indented_line(out, depth, "Identifier '{}'", name);
@@ -32,7 +26,8 @@ public:
 
   DEFINE_ACCESSOR_X(name);
 
-  std::compare_three_way operator<=>(const Identifier &) const = default;
+  [[nodiscard]] constexpr std::compare_three_way
+  operator<=>(const Identifier &) const = default;
 };
 
 } // namespace l3::ast
