@@ -68,24 +68,7 @@ RefValue VM::evaluate(const ast::BinaryExpression &binary) {
   case ast::BinaryOperator::Modulo: {
     return store_value(left.mod(right));
   }
-  case ast::BinaryOperator::Equal: {
-    return store_value(left.equal(right));
-  }
-  case ast::BinaryOperator::NotEqual: {
-    return store_value(left.not_equal(right));
-  }
-  case ast::BinaryOperator::Less: {
-    return store_value(left.less(right));
-  }
-  case ast::BinaryOperator::LessEqual: {
-    return store_value(left.less_equal(right));
-  }
-  case ast::BinaryOperator::Greater: {
-    return store_value(left.greater(right));
-  }
-  case ast::BinaryOperator::GreaterEqual: {
-    return store_value(left.greater_equal(right));
-  }
+
   default:
     throw std::runtime_error(
         std::format("not implemented: {}", binary.get_op())
@@ -94,23 +77,25 @@ RefValue VM::evaluate(const ast::BinaryExpression &binary) {
 }
 
 RefValue VM::evaluate(const ast::LogicalExpression &logical) {
-  debug_print("Evaluating logical expression {}", logical.get_op());
+  const auto op = logical.get_op();
+  debug_print("Evaluating logical expression {}", op);
 
-  static auto lhs = [this, &logical] {
+  auto lhs = [this, &logical] {
     const auto left = evaluate(logical.get_lhs());
     debug_print("  Left: {}", *left);
     return left;
   };
-  static auto rhs = [this, &logical] {
+  auto rhs = [this, &logical] {
     const auto right = evaluate(logical.get_rhs());
     debug_print("  Right: {}", *right);
     return right;
   };
 
-  switch (logical.get_op()) {
+  switch (op) {
   case ast::LogicalOperator::And: {
     const auto left = lhs();
     if (!left->is_truthy()) {
+      debug_print("  Left is falsy, short-circuiting {}", op);
       return left;
     }
     return rhs();
@@ -118,6 +103,7 @@ RefValue VM::evaluate(const ast::LogicalExpression &logical) {
   case ast::LogicalOperator::Or: {
     const auto left = lhs();
     if (left->is_truthy()) {
+      debug_print("  Left is truthy, short-circuiting {}", op);
       return left;
     }
     return rhs();
@@ -127,6 +113,65 @@ RefValue VM::evaluate(const ast::LogicalExpression &logical) {
         std::format("not implemented: {}", logical.get_op())
     );
   }
+}
+
+RefValue VM::evaluate(const ast::Comparison &chained) {
+  debug_print("Evaluating comparison");
+  const auto &operands = chained.get_comparisons();
+
+  auto lhs = evaluate(chained.get_start());
+
+  debug_print("  Start: {}", *lhs);
+  debug_print("  Comparisons:");
+
+  for (const auto &[op, right] : operands) {
+    const auto rhs = evaluate(*right);
+
+    const auto comparison = lhs->compare(*rhs);
+    debug_print("  Comparing {} {} {}", *lhs, op, *rhs);
+    debug_print("  Result: {}", comparison);
+
+    switch (op) {
+      using namespace ast;
+
+    case ComparisonOperator::Equal:
+      if (comparison != 0) {
+        return _false();
+      }
+      break;
+    case ComparisonOperator::NotEqual:
+      if (comparison == 0) {
+        return _false();
+      }
+      break;
+    case ComparisonOperator::Less:
+      if (comparison >= 0) {
+        return _false();
+      }
+      break;
+    case ComparisonOperator::LessEqual:
+      if (comparison > 0) {
+        return _false();
+      }
+      break;
+    case ComparisonOperator::Greater:
+      if (comparison <= 0) {
+        return _false();
+      }
+      break;
+    case ComparisonOperator::GreaterEqual:
+      if (comparison < 0) {
+        return _false();
+      }
+      break;
+    default:
+      throw std::runtime_error(std::format("not implemented: {}", op));
+    }
+
+    lhs = rhs;
+  }
+
+  return _true();
 }
 
 RefValue VM::evaluate(const ast::Identifier &identifier) {

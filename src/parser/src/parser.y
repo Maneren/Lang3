@@ -51,7 +51,7 @@
 %left  plus minus concat
 %left  mul div mod
 %right pow
-%nonassoc equal_equal not_equal less less_equal greater greater_equal
+%left  equal_equal not_equal less less_equal greater greater_equal
 
 %token _if _else _while _break _continue _return _for in _do _true _false then
        end nil function let equal _not lparen rparen lbrace rbrace lbracket
@@ -69,10 +69,14 @@
       <AssignmentOperator> ASSIGNMENT_OPERATOR
       <BinaryExpression> BINARY
       <Block> BLOCK
+      <Comparison> COMPARISON
+      <ComparisonOperator> COMPARISON_OP
       <Declaration> DECLARATION
       <ElseIfList> IF_ELSE
+      <Expression> ATOMIC_EXPRESSION
       <Expression> EXPRESSION
       <Expression> INDEX
+      <std::optional<Expression>> INITIALIZER
       <ExpressionList> ARGUMENTS
       <ExpressionList> EXPRESSION_LIST
       <Expression> PREFIX_EXPRESSION
@@ -84,7 +88,6 @@
       <IfBase> IF_BASE
       <IfExpression> IF_EXPRESSION
       <IfStatement> IF_STATEMENT
-      <std::optional<Expression>> INITIALIZER
       <LastStatement> LAST_STATEMENT
       <Literal> LITERAL
       <LogicalExpression> LOGICAL
@@ -128,37 +131,48 @@ NAME_LIST: NAME_LIST comma IDENTIFIER
          | IDENTIFIER
            { $$ = { std::move($1) }; }
 
-MULTIPLE_NAME_LIST: IDENTIFIER comma NAME_LIST
-                    { $$ = std::move($3.with_name(std::move($1))); }
+MULTIPLE_NAME_LIST: NAME_LIST comma IDENTIFIER
+                    { $$ = std::move($1.with_name(std::move($3))); }
 
 // Expressions
-UNARY: minus EXPRESSION
+UNARY: minus ATOMIC_EXPRESSION
        { $$ = { UnaryOperator::Minus, std::move($2) }; }
-     | _not EXPRESSION
+     | _not ATOMIC_EXPRESSION
        { $$ = { UnaryOperator::Not, std::move($2) }; }
-     | plus EXPRESSION
+     | plus ATOMIC_EXPRESSION
        { $$ = { UnaryOperator::Plus, std::move($2) }; }
 
-BINARY: EXPRESSION plus EXPRESSION
+BINARY: ATOMIC_EXPRESSION plus ATOMIC_EXPRESSION
         { $$ = { std::move($1), BinaryOperator::Plus, std::move($3) }; }
-      | EXPRESSION minus EXPRESSION
+      | ATOMIC_EXPRESSION minus ATOMIC_EXPRESSION
         { $$ = { std::move($1), BinaryOperator::Minus, std::move($3) }; }
-      | EXPRESSION mul EXPRESSION
+      | ATOMIC_EXPRESSION mul ATOMIC_EXPRESSION
         { $$ = { std::move($1), BinaryOperator::Multiply, std::move($3) }; }
-      | EXPRESSION div EXPRESSION
+      | ATOMIC_EXPRESSION div ATOMIC_EXPRESSION
         { $$ = { std::move($1), BinaryOperator::Divide, std::move($3) }; }
-      | EXPRESSION equal_equal EXPRESSION
-        { $$ = { std::move($1), BinaryOperator::Equal, std::move($3) }; }
-      | EXPRESSION not_equal EXPRESSION
-        { $$ = { std::move($1), BinaryOperator::NotEqual, std::move($3) }; }
-      | EXPRESSION less EXPRESSION
-        { $$ = { std::move($1), BinaryOperator::Less, std::move($3) }; }
-      | EXPRESSION less_equal EXPRESSION
-        { $$ = { std::move($1), BinaryOperator::LessEqual, std::move($3) }; }
-      | EXPRESSION greater EXPRESSION
-        { $$ = { std::move($1), BinaryOperator::Greater, std::move($3) }; }
-      | EXPRESSION greater_equal EXPRESSION
-        { $$ = { std::move($1), BinaryOperator::GreaterEqual, std::move($3) }; }
+
+COMPARISON_OP: equal_equal    { $$ = ComparisonOperator::Equal; }
+             | not_equal      { $$ = ComparisonOperator::NotEqual; }
+             | less           { $$ = ComparisonOperator::Less; }
+             | less_equal     { $$ = ComparisonOperator::LessEqual; }
+             | greater        { $$ = ComparisonOperator::Greater; }
+             | greater_equal  { $$ = ComparisonOperator::GreaterEqual; }
+
+ATOMIC_EXPRESSION: UNARY              { $$ = { std::move($1) }; }
+                 | BINARY             { $$ = { std::move($1) }; }
+                 | LITERAL            { $$ = { std::move($1) }; }
+                 | PREFIX_EXPRESSION  { $$ = { std::move($1) }; }
+
+COMPARISON: COMPARISON COMPARISON_OP ATOMIC_EXPRESSION
+            { if (!$1.add_comparison($2, std::move($3))) {
+                throw syntax_error(
+                  @$,
+                  "syntax error, mixed equality and inequality operators in chained comparison"
+                );
+              }
+              $$ = std::move($1); }
+          | ATOMIC_EXPRESSION COMPARISON_OP ATOMIC_EXPRESSION
+            { $$ = { std::move($1), $2, std::move($3) }; }
 
 LOGICAL: EXPRESSION _and EXPRESSION
          { $$ = { std::move($1), LogicalOperator::And, std::move($3) }; }
@@ -169,15 +183,14 @@ PREFIX_EXPRESSION: FUNCTION_CALL                 { $$ = { std::move($1) }; }
                  | VAR                           { $$ = { std::move($1) }; }
                  | lparen PRIMARY_EXPRESSION rparen { $$ = std::move($2); }
 
-EXPRESSION: UNARY                    { $$ = { std::move($1) }; }
-          | BINARY                   { $$ = { std::move($1) }; }
-          | LOGICAL                  { $$ = { std::move($1) }; }
-          | ANONYMOUS_FUNCTION       { $$ = { std::move($1) }; }
-          | PREFIX_EXPRESSION        { $$ = { std::move($1) }; }
-          | LITERAL                  { $$ = { std::move($1) }; }
+EXPRESSION: ATOMIC_EXPRESSION { $$ = { std::move($1) }; }
+          | COMPARISON        { $$ = { std::move($1) }; }
+          | LOGICAL           { $$ = { std::move($1) }; }
+          | error             { $$ = {}; yynerrs_++; }
 
 PRIMARY_EXPRESSION: EXPRESSION      { $$ = std::move($1); }
                   | IF_EXPRESSION   { $$ = { std::move($1) }; }
+                  | ANONYMOUS_FUNCTION  { $$ = { std::move($1) }; }
 
 EXPRESSION_LIST: PRIMARY_EXPRESSION comma EXPRESSION_LIST
                  { $$ = std::move($3.with_expression(std::move($1))); }
@@ -262,6 +275,7 @@ STATEMENT: ASSIGNMENT           { $$ = { std::move($1) }; }
          | FUNCTION_CALL        { $$ = { std::move($1) }; }
          | FUNCTION_DEFINITION  { $$ = { std::move($1) }; }
          | WHILE                { $$ = { std::move($1) }; }
+         | error                { $$ = {}; yynerrs_++; }
 
 SEMI_STATEMENT: STATEMENT      { $$ = std::move($1); }
               | STATEMENT semi { $$ = std::move($1); }
@@ -272,4 +286,5 @@ BLOCK: SEMI_STATEMENT       { $$ = std::move($1); }
      | LAST_STATEMENT semi  { $$ = { std::move($1) }; }
 
 // Program Root
-PROGRAM: BLOCK { program = std::move($1); }
+PROGRAM: BLOCK { if (yynerrs_ > 0) YYABORT;
+                 program = std::move($1); }

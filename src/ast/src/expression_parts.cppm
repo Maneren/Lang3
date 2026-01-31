@@ -1,7 +1,9 @@
 module;
 
+#include <cstddef>
 #include <memory>
 #include <utils/accessor.h>
+#include <vector>
 
 export module l3.ast:expression_parts;
 
@@ -22,8 +24,8 @@ public:
 
   void print(std::output_iterator<char> auto &out, std::size_t depth = 0) const;
 
-  DEFINE_VALUE_ACCESSOR(op, UnaryOperator, op)
-  DEFINE_PTR_ACCESSOR(expression, Expression, expression)
+  DEFINE_VALUE_ACCESSOR_X(op)
+  DEFINE_PTR_ACCESSOR_X(expression)
 };
 
 class BinaryExpression {
@@ -37,9 +39,9 @@ public:
 
   void print(std::output_iterator<char> auto &out, std::size_t depth = 0) const;
 
-  DEFINE_PTR_ACCESSOR(lhs, Expression, lhs)
-  DEFINE_PTR_ACCESSOR(rhs, Expression, rhs)
-  DEFINE_VALUE_ACCESSOR(op, BinaryOperator, op)
+  DEFINE_PTR_ACCESSOR_X(lhs)
+  DEFINE_VALUE_ACCESSOR_X(op)
+  DEFINE_PTR_ACCESSOR_X(rhs)
 };
 
 class LogicalExpression {
@@ -53,9 +55,38 @@ public:
 
   void print(std::output_iterator<char> auto &out, std::size_t depth = 0) const;
 
-  DEFINE_PTR_ACCESSOR(lhs, Expression, lhs)
-  DEFINE_PTR_ACCESSOR(rhs, Expression, rhs)
-  DEFINE_VALUE_ACCESSOR(op, LogicalOperator, op)
+  DEFINE_PTR_ACCESSOR_X(lhs)
+  DEFINE_VALUE_ACCESSOR_X(op)
+  DEFINE_PTR_ACCESSOR_X(rhs)
+};
+
+class Comparison {
+  enum class Type : std::uint8_t { Equality, Inequality };
+
+  constexpr static Type get_type(ComparisonOperator op) {
+    switch (op) {
+    case ComparisonOperator::Equal:
+    case ComparisonOperator::NotEqual:
+      return Type::Equality;
+    default:
+      return Type::Inequality;
+    }
+  }
+
+  std::unique_ptr<Expression> start;
+  std::vector<std::pair<ComparisonOperator, std::unique_ptr<Expression>>>
+      comparisons;
+  Type type = Type::Equality;
+
+public:
+  Comparison() = default;
+  Comparison(Expression &&left, ComparisonOperator op, Expression &&right);
+  bool add_comparison(ComparisonOperator op, Expression &&right);
+
+  void print(std::output_iterator<char> auto &out, std::size_t depth = 0) const;
+
+  DEFINE_PTR_ACCESSOR_X(start)
+  DEFINE_ACCESSOR_X(comparisons)
 };
 
 } // namespace l3::ast

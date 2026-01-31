@@ -17,25 +17,29 @@ namespace l3::vm {
 
 namespace {
 
-template <typename Result, typename... Handlers>
+template <bool backup = true>
 auto handle_bin_op(
     std::string_view name,
     const Primitive &lhs,
     const Primitive &rhs,
-    Handlers... handlers
+    auto &&...handlers
 ) {
+  using Result = std::invoke_result_t<
+      match::Overloaded<std::decay_t<decltype(handlers)>...>,
+      const std::int64_t &,
+      const std::int64_t &>;
   return match::match(
       std::forward_as_tuple(lhs.get_inner(), rhs.get_inner()),
       handlers...,
-      [name](const auto &lhs, const auto &rhs) -> Result {
-        throw UnsupportedOperation(name, lhs, rhs);
-      }
-  );
+      [name](const auto &lhs, const auto &rhs) -> Result
+        requires(backup)
+      { throw UnsupportedOperation(name, lhs, rhs); }
+      );
 }
 
-template <typename Result, typename... Handlers>
+template <typename Result>
 auto handle_un_op(
-    std::string_view name, const Primitive &value, Handlers... handlers
+    std::string_view name, const Primitive &value, auto &&...handlers
 ) {
   return value.visit(handlers..., [name](const auto &value) -> Result {
     throw UnsupportedOperation(name, value);
@@ -45,7 +49,7 @@ auto handle_un_op(
 } // namespace
 
 Primitive operator+(const Primitive &lhs, const Primitive &rhs) {
-  return handle_bin_op<Primitive>(
+  return handle_bin_op(
       "addition",
       lhs,
       rhs,
@@ -56,7 +60,7 @@ Primitive operator+(const Primitive &lhs, const Primitive &rhs) {
 }
 
 Primitive operator-(const Primitive &lhs, const Primitive &rhs) {
-  return handle_bin_op<Primitive>(
+  return handle_bin_op(
       "subtraction",
       lhs,
       rhs,
@@ -68,7 +72,7 @@ Primitive operator-(const Primitive &lhs, const Primitive &rhs) {
 }
 
 Primitive operator*(const Primitive &lhs, const Primitive &rhs) {
-  return handle_bin_op<Primitive>(
+  return handle_bin_op(
       "multiplication",
       lhs,
       rhs,
@@ -93,7 +97,7 @@ Primitive operator*(const Primitive &lhs, const Primitive &rhs) {
 }
 
 Primitive operator/(const Primitive &lhs, const Primitive &rhs) {
-  return handle_bin_op<Primitive>(
+  return handle_bin_op(
       "division",
       lhs,
       rhs,
@@ -110,20 +114,15 @@ Primitive operator/(const Primitive &lhs, const Primitive &rhs) {
 }
 
 Primitive operator%(const Primitive &lhs, const Primitive &rhs) {
-  return handle_bin_op<Primitive>(
-      "modulo", lhs, rhs
-      // []<typename T>(const T &lhs, const T &rhs) -> Primitive
-      //   requires requires(T lhs, T rhs) { lhs % rhs; }
-      // { return Primitive{lhs % rhs}; }
-  );
-}
-
-Primitive operator&&(const Primitive &lhs, const Primitive &rhs) {
-  return Primitive{lhs.is_truthy() && rhs.is_truthy()};
-}
-
-Primitive operator||(const Primitive &lhs, const Primitive &rhs) {
-  return Primitive{lhs.is_truthy() || rhs.is_truthy()};
+  return handle_bin_op(
+      "modulo",
+      lhs,
+      rhs,
+      []<typename T>(const T &lhs, const T &rhs) -> Primitive
+        requires requires(T lhs, T rhs) { lhs % rhs; } &&
+                 (!std::is_same_v<T, bool>)
+      { return Primitive{lhs % rhs}; }
+      );
 }
 
 Primitive operator!(const Primitive &value) {
@@ -150,40 +149,18 @@ Primitive operator+(const Primitive &value) {
       );
 }
 
-template <typename F>
-Primitive
-compare_values(const Primitive &lhs, const Primitive &rhs, F comparator) {
-  return match::match(
-      std::forward_as_tuple(lhs.get_inner(), rhs.get_inner()),
-      [&comparator]<typename T>(const T &lhs, const T &rhs) -> Primitive
-        requires requires(T lhs, T rhs) { lhs < rhs; }
-      { return Primitive{comparator(lhs, rhs)}; },
-      [](const auto &, const auto &) -> Primitive { return Primitive{false}; }
+std::partial_ordering operator<=>(const Primitive &lhs, const Primitive &rhs) {
+  return handle_bin_op<false>(
+      "comparison",
+      lhs,
+      rhs,
+      []<typename T>(const T &lhs, const T &rhs) -> std::partial_ordering
+        requires requires(T lhs, T rhs) { lhs <=> rhs; }
+      { return lhs <=> rhs; },
+      [](const auto &, const auto &) {
+        return std::partial_ordering::unordered;
+      }
       );
-}
-
-Primitive operator!=(const Primitive &lhs, const Primitive &rhs) {
-  return !(lhs == rhs);
-}
-
-Primitive operator==(const Primitive &lhs, const Primitive &rhs) {
-  return compare_values(lhs, rhs, std::equal_to{});
-}
-
-Primitive operator<(const Primitive &lhs, const Primitive &rhs) {
-  return compare_values(lhs, rhs, std::less{});
-}
-
-Primitive operator>(const Primitive &lhs, const Primitive &rhs) {
-  return compare_values(lhs, rhs, std::greater{});
-}
-
-Primitive operator<=(const Primitive &lhs, const Primitive &rhs) {
-  return compare_values(lhs, rhs, std::less_equal{});
-}
-
-Primitive operator>=(const Primitive &lhs, const Primitive &rhs) {
-  return compare_values(lhs, rhs, std::greater_equal{});
 }
 
 bool Primitive::is_truthy() const {

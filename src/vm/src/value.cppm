@@ -1,6 +1,5 @@
 module;
 
-#include <functional>
 #include <memory>
 #include <optional>
 #include <span>
@@ -17,7 +16,11 @@ import :ref_value;
 
 export namespace l3::vm {
 
-struct Nil {};
+struct Nil {
+  std::strong_ordering operator<=>(Nil /*unused*/) const {
+    return std::strong_ordering::equal;
+  };
+};
 
 using L3Args = std::span<const RefValue>;
 
@@ -33,12 +36,15 @@ struct Slice {
 };
 
 class Value {
-
 public:
   using function_type = std::shared_ptr<Function>;
   using vector_type = std::vector<RefValue>;
   using vector_ptr_type = std::shared_ptr<vector_type>;
 
+private:
+  std::variant<Nil, Primitive, function_type, vector_ptr_type> inner;
+
+public:
   Value();
 
   Value(const Value &) = delete;
@@ -61,14 +67,7 @@ public:
   [[nodiscard]] Value mul(const Value &other) const;
   [[nodiscard]] Value div(const Value &other) const;
   [[nodiscard]] Value mod(const Value &other) const;
-  [[nodiscard]] Value and_op(const Value &other) const;
-  [[nodiscard]] Value or_op(const Value &other) const;
-  [[nodiscard]] Value equal(const Value &other) const;
-  [[nodiscard]] Value not_equal(const Value &other) const;
-  [[nodiscard]] Value greater(const Value &other) const;
-  [[nodiscard]] Value greater_equal(const Value &other) const;
-  [[nodiscard]] Value less(const Value &other) const;
-  [[nodiscard]] Value less_equal(const Value &other) const;
+  [[nodiscard]] std::partial_ordering compare(const Value &other) const;
 
   [[nodiscard]] Value not_op() const;
   [[nodiscard]] Value negative() const;
@@ -98,14 +97,7 @@ public:
 
   [[nodiscard]] std::string_view type_name() const;
 
-private:
-  [[nodiscard]] Value binary_op(
-      const Value &other,
-      const std::function<Value(const Primitive &, const Primitive &)> &op_fn,
-      const std::string &op_name
-  ) const;
-
-  std::variant<Nil, Primitive, function_type, vector_ptr_type> inner;
+  DEFINE_ACCESSOR_X(inner)
 };
 
 } // namespace l3::vm

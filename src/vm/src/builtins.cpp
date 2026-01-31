@@ -6,7 +6,6 @@ module;
 #include <print>
 #include <random>
 #include <ranges>
-#include <string_view>
 #include <thread>
 
 module l3.vm;
@@ -66,7 +65,7 @@ RefValue builtin_error(VM & /*vm*/, L3Args args) {
 
 RefValue builtin_input(VM &vm, L3Args args) {
   if (args.size() > 0) {
-    builtin_println(vm, args);
+    builtin_print(vm, args);
   }
   std::string input;
   std::getline(std::cin, input);

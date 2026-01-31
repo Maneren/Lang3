@@ -15,16 +15,47 @@ import :ref_value;
 
 namespace l3::vm {
 
+namespace {
+
+template <bool backup = true>
+auto binary_op(
+    std::string_view name,
+    const Value &lhs,
+    const Value &rhs,
+    const auto &...handlers
+) {
+  using R = std::invoke_result_t<
+      match::Overloaded<std::decay_t<decltype(handlers)>...>,
+      const Primitive &,
+      const Primitive &>;
+  return match::match(
+      std::forward_as_tuple(lhs.get_inner(), rhs.get_inner()),
+      handlers...,
+      [name, &lhs, &rhs](const auto &, const auto &) -> R
+        requires(backup)
+      {
+        throw UnsupportedOperation(
+            "{} between {} and {} not supported",
+            name,
+            lhs.type_name(),
+            rhs.type_name()
+        );
+      }
+      );
+}
+
+} // namespace
+
 Value Value::add(const Value &other) const {
   return match::match(
       std::forward_as_tuple(inner, other.inner),
       [](const Primitive &lhs, const Primitive &rhs) -> Value {
-        return Value{lhs + rhs};
+        return {lhs + rhs};
       },
       [](const vector_ptr_type &lhs, const vector_ptr_type &rhs) -> Value {
         auto result = *lhs;
         result.insert(result.end(), rhs->begin(), rhs->end());
-        return Value{std::move(result)};
+        return {std::move(result)};
       },
       [&other, this](const auto &, const auto &) -> Value {
         throw UnsupportedOperation(
@@ -38,98 +69,48 @@ Value Value::add(const Value &other) const {
 
 Value Value::sub(const Value &other) const {
   return binary_op(
-      other,
-      [](const auto &lhs, const auto &rhs) { return lhs - rhs; },
-      "subtract"
+      "subtract", *this, other, [](const Primitive &lhs, const Primitive &rhs) {
+        return Value{lhs - rhs};
+      }
   );
 }
 
 Value Value::mul(const Value &other) const {
   return binary_op(
-      other,
-      [](const auto &lhs, const auto &rhs) { return lhs * rhs; },
-      "multiply"
+      "multiply", *this, other, [](const Primitive &lhs, const Primitive &rhs) {
+        return Value{lhs * rhs};
+      }
   );
 }
 
 Value Value::div(const Value &other) const {
   return binary_op(
-      other,
-      [](const auto &lhs, const auto &rhs) { return lhs / rhs; },
-      "divide"
+      "divide", *this, other, [](const Primitive &lhs, const Primitive &rhs) {
+        return Value{lhs / rhs};
+      }
   );
 }
 
 Value Value::mod(const Value &other) const {
   return binary_op(
-      other,
-      [](const auto &lhs, const auto &rhs) { return lhs % rhs; },
-      "modulo"
+      "modulo", *this, other, [](const Primitive &lhs, const Primitive &rhs) {
+        return Value{lhs % rhs};
+      }
   );
 }
 
-Value Value::and_op(const Value &other) const {
-  return binary_op(
+std::partial_ordering Value::compare(const Value &other) const {
+  return binary_op<false>(
+      "compare",
+      *this,
       other,
-      [](const auto &lhs, const auto &rhs) { return lhs && rhs; },
-      "perform logical and on"
-  );
-}
-
-Value Value::or_op(const Value &other) const {
-  return binary_op(
-      other,
-      [](const auto &lhs, const auto &rhs) { return lhs || rhs; },
-      "perform logical or on"
-  );
-}
-
-Value Value::equal(const Value &other) const {
-  return binary_op(
-      other,
-      [](const auto &lhs, const auto &rhs) { return lhs == rhs; },
-      "compare"
-  );
-};
-
-Value Value::not_equal(const Value &other) const {
-  return binary_op(
-      other,
-      [](const auto &lhs, const auto &rhs) { return lhs != rhs; },
-      "compare"
-  );
-}
-
-Value Value::greater(const Value &other) const {
-  return binary_op(
-      other,
-      [](const auto &lhs, const auto &rhs) { return lhs > rhs; },
-      "compare"
-  );
-}
-
-Value Value::greater_equal(const Value &other) const {
-  return binary_op(
-      other,
-      [](const auto &lhs, const auto &rhs) { return lhs >= rhs; },
-      "compare"
-  );
-}
-
-Value Value::less(const Value &other) const {
-  return binary_op(
-      other,
-      [](const auto &lhs, const auto &rhs) { return lhs < rhs; },
-      "compare"
-  );
-}
-
-Value Value::less_equal(const Value &other) const {
-  return binary_op(
-      other,
-      [](const auto &lhs, const auto &rhs) { return lhs <= rhs; },
-      "compare"
-  );
+      []<typename T>(const T &lhs, const T &rhs) -> std::partial_ordering
+        requires requires(T lhs, T rhs) { lhs <=> rhs; }
+      { return lhs <=> rhs; },
+      [](const auto &lhs, const auto &rhs) -> std::partial_ordering {
+        return std::partial_ordering::unordered;
+      }
+      );
 }
 
 bool Value::is_truthy() const {
@@ -166,27 +147,6 @@ bool Value::is_function() const {
 }
 bool Value::is_primitive() const {
   return std::holds_alternative<Primitive>(inner);
-}
-
-Value Value::binary_op(
-    const Value &other,
-    const std::function<Value(const Primitive &, const Primitive &)> &op_fn,
-    const std::string &op_name
-) const {
-  return match::match(
-      std::forward_as_tuple(inner, other.inner),
-      [&op_fn](const Primitive &lhs, const Primitive &rhs) -> Value {
-        return op_fn(lhs, rhs);
-      },
-      [&op_name, &other, this](const auto &, const auto &) -> Value {
-        throw UnsupportedOperation(
-            "{} between {} and {} not supported",
-            op_name,
-            type_name(),
-            other.type_name()
-        );
-      }
-  );
 }
 
 namespace {

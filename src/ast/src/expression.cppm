@@ -21,6 +21,7 @@ class Expression {
   std::variant<
       AnonymousFunction,
       BinaryExpression,
+      Comparison,
       FunctionCall,
       IfExpression,
       Literal,
@@ -35,6 +36,7 @@ public:
 
   Expression(AnonymousFunction &&function) : inner(std::move(function)) {}
   Expression(BinaryExpression &&expression) : inner(std::move(expression)) {}
+  Expression(Comparison &&comparison) : inner(std::move(comparison)) {}
   Expression(FunctionCall &&call) : inner(std::move(call)) {}
   Expression(IfExpression &&clause) : inner(std::move(clause)) {}
   Expression(IndexExpression &&index) : inner(std::move(index)) {}

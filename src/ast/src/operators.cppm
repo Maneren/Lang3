@@ -5,6 +5,8 @@ module;
 
 export module l3.ast:operators;
 
+import utils;
+
 export {
   namespace l3::ast {
 
@@ -16,14 +18,16 @@ export {
     Divide,
     Modulo,
     Power,
+  };
+
+  enum class ComparisonOperator : std::uint8_t {
     Equal,
     NotEqual,
     Less,
     LessEqual,
     Greater,
-    GreaterEqual
+    GreaterEqual,
   };
-
   enum class LogicalOperator : std::uint8_t { And, Or };
 
   enum class AssignmentOperator : std::uint8_t {
@@ -33,15 +37,14 @@ export {
     Multiply,
     Divide,
     Modulo,
-    Power
+    Power,
   };
 
   } // namespace l3::ast
 
-  template <> struct std::formatter<l3::ast::UnaryOperator> {
-    static constexpr auto parse(std::format_parse_context &ctx) {
-      return ctx.begin();
-    }
+  template <>
+  struct std::formatter<l3::ast::UnaryOperator>
+      : utils::static_formatter<l3::ast::UnaryOperator> {
     static constexpr auto
     format(l3::ast::UnaryOperator op, std::format_context &ctx) {
       using namespace l3::ast;
@@ -56,10 +59,9 @@ export {
     }
   };
 
-  template <> struct std::formatter<l3::ast::BinaryOperator> {
-    static constexpr auto parse(std::format_parse_context &ctx) {
-      return ctx.begin();
-    }
+  template <>
+  struct std::formatter<l3::ast::BinaryOperator>
+      : utils::static_formatter<l3::ast::BinaryOperator> {
     static constexpr auto
     format(l3::ast::BinaryOperator op, std::format_context &ctx) {
       using namespace l3::ast;
@@ -76,26 +78,36 @@ export {
         return std::format_to(ctx.out(), "Modulo");
       case BinaryOperator::Power:
         return std::format_to(ctx.out(), "Power");
-      case BinaryOperator::Equal:
+      }
+    }
+  };
+
+  template <>
+  struct std::formatter<l3::ast::ComparisonOperator>
+      : utils::static_formatter<l3::ast::ComparisonOperator> {
+    static constexpr auto
+    format(l3::ast::ComparisonOperator op, std::format_context &ctx) {
+      using namespace l3::ast;
+      switch (op) {
+      case ComparisonOperator::Equal:
         return std::format_to(ctx.out(), "Equal");
-      case BinaryOperator::NotEqual:
+      case ComparisonOperator::NotEqual:
         return std::format_to(ctx.out(), "NotEqual");
-      case BinaryOperator::Less:
+      case ComparisonOperator::Less:
         return std::format_to(ctx.out(), "Less");
-      case BinaryOperator::LessEqual:
+      case ComparisonOperator::LessEqual:
         return std::format_to(ctx.out(), "LessEqual");
-      case BinaryOperator::Greater:
+      case ComparisonOperator::Greater:
         return std::format_to(ctx.out(), "Greater");
-      case BinaryOperator::GreaterEqual:
+      case ComparisonOperator::GreaterEqual:
         return std::format_to(ctx.out(), "GreaterEqual");
       }
     }
   };
 
-  template <> struct std::formatter<l3::ast::LogicalOperator> {
-    static constexpr auto parse(std::format_parse_context &ctx) {
-      return ctx.begin();
-    }
+  template <>
+  struct std::formatter<l3::ast::LogicalOperator>
+      : utils::static_formatter<l3::ast::LogicalOperator> {
     static constexpr auto
     format(l3::ast::LogicalOperator op, std::format_context &ctx) {
       using namespace l3::ast;
@@ -108,10 +120,9 @@ export {
     }
   };
 
-  template <> struct std::formatter<l3::ast::AssignmentOperator> {
-    static constexpr auto parse(std::format_parse_context &ctx) {
-      return ctx.begin();
-    }
+  template <>
+  struct std::formatter<l3::ast::AssignmentOperator>
+      : utils::static_formatter<l3::ast::AssignmentOperator> {
     static constexpr auto
     format(l3::ast::AssignmentOperator op, std::format_context &ctx) {
       using namespace l3::ast;

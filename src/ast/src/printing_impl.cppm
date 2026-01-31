@@ -51,6 +51,17 @@ void LogicalExpression::print(
   rhs->print(out, depth + 1);
 }
 
+void Comparison::print(
+    std::output_iterator<char> auto &out, std::size_t depth
+) const {
+  format_indented_line(out, depth, "ChainedComparison");
+  start->print(out, depth + 1);
+  for (const auto &[op, rhs] : comparisons) {
+    format_indented_line(out, depth + 1, "{}", op);
+    rhs->print(out, depth + 2);
+  }
+}
+
 void IndexExpression::print(
     std::output_iterator<char> auto &out, std::size_t depth
 ) const {
