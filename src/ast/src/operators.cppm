@@ -21,10 +21,10 @@ export {
     Less,
     LessEqual,
     Greater,
-    GreaterEqual,
-    And,
-    Or
+    GreaterEqual
   };
+
+  enum class LogicalOperator : std::uint8_t { And, Or };
 
   enum class AssignmentOperator : std::uint8_t {
     Assign,
@@ -88,9 +88,21 @@ export {
         return std::format_to(ctx.out(), "Greater");
       case BinaryOperator::GreaterEqual:
         return std::format_to(ctx.out(), "GreaterEqual");
-      case BinaryOperator::And:
+      }
+    }
+  };
+
+  template <> struct std::formatter<l3::ast::LogicalOperator> {
+    static constexpr auto parse(std::format_parse_context &ctx) {
+      return ctx.begin();
+    }
+    static constexpr auto
+    format(l3::ast::LogicalOperator op, std::format_context &ctx) {
+      using namespace l3::ast;
+      switch (op) {
+      case LogicalOperator::And:
         return std::format_to(ctx.out(), "And");
-      case BinaryOperator::Or:
+      case LogicalOperator::Or:
         return std::format_to(ctx.out(), "Or");
       }
     }

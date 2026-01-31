@@ -43,6 +43,14 @@ void BinaryExpression::print(
   rhs->print(out, depth + 1);
 }
 
+void LogicalExpression::print(
+    std::output_iterator<char> auto &out, std::size_t depth
+) const {
+  format_indented_line(out, depth, "LogicalExpression {}", op);
+  lhs->print(out, depth + 1);
+  rhs->print(out, depth + 1);
+}
+
 void IndexExpression::print(
     std::output_iterator<char> auto &out, std::size_t depth
 ) const {

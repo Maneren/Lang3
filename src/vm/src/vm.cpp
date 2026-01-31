@@ -68,12 +68,6 @@ RefValue VM::evaluate(const ast::BinaryExpression &binary) {
   case ast::BinaryOperator::Modulo: {
     return store_value(left.mod(right));
   }
-  case ast::BinaryOperator::And: {
-    return store_value(left.and_op(right));
-  }
-  case ast::BinaryOperator::Or: {
-    return store_value(left.or_op(right));
-  }
   case ast::BinaryOperator::Equal: {
     return store_value(left.equal(right));
   }
@@ -95,6 +89,42 @@ RefValue VM::evaluate(const ast::BinaryExpression &binary) {
   default:
     throw std::runtime_error(
         std::format("not implemented: {}", binary.get_op())
+    );
+  }
+}
+
+RefValue VM::evaluate(const ast::LogicalExpression &logical) {
+  debug_print("Evaluating logical expression {}", logical.get_op());
+
+  static auto lhs = [this, &logical] {
+    const auto left = evaluate(logical.get_lhs());
+    debug_print("  Left: {}", *left);
+    return left;
+  };
+  static auto rhs = [this, &logical] {
+    const auto right = evaluate(logical.get_rhs());
+    debug_print("  Right: {}", *right);
+    return right;
+  };
+
+  switch (logical.get_op()) {
+  case ast::LogicalOperator::And: {
+    const auto left = lhs();
+    if (!left->is_truthy()) {
+      return left;
+    }
+    return rhs();
+  }
+  case ast::LogicalOperator::Or: {
+    const auto left = lhs();
+    if (left->is_truthy()) {
+      return left;
+    }
+    return rhs();
+  }
+  default:
+    throw std::runtime_error(
+        std::format("not implemented: {}", logical.get_op())
     );
   }
 }

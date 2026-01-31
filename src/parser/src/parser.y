@@ -87,6 +87,7 @@
       <std::optional<Expression>> INITIALIZER
       <LastStatement> LAST_STATEMENT
       <Literal> LITERAL
+      <LogicalExpression> LOGICAL
       <Mutability> MUTABILITY
       <NamedFunction> FUNCTION_DEFINITION
       <NameList> MULTIPLE_NAME_LIST
@@ -158,10 +159,11 @@ BINARY: EXPRESSION plus EXPRESSION
         { $$ = { std::move($1), BinaryOperator::Greater, std::move($3) }; }
       | EXPRESSION greater_equal EXPRESSION
         { $$ = { std::move($1), BinaryOperator::GreaterEqual, std::move($3) }; }
-      | EXPRESSION _and EXPRESSION
-        { $$ = { std::move($1), BinaryOperator::And, std::move($3) }; }
-      | EXPRESSION _or EXPRESSION
-        { $$ = { std::move($1), BinaryOperator::Or, std::move($3) }; }
+
+LOGICAL: EXPRESSION _and EXPRESSION
+         { $$ = { std::move($1), LogicalOperator::And, std::move($3) }; }
+       | EXPRESSION _or EXPRESSION
+         { $$ = { std::move($1), LogicalOperator::Or, std::move($3) }; }
 
 PREFIX_EXPRESSION: FUNCTION_CALL                 { $$ = { std::move($1) }; }
                  | VAR                           { $$ = { std::move($1) }; }
@@ -169,6 +171,7 @@ PREFIX_EXPRESSION: FUNCTION_CALL                 { $$ = { std::move($1) }; }
 
 EXPRESSION: UNARY                    { $$ = { std::move($1) }; }
           | BINARY                   { $$ = { std::move($1) }; }
+          | LOGICAL                  { $$ = { std::move($1) }; }
           | ANONYMOUS_FUNCTION       { $$ = { std::move($1) }; }
           | PREFIX_EXPRESSION        { $$ = { std::move($1) }; }
           | LITERAL                  { $$ = { std::move($1) }; }

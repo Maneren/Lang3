@@ -66,6 +66,7 @@ private:
   [[nodiscard]] RefValue evaluate(const ast::Variable &variable);
   [[nodiscard]] RefValue evaluate(const ast::UnaryExpression &unary);
   [[nodiscard]] RefValue evaluate(const ast::BinaryExpression &binary);
+  [[nodiscard]] RefValue evaluate(const ast::LogicalExpression &logical);
   [[nodiscard]] RefValue evaluate(const ast::IndexExpression &index_expression);
   [[nodiscard]] RefValue evaluate(const ast::AnonymousFunction &anonymous);
   [[nodiscard]] RefValue evaluate(const ast::FunctionCall &function_call);

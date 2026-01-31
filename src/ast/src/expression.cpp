@@ -15,4 +15,10 @@ BinaryExpression::BinaryExpression(
     : lhs(std::make_unique<Expression>(std::move(lhs))), op(op),
       rhs(std::make_unique<Expression>(std::move(rhs))) {}
 
+LogicalExpression::LogicalExpression(
+    Expression &&lhs, LogicalOperator op, Expression &&rhs
+)
+    : lhs(std::make_unique<Expression>(std::move(lhs))), op(op),
+      rhs(std::make_unique<Expression>(std::move(rhs))) {}
+
 } // namespace l3::ast

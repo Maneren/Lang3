@@ -24,6 +24,7 @@ class Expression {
       FunctionCall,
       IfExpression,
       Literal,
+      LogicalExpression,
       // Table,
       UnaryExpression,
       Variable>
@@ -38,6 +39,7 @@ public:
   Expression(IfExpression &&clause) : inner(std::move(clause)) {}
   Expression(IndexExpression &&index) : inner(std::move(index)) {}
   Expression(Literal &&literal) : inner(std::move(literal)) {}
+  Expression(LogicalExpression &&expression) : inner(std::move(expression)) {}
   // Expression(Table &&table) : inner(std::move(table)) {}
   Expression(UnaryExpression &&expression) : inner(std::move(expression)) {}
   Expression(Variable &&variable) : inner(std::move(variable)) {}
