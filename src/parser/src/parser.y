@@ -123,8 +123,8 @@ INDEX: lbracket PRIMARY_EXPRESSION rbracket { $$ = { std::move($2) }; }
 VAR: IDENTIFIER { $$ = { std::move($1) }; }
    | VAR INDEX  { $$ = { IndexExpression { std::move($1), std::move($2) } }; }
 
-NAME_LIST: IDENTIFIER comma NAME_LIST
-           { $$ = std::move($3.with_name(std::move($1))); }
+NAME_LIST: NAME_LIST comma IDENTIFIER
+           { $$ = std::move($1.with_name(std::move($3))); }
          | IDENTIFIER
            { $$ = { std::move($1) }; }
 
