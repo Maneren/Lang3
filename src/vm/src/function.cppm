@@ -10,19 +10,21 @@ module;
 export module l3.vm:function;
 
 import l3.ast;
+import utils;
 import :identifier;
 import :ref_value;
-import :scope;
 
 export namespace l3::vm {
 
 class VM;
 class Value;
+class Scope;
+class ScopeStack;
 
 using L3Args = std::span<const RefValue>;
 
 class L3Function {
-  ScopeStack captures;
+  std::shared_ptr<ScopeStack> captures;
   std::shared_ptr<Scope> curried_arguments;
   std::shared_ptr<ast::FunctionBody> body;
   std::optional<Identifier> name;
@@ -32,12 +34,15 @@ public:
   L3Function(L3Function &&) = default;
   L3Function &operator=(const L3Function &) = delete;
   L3Function &operator=(L3Function &&) = default;
-  L3Function(const ScopeStack &captures, const ast::NamedFunction &function);
   L3Function(
-      const ScopeStack &captures, const ast::AnonymousFunction &function
+      std::shared_ptr<ScopeStack> captures, const ast::NamedFunction &function
   );
   L3Function(
-      ScopeStack captures,
+      std::shared_ptr<ScopeStack> captures,
+      const ast::AnonymousFunction &function
+  );
+  L3Function(
+      std::shared_ptr<ScopeStack> captures,
       Scope &&curried_arguments,
       std::shared_ptr<ast::FunctionBody> body,
       std::optional<Identifier> name

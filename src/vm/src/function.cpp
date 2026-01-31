@@ -1,12 +1,8 @@
 module;
-#include <format>
 
 #include <memory>
 #include <optional>
 #include <ranges>
-#include <span>
-#include <utility>
-#include <vector>
 
 module l3.vm;
 
@@ -16,19 +12,21 @@ import :variable;
 namespace l3::vm {
 
 L3Function::L3Function(
-    const ScopeStack &captures, const ast::AnonymousFunction &function
+    std::shared_ptr<ScopeStack> captures, const ast::AnonymousFunction &function
 )
-    : captures{captures}, curried_arguments{std::make_shared<Scope>()},
+    : captures{std::move(captures)},
+      curried_arguments{std::make_shared<Scope>()},
       body{std::make_shared<ast::FunctionBody>(function.get_body())} {}
 L3Function::L3Function(
-    const ScopeStack &captures, const ast::NamedFunction &function
+    std::shared_ptr<ScopeStack> captures, const ast::NamedFunction &function
 )
-    : captures{captures}, curried_arguments{std::make_shared<Scope>()},
+    : captures{std::move(captures)},
+      curried_arguments{std::make_shared<Scope>()},
       body{std::make_shared<ast::FunctionBody>(function.get_body())},
       name{function.get_name()} {}
 
 L3Function::L3Function(
-    ScopeStack captures,
+    std::shared_ptr<ScopeStack> captures,
     Scope &&curried_arguments,
     std::shared_ptr<ast::FunctionBody> body,
     std::optional<Identifier> name

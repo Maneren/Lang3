@@ -1,7 +1,6 @@
 module;
 
 #include <cstdint>
-#include <format>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -12,7 +11,6 @@ module;
 export module l3.vm:primitive;
 
 import utils;
-import :error;
 
 export namespace l3::vm {
 

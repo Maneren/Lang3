@@ -1,24 +1,20 @@
 module;
 
-#include <algorithm>
 #include <cstdint>
-#include <exception>
 #include <iostream>
 #include <optional>
 #include <print>
 #include <random>
 #include <ranges>
-#include <span>
-#include <string>
 #include <string_view>
 #include <thread>
-#include <unordered_map>
 
 module l3.vm;
 
 import l3.ast;
 import utils;
 import :variable;
+import :formatting;
 
 namespace l3::vm::builtins {
 

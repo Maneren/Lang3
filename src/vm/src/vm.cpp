@@ -7,7 +7,6 @@ module;
 #include <optional>
 #include <print>
 #include <ranges>
-#include <utility>
 #include <vector>
 
 module l3.vm;
@@ -15,6 +14,7 @@ module l3.vm;
 import utils;
 import l3.ast;
 import :error;
+import :formatting;
 import :identifier;
 import :ref_value;
 import :scope;

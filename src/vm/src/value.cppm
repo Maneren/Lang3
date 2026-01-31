@@ -1,12 +1,9 @@
 module;
 
-#include <format>
 #include <functional>
 #include <memory>
 #include <optional>
 #include <span>
-#include <string>
-#include <utility>
 #include <utils/accessor.h>
 #include <utils/visit.h>
 #include <variant>
@@ -15,7 +12,6 @@ module;
 export module l3.vm:value;
 
 import utils;
-import :error;
 import :primitive;
 import :ref_value;
 

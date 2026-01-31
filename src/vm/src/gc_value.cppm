@@ -5,7 +5,6 @@ module;
 
 export module l3.vm:gc_value;
 
-import utils;
 import :value;
 
 export namespace l3::vm {

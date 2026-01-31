@@ -1,11 +1,11 @@
 module;
 
-#include <format>
-#include <memory>
+#include <cstdint>
+#include <functional>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <tuple>
-#include <utility>
 #include <variant>
 
 module l3.vm;

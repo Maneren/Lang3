@@ -1,12 +1,9 @@
 module;
-#include <format>
 
 #include <functional>
 #include <memory>
-#include <string>
-#include <string_view>
+#include <optional>
 #include <tuple>
-#include <utility>
 #include <variant>
 
 module l3.vm;
@@ -392,7 +389,7 @@ Value Value::negative() const {
   );
 }
 
-[[nodiscard]] std::string_view Value::type_name() const {
+std::string_view Value::type_name() const {
   using std::string_view_literals::operator""sv;
   return visit(
       [](const Primitive &primitive) { return primitive.type_name(); },

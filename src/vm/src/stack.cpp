@@ -9,6 +9,8 @@ import :gc_value;
 
 namespace l3::vm {
 
+Stack::Stack(bool debug) : debug(debug) {}
+
 Stack::FrameGuard Stack::with_frame() { return FrameGuard(*this); }
 Stack::FrameGuard::FrameGuard(Stack &stack) : stack{stack} {
   stack.frames.emplace_back();

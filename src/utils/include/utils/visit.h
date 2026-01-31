@@ -1,7 +1,5 @@
 #pragma once
 
-import utils;
-
 #define VISIT(name)                                                            \
   auto visit(auto &&...visitor) const -> decltype(auto) {                      \
     return match::match(name, std::forward<decltype(visitor)>(visitor)...);    \

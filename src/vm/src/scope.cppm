@@ -41,7 +41,7 @@ public:
   utils::optional_ref<Variable> get_variable_mut(const Identifier &id);
 
   bool has_variable(const Identifier &id) const;
-  size_t size() const { return variables.size(); }
+  size_t size() const;
 
   DEFINE_ACCESSOR_X(variables);
 
@@ -56,8 +56,8 @@ class ScopeStack {
   std::vector<std::shared_ptr<Scope>> scopes;
 
 public:
-  [[nodiscard]] const Scope &top() const { return *scopes.back(); }
-  [[nodiscard]] Scope &top() { return *scopes.back(); }
+  [[nodiscard]] const Scope &top() const;
+  [[nodiscard]] Scope &top();
 
   [[nodiscard]] ScopeStack clone(VM &vm) const;
 
@@ -68,7 +68,7 @@ public:
 
   void pop_back();
   void push_back(std::shared_ptr<Scope> &&scope);
-  size_t size() const { return scopes.size(); }
+  [[nodiscard]] size_t size() const;
 
   DEFINE_ACCESSOR_X(scopes);
 

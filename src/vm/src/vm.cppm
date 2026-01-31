@@ -1,21 +1,18 @@
 module;
 
-#include <chrono>
 #include <format>
 #include <iostream>
 #include <memory>
 #include <optional>
 #include <print>
-#include <string_view>
+#include <utility>
 #include <vector>
 
 export module l3.vm;
 
 import :error;
-import :formatting;
 import :function;
 import :identifier;
-import :primitive;
 import :ref_value;
 import :scope;
 import :stack;

@@ -1,10 +1,10 @@
 module;
 
 #include <stdexcept>
-#include <string>
 
 module l3.vm;
 
+import l3.ast;
 import :identifier;
 
 namespace l3::vm {

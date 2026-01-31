@@ -2,13 +2,10 @@ module;
 
 #include <memory>
 #include <ranges>
-#include <unordered_map>
 #include <utility>
-#include <vector>
 
 module l3.vm;
 
-import l3.ast;
 import utils;
 import :builtins;
 import :gc_value;
@@ -87,6 +84,8 @@ bool Scope::has_variable(const Identifier &id) const {
   return variables.contains(id);
 }
 
+size_t Scope::size() const { return variables.size(); }
+
 Scope Scope::clone(VM &vm) const {
   Scope cloned;
   cloned.variables.reserve(size());
@@ -119,10 +118,15 @@ void ScopeStack::pop_back() { scopes.pop_back(); }
 void ScopeStack::push_back(std::shared_ptr<Scope> &&scope) {
   scopes.push_back(scope);
 }
-[[nodiscard]] ScopeStack::FrameGuard ScopeStack::with_frame() {
+
+const Scope &ScopeStack::top() const { return *scopes.back(); }
+Scope &ScopeStack::top() { return *scopes.back(); }
+size_t ScopeStack::size() const { return scopes.size(); }
+
+ScopeStack::FrameGuard ScopeStack::with_frame() {
   return FrameGuard(*this);
 }
-[[nodiscard]] ScopeStack::FrameGuard ScopeStack::with_frame(Scope &&scope) {
+ScopeStack::FrameGuard ScopeStack::with_frame(Scope &&scope) {
   return FrameGuard(*this, std::move(scope));
 }
 

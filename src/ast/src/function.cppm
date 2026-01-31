@@ -5,6 +5,7 @@ module;
 
 export module l3.ast:function;
 
+import utils;
 import :identifier;
 import :name_list;
 import :printing;

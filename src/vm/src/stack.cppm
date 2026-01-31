@@ -4,12 +4,10 @@ module;
 #include <iostream>
 #include <print>
 #include <utils/accessor.h>
-#include <vector>
 
 export module l3.vm:stack;
 
 import :ref_value;
-import :storage;
 
 export namespace l3::vm {
 
@@ -31,7 +29,7 @@ class Stack {
   };
 
 public:
-  Stack(bool debug = false) : debug(debug) {}
+  Stack(bool debug = false);
 
   FrameGuard with_frame();
   RefValue push_value(RefValue value);

@@ -1,12 +1,12 @@
 module;
 
-#include <deque>
-#include <string>
+#include <iterator>
 #include <utils/visit.h>
 #include <variant>
 
 export module l3.ast:literal;
 
+import utils;
 export import :literal_parts;
 export import :array;
 
