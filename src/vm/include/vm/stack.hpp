@@ -11,14 +11,20 @@ class Stack {
 
   class FrameGuard {
     Stack &stack;
+    size_t frame_index;
 
   public:
     explicit FrameGuard(Stack &stack) : stack{stack} {
       stack.debug_print("Pushing stack frame");
       stack.frames.emplace_back();
+      frame_index = stack.frames.size();
     }
+    FrameGuard(const FrameGuard &) = delete;
+    FrameGuard(FrameGuard &&) = delete;
+    FrameGuard &operator=(const FrameGuard &) = delete;
+    FrameGuard &operator=(FrameGuard &&) = delete;
     ~FrameGuard() {
-      stack.debug_print("Popping stack frame");
+      stack.debug_print("Popping stack frame {}", frame_index);
       stack.frames.pop_back();
     }
   };

@@ -305,7 +305,7 @@ void VM::execute(const ast::NamedFunction &named_function) {
 RefValue VM::evaluate_function_body(
     const ScopeStack &captured, Scope &&arguments, const ast::FunctionBody &body
 ) {
-  for (const auto &capture : captured) {
+  for (const auto &capture : captured.get_scopes()) {
     debug_print("captured: {}", capture->get_variables());
   }
   debug_print("arguments: {}", arguments.get_variables());
@@ -313,14 +313,18 @@ RefValue VM::evaluate_function_body(
   unused_scopes.emplace_back(std::move(scopes));
 
   scopes = captured.clone(*this);
-  scopes.push_back(std::make_shared<Scope>(std::move(arguments)));
-
   std::optional<RefValue> return_value;
 
-  try {
-    execute(body.get_block());
-  } catch (const ReturnException &exception) {
-    return_value = exception.value;
+  {
+    auto scope_guard = scopes.with_frame(std::move(arguments));
+
+    try {
+      execute(body.get_block());
+    } catch (const ReturnException &exception) {
+      return_value = exception.value;
+    } catch (const LoopFlowException &exception) {
+      throw RuntimeError("Unexpected {} outside of loop", exception.type());
+    }
   }
 
   scopes = std::move(unused_scopes.back());
@@ -388,11 +392,11 @@ size_t VM::run_gc() {
   }
 
   debug_print("[GC] Running");
-  for (auto &scope : scopes) {
+  for (auto &scope : scopes.get_scopes()) {
     scope->mark_gc();
   }
-  for (auto &scope_group : unused_scopes) {
-    for (auto &scope : scope_group) {
+  for (auto &scope_stack : unused_scopes) {
+    for (auto &scope : scope_stack.get_scopes()) {
       scope->mark_gc();
     }
   }
@@ -407,7 +411,7 @@ size_t VM::run_gc() {
       debug_print("  {}", frame.size());
     }
     debug_print("Scopes:");
-    for (auto &scope : scopes) {
+    for (auto &scope : scopes.get_scopes()) {
       debug_print("  {}", scope->get_variables().size());
     }
   }
@@ -417,7 +421,7 @@ size_t VM::run_gc() {
 Variable &VM::declare_variable(
     const Identifier &id, Mutability mutability, RefValue ref_value
 ) {
-  return scopes.back()->declare_variable(id, ref_value, mutability);
+  return scopes.top().declare_variable(id, ref_value, mutability);
 }
 
 RefValue VM::store_value(Value &&value) {
@@ -575,12 +579,13 @@ void VM::execute(const ast::ForLoop &for_loop) {
 
   auto collection_value = evaluate(collection);
 
+  const auto scope_guard = scopes.with_frame();
+  const auto frame_guard = stack.with_frame();
+  auto &value = declare_variable(variable, mutability);
   if (auto vector_opt = collection_value->as_vector()) {
     const auto &vector = vector_opt->get();
     for (const auto &item : vector) {
-      const auto frame_guard = stack.with_frame();
-      const auto scope_guard = scopes.with_frame();
-      declare_variable(variable, mutability, item);
+      *value = item;
       try {
         execute(body);
       } catch (const BreakLoopException &e) {
@@ -596,11 +601,7 @@ void VM::execute(const ast::ForLoop &for_loop) {
     if (auto string_opt = primitive_opt->get().as_string()) {
       const auto &string = string_opt->get();
       for (char c : string) {
-        const auto frame_guard = stack.with_frame();
-        const auto scope_guard = scopes.with_frame();
-        declare_variable(
-            variable, mutability, store_value(Primitive{std::string{c}})
-        );
+        *value = store_value(Primitive{std::string{c}});
         try {
           execute(body);
         } catch (const BreakLoopException &e) {
@@ -613,9 +614,9 @@ void VM::execute(const ast::ForLoop &for_loop) {
     }
   }
 
-  throw TypeError{std::format(
+  throw TypeError(
       "cannot iterate over value of type '{}'", collection_value->type_name()
-  )};
+  );
 }
 
 } // namespace l3::vm

@@ -73,10 +73,12 @@ public:
   [[nodiscard]] Scope clone(VM &vm) const;
 };
 
-class ScopeStack : public std::vector<std::shared_ptr<Scope>> {
+class ScopeStack {
+  std::vector<std::shared_ptr<Scope>> scopes;
+
 public:
-  [[nodiscard]] const Scope &top() const { return *back(); }
-  [[nodiscard]] Scope &top() { return *back(); }
+  [[nodiscard]] const Scope &top() const { return *scopes.back(); }
+  [[nodiscard]] Scope &top() { return *scopes.back(); }
 
   [[nodiscard]] ScopeStack clone(VM &vm) const;
 
@@ -85,12 +87,25 @@ public:
   [[nodiscard]]
   utils::optional_ref<RefValue> read_variable_mut(const Identifier &id);
 
+  void pop_back();
+  void push_back(std::shared_ptr<Scope> &&scope);
+  size_t size() const { return scopes.size(); }
+
+  DEFINE_ACCESSOR_X(scopes);
+
   class FrameGuard {
     ScopeStack &scope_stack;
+    size_t frame_index;
 
   public:
-    FrameGuard(ScopeStack &scope_stack);
-    FrameGuard(ScopeStack &scope_stack, Scope &&scope);
+    explicit FrameGuard(ScopeStack &scope_stack);
+    explicit FrameGuard(ScopeStack &scope_stack, Scope &&scope);
+
+    FrameGuard(const FrameGuard &) = delete;
+    FrameGuard(FrameGuard &&) = delete;
+    FrameGuard &operator=(const FrameGuard &) = delete;
+    FrameGuard &operator=(FrameGuard &&) = delete;
+
     ~FrameGuard();
   };
 

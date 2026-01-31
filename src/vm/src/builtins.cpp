@@ -70,10 +70,11 @@ RefValue builtin_int(VM &vm, L3Args args) {
     throw RuntimeError("int() takes at least one arguments");
   }
 
-  auto primitive = args[0]->as_primitive();
-  if (!primitive) {
+  auto primitive_opt = args[0]->as_primitive();
+  if (!primitive_opt) {
     throw RuntimeError("int() takes only primitive values");
   }
+  const auto &primitive = primitive_opt->get();
 
   if (args.size() > 2) {
     throw RuntimeError("int() takes at most two arguments");
@@ -100,7 +101,7 @@ RefValue builtin_int(VM &vm, L3Args args) {
     base = static_cast<int>(*base_primitive);
   }
 
-  auto value = primitive->get().visit(
+  auto value = primitive.visit(
       [](const std::int64_t &integer) { return integer; },
       [base](const std::string &string) {
         std::int64_t value = 0;
@@ -116,7 +117,7 @@ RefValue builtin_int(VM &vm, L3Args args) {
       [](const auto &value) { return static_cast<std::int64_t>(value); }
   );
 
-  return vm.store_value({Primitive{value}});
+  return vm.store_value(Primitive{value});
 }
 
 RefValue builtin_str(VM &vm, L3Args args) {

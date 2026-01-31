@@ -3,8 +3,10 @@
 #include "vm/error.hpp"
 #include "vm/format.hpp"
 #include "vm/vm.hpp"
+#include <exception>
 #include <print>
 #include <ranges>
+#include <stacktrace>
 
 namespace l3::vm {
 
@@ -91,21 +93,38 @@ Scope Scope::clone(VM &vm) const {
 
 ScopeStack ScopeStack::clone(VM &vm) const {
   ScopeStack cloned;
-  cloned.reserve(size());
-  for (const auto &scope : *this) {
+  cloned.scopes.reserve(size());
+  for (const auto &scope : scopes) {
     cloned.push_back(std::make_shared<Scope>(scope->clone(vm)));
   }
   return cloned;
 }
 ScopeStack::FrameGuard::FrameGuard(ScopeStack &scope_stack)
     : scope_stack{scope_stack} {
-  scope_stack.emplace_back(std::make_shared<Scope>());
+  scope_stack.push_back(std::make_shared<Scope>());
+  frame_index = scope_stack.size();
 }
 ScopeStack::FrameGuard::FrameGuard(ScopeStack &scope_stack, Scope &&scope)
     : scope_stack{scope_stack} {
-  scope_stack.emplace_back(std::make_shared<Scope>(std::move(scope)));
+  scope_stack.push_back(std::make_shared<Scope>(std::move(scope)));
+  frame_index = scope_stack.size();
 }
-ScopeStack::FrameGuard::~FrameGuard() { scope_stack.pop_back(); }
+ScopeStack::FrameGuard::~FrameGuard() {
+  if (frame_index != scope_stack.scopes.size()) {
+    std::println(
+        std::cerr,
+        "ScopeStack::FrameGuard frame mismatch: expected {}, got {}",
+        frame_index,
+        scope_stack.scopes.size()
+    );
+    abort();
+  }
+  scope_stack.scopes.pop_back();
+}
+void ScopeStack::pop_back() { scopes.pop_back(); }
+void ScopeStack::push_back(std::shared_ptr<Scope> &&scope) {
+  scopes.push_back(scope);
+}
 [[nodiscard]] ScopeStack::FrameGuard ScopeStack::with_frame() {
   return FrameGuard(*this);
 }
@@ -115,7 +134,7 @@ ScopeStack::FrameGuard::~FrameGuard() { scope_stack.pop_back(); }
 
 [[nodiscard]]
 std::optional<RefValue> ScopeStack::read_variable(const Identifier &id) const {
-  for (const auto &scope : std::views::reverse(*this)) {
+  for (const auto &scope : std::views::reverse(scopes)) {
     if (auto variable = scope->get_variable(id)) {
       return *variable->get();
     }
@@ -126,7 +145,7 @@ std::optional<RefValue> ScopeStack::read_variable(const Identifier &id) const {
 [[nodiscard]]
 utils::optional_ref<RefValue>
 ScopeStack::read_variable_mut(const Identifier &id) {
-  for (auto &scope : std::views::reverse(*this)) {
+  for (auto &scope : std::views::reverse(scopes)) {
     if (auto variable = scope->get_variable_mut(id)) {
       if (variable->get().is_const()) {
         throw RuntimeError("Cannot modify constant variable {}", id);
