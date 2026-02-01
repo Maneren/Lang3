@@ -1,10 +1,11 @@
 % LTeX: language=en-US
-\documentclass[12pt,parskip=half-]{scrartcl}
+\documentclass[12pt,a4paper,parskip=half-]{scrartcl}
 \usepackage[english]{babel}\selectlanguage{english}
 
 \usepackage[utf8x]{inputenc}
 \usepackage{lmodern}
 \usepackage{graphicx}
+\usepackage{xcolor}
 % \usepackage{xevlna}
 % \usepackage{amssymb,amsmath,amsthm}
 % \usepackage{esvect}
@@ -23,13 +24,10 @@
 
 \PassOptionsToPackage{hyphens}{url}
 
-\usepackage[pdfborderstyle={/S/U/W 1},breaklinks]{hyperref}
+\usepackage[breaklinks]{hyperref}
 \usepackage{cleveref}
 \hypersetup{
-  colorlinks=true,
-  linkcolor=black,
-  filecolor=magenta,
-  urlcolor=blue,
+  pdfborderstyle={/S/U/W 0.5},
   pdftitle={Lang3 interpreter},
   pdfauthor={Pavel Altmann}
 }
@@ -42,8 +40,11 @@
   \kern 3.6pt
 }
 
+\renewcommand{\arraystretch}{1.5}
+
 % define helper command for typesetting code
 \newcommand{\code}[1]{\texttt{#1}}
+\def\CC{{C\nolinebreak[4]\hspace{.05em}\raisebox{.5ex}{\tiny\textbf{++}}}}
 
 \setstretch{1.125}
 
@@ -75,5 +76,400 @@
 \addcontentsline{toc}{section}{Contents}
 
 \newpage
+
+\section{Introduction}
+\label{sec:introduction}
+
+Lang3 is a simple interpreter for the programming language
+L3\footnote{Originally, it was a work-in-progress name in reference to VM3, that
+  it was supposed to be compiled down to. Although I later switched to a custom
+VM, I kept the name as it was used in too many places already.} written in \CC{}
+26 using Flex and Bison for lexing and parsing. Execution is handled through a
+custom virtual machine that executes the abstract syntax tree.
+
+\subsection{Features}
+\label{sec:features}
+
+\begin{itemize}
+  \item Clean syntax similar to Lua with hints of Python
+  \item Optional semicolon separated statements
+  \item Strong dynamic typing
+  \item First-class functions and currying
+  \item Garbage collector memory management
+  \item Multiple name assignment
+\end{itemize}
+
+\subsection{Project and file structure}
+\label{sec:project_structure}
+
+The project is split into a bunch of libraries and an application that connects
+them together and provides a user interface. All the libraries are in the form
+of \href{https://en.cppreference.com/w/cpp/language/modules.html}{\CC{} 20
+modules}, while the application is a regular \CC{} program.
+
+\begin{itemize}
+  \item \code{apps}
+    \begin{itemize}
+      \item \code{lang3} – the application
+    \end{itemize}
+  \item \code{cmake} – CMake templates
+  \item \code{src}
+    \begin{itemize}
+      \item \code{ast} – AST nodes
+      \item \code{cli} – command line arguments parser
+      \item \code{external} – declarations of external libraries\footnote{Only
+        the GoogleTest testing framework.}
+      \item \code{parser} – lexing and parsing
+      \item \code{utils} – generic reusable utilities
+      \item \code{vm} – virtual machine
+    \end{itemize}
+\end{itemize}
+
+Both the application and the libraries use a \code{src} subfolder for their
+sources, module interfaces and private headers and an \code{include/<name>}
+subfolder for their public headers.
+
+\section{Usage}
+\label{sec:usage}
+
+\subsection{Prerequisites}
+\label{sec:prerequisites}
+
+To build the application, the following tools have to be installed
+and available:
+
+\begin{itemize}
+  \item \CC{} 26 compliant compiler with \CC{} 20 module
+    support\footnote{Compiler used for development was LLVM Clang, version
+    21.1.6. Newer versions of GCC and MSVC should probably work as well.}
+  \item \href{https://cmake.org/}{CMake} 3.31 or newer
+  \item \href{https://ninja-build.org/}{Ninja}\footnote{Due to limitations of
+      CMake's \CC{} module support, only the Ninja and Visual Studio
+      backends are
+    supported.}
+  \item \href{https://flex.sourceforge.io/}{Flex}
+  \item \href{https://www.gnu.org/software/bison/}{Bison}
+\end{itemize}
+
+\subsection{Compilation}
+\label{sec:compilation}
+
+To build the release version using CMake, run:
+
+\begin{verbatim}
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+cmake --build build
+\end{verbatim}
+
+This will produce a binary called \code{lang3} in the \code{build/bin}
+directory.
+
+\subsection{Running}
+\label{sec:running}
+
+The \code{lang3} binary has a simple command line interface that can be used to
+run \code{.l3} files:
+
+\begin{verbatim}
+  lang3 [options] [--] <file.l3>
+\end{verbatim}
+
+If not file was specified or the \code{-} value was used, the application will
+read from the standard input. The following options are available:
+
+\begin{itemize}
+  \item \code{-t, --timings} – print timings of each stage
+  \item \code{-d, --debug} – enable all debug logging
+  \item \code{--debug-lexer} – enable lexer debug logging
+  \item \code{--debug-parser} – enable parser debug logging
+  \item \code{--debug-ast} – log parsed AST to console
+  \item \code{--debug-ast-graph <file.dot>} – save parsed AST to a DOT file
+  \item \code{--debug-vm} – enable VM debug logging
+\end{itemize}
+
+If any of the lexer, parser, or AST debug flags and none of the \code{debug} or
+\code{debug-ast} flags are specified, the application will only parse the code
+and exit without executing it.
+
+\section{L3 language}
+\label{sec:l3_language}
+
+The language uses a simple keyword oriented syntax inspired by Lua and Python
+with focus on being independent on whitespace or newlines and
+simultaneously not requiring semicolons or other statement delimiters. It
+implements 6 data types: \code{bool}, \code{int}, \code{float}, \code{string},
+\code{vector} and \code{nil}. It also supports working with functions as
+first-class values–assigning them to variables, passing them as arguments, and
+creating new anonymous functions (closures).
+
+\subsection{Syntax}
+\label{sec:syntax}
+
+For detailed overview of the syntax, see
+\cref{listing:syntax},
+\href{run:./examples/demo.l3}{the demo file} of the examples programs. In short,
+the language is structured into blocks, statements and expressions. Blocks
+contain a list of statements, e.g. a function declaration, variable assignment,
+for loop or an if/else. Inside each statement are either expressions--literals,
+function calls, unary/binary operators, etc.---or inner blocks. To keep the
+grammar unambiguous, expressions can't be written as a top-level statement,
+except for function calls.
+
+Whitespace is only used to separate keywords and identifiers from each other;
+indentation are newlines are completely ignored. Semicolons are not required but
+optionally supported to separate statements.
+
+\begin{listing}
+  \begin{framed}
+    \small
+\begin{verbatim}
+# Variable declaration
+let a = 1 + 2 + 2 * -3
+let b = a * -3
+
+# Function declaration
+fn add(a, b)
+  return a + b
+end
+let c = add(a, b)
+
+# Auto-currying
+let curried = add(a)
+let d = curried(b)
+
+# Control flow and chained comparison
+if (0 <= c < 10) and a == b == 0 then
+  println("condition is true")
+else
+  println("condition is false")
+end
+
+# Loops
+for i in 0..=10 step 2 do println(i) end
+
+# Optimized for functional coding style
+let arr = [1, 2, 3, 4]
+
+fn stringify(arr)
+  # Multiple assignment
+  let x, xs = head(arr)
+
+  if xs then
+    return str(x) + ", " + stringify(xs)
+  else
+    return str(x)
+  end
+end
+
+println(stringify(arr))
+
+# Functional helpers
+println(sum(map(int, ["1", "2", "3", "4"])))
+\end{verbatim}
+  \end{framed}
+  \caption{Short example of L3 code}
+  \label{listing:syntax}
+\end{listing}
+
+\subsection{Types}
+\label{sec:semantics}
+
+The language follows a standard primitive--object model. The primitive types are
+\code{bool}, \code{int}, \code{string}, and \code{nil} and are passed by value.
+On the other hand, the objects---functions (first-class values), closures, and
+vectors---are passed by reference. The string type is a slightly more complex as
+it is internally a reference type, but it is immutable and copy-on-write. So
+from the user's perspective, it behaves as a primitive.
+
+There are no implicit type conversions between the types, except coercion to
+boolean in conditions---zero, \code{nil} and empty collections are considered
+falsey and everything else is truthy. In all other cases, a \code{TypeError} is
+raised in case of type mismatch.
+
+\subsection{Collections}
+\label{sec:collections}
+
+Both vector and a string are iterable collections, which means that they can be
+used in for loops, with built-in functions like \code{sum} and \code{map}, or
+for the multiple assignment. Both also support indexing (\code{arr[0]}) and
+various forms of slicing (\code{head(string)}, \code{take(string, 2)},
+\code{slice(string, 0, 2)}, etc.).
+
+In case of vectors, the elements can be of any type and do not need to be the
+same type as the vector itself. This makes it, so the vector can be used as a
+tuple, e.g. for multiple return values from functions.
+
+\subsection{Mutability}
+\label{sec:mutability}
+
+Each variable has an associated mutability, define during declaration. The
+default is immutable, but can be set to mutable with the \code{mut} keyword.
+This is possible for every declaration, be it single declaration, multiple
+declaration or the loop control variable.
+
+\subsection{Currying}
+\label{sec:currying}
+
+When function is called with fewer arguments than its required number, the
+arguments are stored in a closure and a new function is returned that accepts
+the missing arguments. This is called currying or partial application. In the
+example above, the \code{add} function is curried and the \code{curried}
+variable points to the curried function with the first argument "prefilled". It
+serves the purpose of simplifying composition of functions, while also being a
+substitute of the unimplemented default arguments.
+
+\subsection{Built-in functions}
+\label{sec:builtins}
+
+There are 24 built-in functions listed in the \cref{table:builtins}.
+
+\begin{table}
+  \centering
+  \begin{tabular}{|l|l|}
+    \hline
+    \textbf{Function} & \textbf{Description} \\
+    \hline
+    \code{print(...)} & Print value(s) to standard output without newline \\
+    \hline
+    \code{println(...)} & Print value(s) to standard output with newline \\
+    \hline
+    \code{__trigger_gc()} & Trigger garbage collection (debugging utility) \\
+    \hline
+    \code{assert(cond, [msg])} & Assert that a condition is true,
+    throws error if false \\
+    \hline
+    \code{error(msg)} & Throw an error with a given message \\
+    \hline
+    \code{input([msg])} & Read a line of input from standard input \\
+    \hline
+    \code{int(value, [base])} & Convert a value to integer type \\
+    \hline
+    \code{str(value)} & Convert a value to string type \\
+    \hline
+    \code{head(vec)} & Return a pair of the first element and the rest \\
+    \hline
+    \code{tail(vec)} & Return a pair of the rest and the last element \\
+    \hline
+    \code{len(vec)} & Returns the length of a collection \\
+    \hline
+    \code{drop(vec, n)} & Removes the first n elements from a list \\
+    \hline
+    \code{take(vec, n)} & Takes the first n elements from a list \\
+    \hline
+    \code{slice(vec, start, end)} & Extracts a portion of a list
+    between given indices \\
+    \hline
+    \code{random([min], [max])} & Generate a random integer from the range \\
+    \hline
+    \code{sleep(millis)} & Pause execution for specified amount of
+    milliseconds \\
+    \hline
+    \code{map(func, coll)} & Apply a function to each element of a
+    collection \\
+    \hline
+    \code{filter(func, coll)} & Filter elements of a collection
+    based on a predicate \\
+    \hline
+    \code{sum(coll)} & Calculate the sum of elements in a collection \\
+    \hline
+    \code{all(coll)} & Return true if all elements are truthy
+    (short-circuiting) \\
+    \hline
+    \code{any(coll)} & Return true if any element is truthy
+    (short-circuiting) \\
+    \hline
+    \code{count(func, coll)} & Count how many elements satisfy a condition \\
+    \hline
+    \code{id(value)} & Identity -- return the argument unchanged \\
+    \hline
+    \code{range(start, end, [step])} & Generate a vector of numbers
+    within a given range \\
+    \hline
+  \end{tabular}
+  \caption{Built-in functions}
+  \label{table:builtins}
+\end{table}
+
+\section{Virtual machine}
+\label{sec:virtual_machine}
+
+The virtual machine accepts the AST and recursively executes it. It
+keeps track
+of the execution flow, variable scopes and the garbage-collector-driven memory
+management.
+
+\subsection{Execution flow}
+
+There are 4 main execution modes: \code{Normal}, \code{Return}, \code{Break},
+and \code{Continue}. The \code{Normal} mode is the default execution mode and
+while it is active, the VM just executes the code. After encountering a return
+statement, the VM transitions to the \code{Return} mode. In this mode, the VM
+walks back up the AST until it encounters a function call. Then, it
+transitions
+back to the \code{Normal} mode and return back to the call site. \code{Break}
+and \code{Continue} modes work analogously for loops.
+
+There are checks in place, to make sure that the execution flow is consistent
+and, e.g. break outside a loop is detected, and an error is raised.
+
+\subsection{Scopes}
+\label{sec:scopes}
+
+The VM keeps track of the current scope and the scope stack. Each
+block has it's
+own associated scope, which is pushed onto the scope stack when the block is
+entered. When the block is exited, the scope is popped from the stack.
+Furthermore, many statements create their own extra scopes, e.g. the control
+variable in a for loop.
+
+When function is defined, a snapshot of the current scope is saved, and later
+restored when the function is called. While doing so, the current scope is
+pushed on the unused scope stack stack (that is, a stack of unused scope
+stacks; what a mouthful).
+
+In each scope, variables are stored as a vector of identifiers and values.
+Originally, a map has been used, but since the scopes are usually very small,
+it turned out to be far more efficient to use a vector.
+
+\subsection{Memory management}
+\label{sec:memory_management}
+
+Memory is managed by a standard mark-and-sweep garbage collector
+(GC). Inside a
+\code{GCStorage} class, \code{GCValue} objects are stored in a single linked
+list, each of which holding an actual \code{Value}s. The rest of
+the VM operates
+on \code{RefValue}s, which are trivially-copyable wrappers around pointers to
+the \code{GCValue}s. When a value is created, it is emplaced in the GC storage
+and a new \code{RefValue} is returned.
+
+To keep track of the used and unused values, the VM pushes all newly created
+values on a stack. Periodically, the VM runs the mark-and-sweep algorithm to
+free unused values. During the mark phase, it walks the stack, the
+scope stack,
+and the unused scope stack and marks all the values it contains (it writes to
+the \code{GCValue}s through the saved \code{RefValue}s). Then, in the sweep
+phase, the \code{GCStorage} removes all unmarked values from the list and
+simultaneously unmarks all marked values. This means, that only
+values that are
+still in the current stack frame or reachable from any of the
+current scopes are
+kept.
+
+\subsection{Exceptions}
+\label{sec:exceptions}
+
+Exceptions are handled through the native \CC{} exception mechanism. To
+facilitate this and maintain memory-safety, the VM and surrounding classes make
+heavy use of the RAII (resource acquisition is initialization) pattern with
+preparation in the constructor and cleanup code in the destructor.
+
+Originally, the flow modes \code{Return}, \code{Break}, and \code{Continue} were
+also implemented as exceptions, but I was forced to refactor them later as the
+exception throwing and catching turned out to be a bottleneck and accounted for
+up to 40\% of the runtime in the game-of-life example. I had plans to convert
+the L3 exceptions in the same way, but it turned out to be too much work for too
+little benefit (they always end the execution anyway, so there are no
+performance considerations).
 
 \end{document}
