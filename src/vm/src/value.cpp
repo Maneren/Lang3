@@ -338,8 +338,6 @@ Value Value::not_op() const {
   );
 }
 
-// Value Value::positive() const {}
-
 Value Value::negative() const {
   return visit(
       [](const Primitive &primitive) -> Value { return Value{-primitive}; },
@@ -360,6 +358,3 @@ std::string_view Value::type_name() const {
 }
 
 } // namespace l3::vm
-
-// Formatters for Value types
-namespace l3::vm {} // namespace l3::vm

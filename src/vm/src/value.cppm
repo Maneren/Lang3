@@ -24,7 +24,6 @@ struct Nil {
 
 using L3Args = std::span<const RefValue>;
 
-// Forward declarations for Function types
 class L3Function;
 class BuiltinFunction;
 class Function;

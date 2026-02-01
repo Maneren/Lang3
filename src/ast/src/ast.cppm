@@ -4,7 +4,6 @@ export import :assignment;
 export import :block;
 export import :declaration;
 export import :expression;
-export import :format;
 export import :function;
 export import :identifier;
 export import :if_else;

@@ -225,10 +225,13 @@ RefValue VM::evaluate(const ast::Expression &expression) {
 }
 void VM::execute(const ast::OperatorAssignment &assignment) {
   const auto &variable = assignment.get_variable();
-  debug_print("Executing assignment to {}", variable);
+  debug_print("Executing operator assignment");
   auto &lhs = evaluate_mut(variable);
   const auto &expression = assignment.get_expression();
   const auto rhs = evaluate(expression);
+
+  debug_print("  LHS: {}", lhs);
+  debug_print("  RHS: {}", rhs);
 
   switch (assignment.get_operator()) {
   case ast::AssignmentOperator::Assign:
