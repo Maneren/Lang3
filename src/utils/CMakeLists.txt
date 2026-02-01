@@ -17,3 +17,5 @@ target_sources(${LIB_NAME} PUBLIC
   FILE_SET cxx_modules TYPE CXX_MODULES
   FILES ${MODULES}
 )
+
+set_compiler_and_linker_flags(${LIB_NAME})

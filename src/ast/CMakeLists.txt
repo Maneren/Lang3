@@ -20,3 +20,5 @@ target_sources(${LIB_NAME} PUBLIC
 )
 
 target_link_libraries(${LIB_NAME} PUBLIC utils)
+
+set_compiler_and_linker_flags(${LIB_NAME})

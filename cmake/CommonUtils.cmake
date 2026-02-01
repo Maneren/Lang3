@@ -1,6 +1,6 @@
 function(set_compiler_and_linker_flags TARGET)
     cmake_parse_arguments(ARGS
-        "TEST"
+        ""
         "CXX_STD"
         ""
         ${ARGN}

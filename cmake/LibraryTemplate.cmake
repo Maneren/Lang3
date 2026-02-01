@@ -59,7 +59,7 @@ function(create_library TARGET SOURCES)
             INTERFACE "${LIB_INTERFACE_DEPS}"
             PRIVATE "${LIB_PRIVATE_DEPS}")
 
-        set_compiler_and_linker_flags(${TARGET} OFF ${LIB_CXX_STD})
+        set_compiler_and_linker_flags(${TARGET} ${LIB_CXX_STD})
 
         set_target_properties(${TARGET} PROPERTIES OUTPUT_NAME ${TARGET})
         set_output_directories(${TARGET} LIBRARY)
