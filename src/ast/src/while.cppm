@@ -1,6 +1,5 @@
 module;
 
-#include <iterator>
 #include <memory>
 #include <utils/accessor.h>
 
@@ -24,8 +23,6 @@ public:
   While &operator=(const While &) = delete;
   While &operator=(While &&) noexcept;
   ~While();
-
-  void print(std::output_iterator<char> auto &out, std::size_t depth = 0) const;
 
   DEFINE_PTR_ACCESSOR_X(condition);
   DEFINE_PTR_ACCESSOR_X(body);

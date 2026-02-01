@@ -7,7 +7,6 @@ module;
 
 export module l3.ast:block;
 
-import :printing;
 import :statement;
 import :last_statement;
 
@@ -28,18 +27,6 @@ public:
   Block &with_statement(Statement &&statement) {
     statements.push_front(std::move(statement));
     return *this;
-  }
-
-  void
-  print(std::output_iterator<char> auto &out, std::size_t depth = 0) const {
-    format_indented_line(out, depth, "Block");
-    for (const Statement &statement : statements) {
-      statement.print(out, depth + 1);
-    }
-    if (last_statement) {
-      format_indented_line(out, depth + 0, "LastStatement");
-      last_statement->print(out, depth + 1);
-    }
   }
 
   DEFINE_ACCESSOR_X(statements)

@@ -22,8 +22,6 @@ public:
   UnaryExpression() = default;
   UnaryExpression(UnaryOperator op, Expression &&expression);
 
-  void print(std::output_iterator<char> auto &out, std::size_t depth = 0) const;
-
   DEFINE_VALUE_ACCESSOR_X(op)
   DEFINE_PTR_ACCESSOR_X(expression)
 };
@@ -36,8 +34,6 @@ class BinaryExpression {
 public:
   BinaryExpression() = default;
   BinaryExpression(Expression &&lhs, BinaryOperator op, Expression &&rhs);
-
-  void print(std::output_iterator<char> auto &out, std::size_t depth = 0) const;
 
   DEFINE_PTR_ACCESSOR_X(lhs)
   DEFINE_VALUE_ACCESSOR_X(op)
@@ -52,8 +48,6 @@ class LogicalExpression {
 public:
   LogicalExpression() = default;
   LogicalExpression(Expression &&lhs, LogicalOperator op, Expression &&rhs);
-
-  void print(std::output_iterator<char> auto &out, std::size_t depth = 0) const;
 
   DEFINE_PTR_ACCESSOR_X(lhs)
   DEFINE_VALUE_ACCESSOR_X(op)
@@ -82,8 +76,6 @@ public:
   Comparison() = default;
   Comparison(Expression &&left, ComparisonOperator op, Expression &&right);
   bool add_comparison(ComparisonOperator op, Expression &&right);
-
-  void print(std::output_iterator<char> auto &out, std::size_t depth = 0) const;
 
   DEFINE_PTR_ACCESSOR_X(start)
   DEFINE_ACCESSOR_X(comparisons)

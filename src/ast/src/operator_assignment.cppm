@@ -1,6 +1,5 @@
 module;
 
-#include <iterator>
 #include <utility>
 #include <utils/accessor.h>
 
@@ -26,13 +25,6 @@ public:
   )
       : variable(std::move(variable)), op(op),
         expression(std::move(expression)) {}
-
-  void
-  print(std::output_iterator<char> auto &out, std::size_t depth = 0) const {
-    format_indented_line(out, depth, "Assignment {}", op);
-    variable.print(out, depth + 1);
-    expression.print(out, depth + 1);
-  }
 
   DEFINE_ACCESSOR_X(variable);
   DEFINE_VALUE_ACCESSOR(operator, AssignmentOperator, op)

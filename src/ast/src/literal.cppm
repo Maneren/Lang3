@@ -1,6 +1,5 @@
 module;
 
-#include <iterator>
 #include <utils/visit.h>
 #include <variant>
 
@@ -25,11 +24,6 @@ public:
   Literal(Float num) : inner(num) {}
   Literal(String &&string) : inner(std::move(string)) {}
   Literal(Array &&array) : inner(std::move(array)) {}
-
-  void
-  print(std::output_iterator<char> auto &out, std::size_t depth = 0) const {
-    visit([&out, depth](const auto &node) -> void { node.print(out, depth); });
-  }
 
   VISIT(inner)
 };

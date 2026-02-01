@@ -8,7 +8,6 @@ module;
 export module l3.ast:if_else;
 
 import utils;
-import :printing;
 
 export namespace l3::ast {
 
@@ -22,8 +21,6 @@ class IfBase {
 public:
   IfBase() = default;
   IfBase(Expression &&condition, Block &&block);
-
-  void print(std::output_iterator<char> auto &out, std::size_t depth = 0) const;
 
   DEFINE_PTR_ACCESSOR(condition, Expression, condition)
   DEFINE_PTR_ACCESSOR(block, Block, block)
@@ -41,15 +38,6 @@ public:
   ~ElseIfList() = default;
 
   ElseIfList &with_if(IfBase &&if_base);
-
-  void
-  print(std::output_iterator<char> auto &out, std::size_t depth = 0) const {
-    format_indented_line(out, depth, "ElseIfList");
-    for (const auto &elseif : get_elseifs()) {
-      format_indented_line(out, depth + 1, "ElseIf");
-      elseif.print(out, depth + 2);
-    }
-  }
 
   DEFINE_ACCESSOR(elseifs, std::vector<IfBase>, inner)
 };
@@ -89,8 +77,6 @@ public:
 
   IfExpression &&with_elseif(IfBase &&elseif);
 
-  void print(std::output_iterator<char> auto &out, std::size_t depth = 0) const;
-
   DEFINE_PTR_ACCESSOR(else_block, Block, else_block)
 };
 
@@ -108,8 +94,6 @@ public:
   IfStatement(IfBase &&base_if);
   IfStatement(IfBase &&base_if, ElseIfList &&elseif);
   IfStatement(IfBase &&base_if, ElseIfList &&elseif, Block &&else_block);
-
-  void print(std::output_iterator<char> auto &out, std::size_t depth = 0) const;
 
   [[nodiscard]] utils::optional_cref<Block> get_else_block() const;
   [[nodiscard]] utils::optional_ref<Block> get_else_block_mut();

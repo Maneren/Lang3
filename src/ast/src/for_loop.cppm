@@ -1,6 +1,5 @@
 module;
 
-#include <iterator>
 #include <memory>
 #include <utils/accessor.h>
 
@@ -34,8 +33,6 @@ public:
   ForLoop &operator=(const ForLoop &) = delete;
   ForLoop &operator=(ForLoop &&) noexcept;
   ~ForLoop();
-
-  void print(std::output_iterator<char> auto &out, std::size_t depth = 0) const;
 
   DEFINE_ACCESSOR_X(variable);
   DEFINE_PTR_ACCESSOR_X(collection);

@@ -7,6 +7,8 @@
 
 import cli;
 import l3.ast;
+import l3.ast.printer;
+import l3.ast.dot_printer;
 import l3.vm;
 
 namespace {
@@ -18,6 +20,7 @@ constexpr cli::Parser cli_parser() {
       .long_flag("debug-lexer")
       .long_flag("debug-parser")
       .long_flag("debug-ast")
+      .long_option("debug-ast-graph")
       .long_flag("debug-vm")
       .long_flag("timings");
 }
@@ -34,7 +37,7 @@ int main(int argc, char *argv[]) {
     return EXIT_FAILURE;
   }
 
-  const auto &positional = args->positional();
+  const auto positional = args->positional();
 
   const bool debug = args->has_flag("debug");
   const bool debug_lexer = debug || args->has_flag("debug-lexer");
@@ -43,15 +46,23 @@ int main(int argc, char *argv[]) {
   const bool debug_vm = debug || args->has_flag("debug-vm");
   const bool timings = debug || args->has_flag("timings");
 
+  const auto debug_ast_graph = args->get_value("debug-ast-graph");
+
   std::istream *input = &std::cin;
   std::string filename = "<stdin>";
 
   std::ifstream input_file;
 
-  if (positional.size() == 1 && positional[0] != "-") {
+  if (!positional.empty() && positional[0] != "-") {
     input_file = std::ifstream{positional[0]};
     input = &input_file;
     filename = positional[0];
+  }
+
+  if (positional.size() > 1) {
+    std::println(
+        std::cerr, "Ignoring extra input files: {}", positional.subspan(1)
+    );
   }
 
   auto start_time = std::chrono::steady_clock::now();
@@ -84,10 +95,23 @@ int main(int argc, char *argv[]) {
 
   if (debug_ast) {
     std::println(std::cerr, "=== AST ===");
-    std::print(std::cerr, "{}", program);
+    ast::AstPrinter<char, std::ostreambuf_iterator<char>> printer;
+    auto out_iter = std::ostreambuf_iterator<char>{std::cout};
+    printer.visit(program, out_iter);
   }
 
-  if ((debug_lexer || debug_parser || debug_ast) && !debug_vm) {
+  if (debug_ast_graph) {
+    std::ofstream dot_file{std::string(*debug_ast_graph)};
+    ast::DotPrinter<char, std::ostreambuf_iterator<char>> dot_printer;
+    auto out_iter = std::ostreambuf_iterator<char>{dot_file};
+    dot_printer.write_header(out_iter);
+    dot_printer.visit(program, out_iter);
+    dot_printer.write_footer(out_iter);
+    std::println(std::cerr, "AST graph written to {}", *debug_ast_graph);
+  }
+
+  if ((debug_lexer || debug_parser || debug_ast || debug_ast_graph) &&
+      !debug_vm) {
     return EXIT_SUCCESS;
   }
 

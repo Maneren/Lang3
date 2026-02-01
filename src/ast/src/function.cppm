@@ -8,7 +8,6 @@ export module l3.ast:function;
 import utils;
 import :identifier;
 import :name_list;
-import :printing;
 
 export namespace l3::ast {
 
@@ -30,8 +29,6 @@ public:
 
   ~FunctionBody();
 
-  void print(std::output_iterator<char> auto &out, std::size_t depth = 0) const;
-
   DEFINE_ACCESSOR_X(parameters);
   DEFINE_PTR_ACCESSOR(block, Block, block)
   [[nodiscard]] std::shared_ptr<Block> get_block_ptr() const { return block; }
@@ -47,13 +44,6 @@ public:
   NamedFunction(Identifier &&name, FunctionBody &&body)
       : name(std::move(name)), body(std::move(body)) {}
 
-  void
-  print(std::output_iterator<char> auto &out, std::size_t depth = 0) const {
-    format_indented_line(out, depth, "NamedFunction");
-    name.print(out, depth + 1);
-    body.print(out, depth + 1);
-  };
-
   DEFINE_ACCESSOR_X(name);
   DEFINE_ACCESSOR_X(body);
 };
@@ -64,12 +54,6 @@ class AnonymousFunction {
 public:
   AnonymousFunction() = default;
   AnonymousFunction(FunctionBody &&body) : body(std::move(body)) {}
-
-  void
-  print(std::output_iterator<char> auto &out, std::size_t depth = 0) const {
-    format_indented_line(out, depth, "AnonymousFunction");
-    body.print(out, depth + 1);
-  }
 
   DEFINE_ACCESSOR_X(body);
 };

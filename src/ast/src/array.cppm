@@ -1,6 +1,6 @@
 module;
 
-#include <iterator>
+#include <utility>
 #include <utils/accessor.h>
 
 export module l3.ast:array;
@@ -15,8 +15,6 @@ class Array {
 public:
   Array() = default;
   Array(ExpressionList &&elements) : elements(std::move(elements)) {}
-
-  void print(std::output_iterator<char> auto &out, std::size_t depth = 0) const;
 
   DEFINE_ACCESSOR_X(elements);
 };
