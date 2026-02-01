@@ -17,7 +17,7 @@ end
 # Trailing commas
 let c = add(a, b,)
 
-# First-class functions
+# First-class closures
 fn curry_add(a)
   return fn(b) return a + b end
 end
@@ -46,6 +46,10 @@ while i < 10 do
   end
 end
 
+for i in 0..=10 step 2 do
+  println(i)
+end
+
 let numbers = [10, 20, 30, 40, 50]
 let mut total = 0
 for n in numbers do total += n end
@@ -59,7 +63,7 @@ end
 
 # div(10, 0)
 
-# Conditional expression
+# Conditional expression and chained comparison
 let message = if not (0 <= c < 10) and a == b == 0 then
   return "valid"
 else
@@ -72,9 +76,10 @@ println(message)
 let arr = [1, 2, 3, 4]
 
 fn stringify(arr)
+  # Multiple assignment
   let x, xs = head(arr)
 
-  return if xs then
+  if xs then
     return str(x) + ", " + stringify(xs)
   else
     return str(x)

@@ -2,18 +2,15 @@
 
 # Conway's Game of Life
 
-let WIDTH = 40
-let HEIGHT = 40
-let GENERATIONS = 200
-
-let WIDTH_RANGE = range(WIDTH)
-let HEIGHT_RANGE = range(HEIGHT)
+let WIDTH = int(input("Enter the width of the board: "))
+let HEIGHT = int(input("Enter the height of the board: "))
+let GENERATIONS = int(input("Enter the number of generations: "))
 
 fn create_board()
   let mut board = []
-  for i in HEIGHT_RANGE do
+  for i in 0..HEIGHT do
     let mut row = []
-    for j in WIDTH_RANGE do
+    for j in 0..WIDTH do
       row += [false]
     end
     board += [row]
@@ -22,8 +19,8 @@ fn create_board()
 end
 
 fn for_cell_in_board(board, f)
-  for i in HEIGHT_RANGE do
-    for j in WIDTH_RANGE do
+  for i in 0..HEIGHT do
+    for j in 0..WIDTH do
       f(i, j)
     end
   end
@@ -36,13 +33,11 @@ fn randomize_board(board)
   end)
 end
 
-let NEIGHBOR_RANGE = range(-1, 2)
-
 fn count_neighbors(board, row, col)
   let mut count = 0
 
-  for i in NEIGHBOR_RANGE do
-    for j in NEIGHBOR_RANGE do
+  for i in -1..=1 do
+    for j in -1..=1 do
       # Skip the cell itself
       if (i == j == 0) then continue end
 
@@ -60,9 +55,7 @@ fn count_neighbors(board, row, col)
   return count
 end
 
-fn next_generation(board)
-  let mut new_board = create_board()
-
+fn next_generation(board, new_board)
   for_cell_in_board(board, fn(i, j)
       let neighbors = count_neighbors(board, i, j)
       # Game of Life rules:
@@ -74,7 +67,7 @@ fn next_generation(board)
       )
   end)
 
-  return new_board
+  return [new_board, board]
 end
 
 let HORIZONTAL_BORDER = "+" + 2 * WIDTH * "-" + "+"
@@ -103,13 +96,14 @@ end
 # Main simulation
 fn main()
   let mut board = create_board()
+  let mut second_board = create_board()
   randomize_board(board)
 
-  for gen in range(GENERATIONS) do
+  for gen in 0..GENERATIONS do
     println("Conway's Game of Life - Generation:", str(gen))
     println()
     display_board(board)
-    board = next_generation(board)
+    board, second_board = next_generation(board, second_board)
   end
 
   println()
