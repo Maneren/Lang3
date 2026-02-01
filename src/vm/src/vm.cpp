@@ -722,8 +722,9 @@ void VM::execute(const ast::ForLoop &for_loop) {
   if (const auto vector_opt = collection_value->as_vector()) {
     const auto &vector = vector_opt->get();
     for (const auto &item : vector) {
-      if (!loop_body(item))
+      if (!loop_body(item)) {
         return;
+      }
     }
     return;
   }
@@ -732,8 +733,9 @@ void VM::execute(const ast::ForLoop &for_loop) {
     if (const auto string_opt = primitive_opt->get().as_string()) {
       const auto &string = string_opt->get();
       for (char c : string) {
-        if (!loop_body(store_value(Primitive{std::string{c}})))
+        if (!loop_body(store_value(Primitive{std::string{c}}))) {
           return;
+        }
       }
       return;
     }

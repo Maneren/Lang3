@@ -184,13 +184,4 @@ export {
       return std::format_to(ctx.out(), "{}", value.get_value());
     }
   };
-
-} // namespace l3::vm
-
-// constexpr auto std::formatter<l3::vm::Value>::format(
-//     const auto &value, std::format_context &ctx
-// )
-
-// constexpr auto std::formatter<l3::vm::ValuePrettyPrinter>::format(
-//     const auto &value_pp, std::format_context &ctx
-// )
+}
