@@ -749,4 +749,83 @@ void VM::execute(const ast::ForLoop &for_loop) {
   );
 }
 
+void VM::execute(const ast::RangeForLoop &range_for_loop) {
+  const auto &variable = range_for_loop.get_variable();
+  const auto &start_expr = range_for_loop.get_start();
+  const auto &end_expr = range_for_loop.get_end();
+  const auto &step_expr = range_for_loop.get_step();
+  const auto &body = range_for_loop.get_body();
+  const auto range_type = range_for_loop.get_range_type();
+  const auto mutability = range_for_loop.get_mutability();
+
+  const auto start_value =
+      evaluate(start_expr)->as_primitive().and_then(&Primitive::as_integer);
+  const auto end_value =
+      evaluate(end_expr)->as_primitive().and_then(&Primitive::as_integer);
+
+  if (!start_value || !end_value) {
+    throw TypeError("range bounds must be integers");
+  }
+
+  const std::int64_t start = *start_value;
+  std::int64_t end = *end_value;
+  std::int64_t step = 1;
+
+  if (step_expr) {
+    const auto step_value =
+        evaluate(**step_expr)->as_primitive().and_then(&Primitive::as_integer);
+
+    if (!step_value) {
+      throw TypeError("range step must be an integer");
+    }
+
+    step = *step_value;
+    if (step == 0) {
+      throw RuntimeError("range step cannot be zero");
+    }
+  }
+
+  if (range_type == ast::RangeOperator::Inclusive) {
+    end = (step > 0) ? end + 1 : end - 1;
+  }
+
+  const auto scope_guard = scopes->with_frame();
+  const auto frame_guard = stack.with_frame();
+  auto &value = declare_variable(variable, mutability);
+
+  const auto loop_body = [&](std::int64_t i) -> bool {
+    *value = store_value(Primitive{i});
+    execute(body);
+
+    switch (flow_control) {
+    case FlowControl::Normal:
+      return true;
+    case FlowControl::Continue:
+      flow_control = FlowControl::Normal;
+      debug_print("Continue in a range for loop");
+      return true;
+    case FlowControl::Break:
+      flow_control = FlowControl::Normal;
+      debug_print("Break in a range for loop");
+      return false;
+    default:
+      return false;
+    }
+  };
+
+  if (step > 0) {
+    for (std::int64_t i = start; i < end; i += step) {
+      if (!loop_body(i)) {
+        return;
+      }
+    }
+  } else {
+    for (std::int64_t i = start; i > end; i += step) {
+      if (!loop_body(i)) {
+        return;
+      }
+    }
+  }
+}
+
 } // namespace l3::vm

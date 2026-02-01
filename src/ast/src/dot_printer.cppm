@@ -219,6 +219,34 @@ public:
     visit(node.get_body(), out);
   }
 
+  void visit(const RangeForLoop &node, OutputIterator &out) override {
+    size_t id = get_next_id();
+    write_node(
+        out,
+        id,
+        "RangeForLoop\\n{}\\n{}",
+        node.get_mutability(),
+        node.get_range_type()
+    );
+
+    write_edge_labeled(out, id, node_id, "variable");
+    visit(node.get_variable(), out);
+
+    write_edge_labeled(out, id, node_id, "start");
+    visit(node.get_start(), out);
+
+    write_edge_labeled(out, id, node_id, "end");
+    visit(node.get_end(), out);
+
+    if (const auto &step = node.get_step()) {
+      write_edge_labeled(out, id, node_id, "step");
+      visit(**step, out);
+    }
+
+    write_edge_labeled(out, id, node_id, "body");
+    visit(node.get_body(), out);
+  }
+
   void visit(const ReturnStatement &node, OutputIterator &out) override {
     size_t id = get_next_id();
     write_node(out, id, "Return");

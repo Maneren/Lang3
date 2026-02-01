@@ -56,8 +56,8 @@
 
 %token _if _else _while _break _continue _return _for in _do _true _false then
        end nil function let equal _not lparen rparen lbrace rbrace lbracket
-       rbracket comma semi dot concat colon plus_equal minus_equal mul_equal
-       div_equal mod_equal pow_equal concat_equal elif mut
+       rbracket comma semi plus_equal minus_equal mul_equal div_equal mod_equal
+       pow_equal elif mut step dot_dot dot_dot_equal
        <std::string> id
        <std::string> string
        <std::int64_t> num
@@ -83,6 +83,9 @@
       <Expression> PREFIX_EXPRESSION
       <Expression> PRIMARY_EXPRESSION
       <ForLoop> FOR
+      <RangeForLoop> RANGE_FOR
+      <std::optional<Expression>> STEP_CLAUSE
+      <RangeOperator> RANGE_OPERATOR
       <FunctionBody> FUNCTION_BODY
       <FunctionCall> FUNCTION_CALL
       <Identifier> IDENTIFIER
@@ -237,6 +240,23 @@ WHILE: _while EXPRESSION _do BLOCK end
 FOR: _for MUTABILITY IDENTIFIER in EXPRESSION _do BLOCK end
      { $$ = { std::move($3), std::move($5), std::move($7), std::move($2) }; }
 
+RANGE_OPERATOR: dot_dot        { $$ = RangeOperator::Exclusive; }
+              | dot_dot_equal  { $$ = RangeOperator::Inclusive; }
+
+STEP_CLAUSE: step ATOMIC_EXPRESSION  { $$ = std::move($2); }
+           | %empty                  { $$ = std::nullopt; }
+
+RANGE_FOR: _for MUTABILITY IDENTIFIER in ATOMIC_EXPRESSION RANGE_OPERATOR ATOMIC_EXPRESSION STEP_CLAUSE _do BLOCK end
+           { $$ = {
+              std::move($2), // mutability
+              std::move($3), // identifier
+              std::move($5), // start
+              $6,            // range operator
+              std::move($7), // end
+              std::move($8), // step
+              std::move($10) // block
+             }; }
+
 // Assignments and Declarations
 ASSIGNMENT_OPERATOR: plus_equal  { $$ = AssignmentOperator::Plus; }
                    | minus_equal { $$ = AssignmentOperator::Minus; }
@@ -272,6 +292,7 @@ LAST_STATEMENT: RETURN    { $$ = { std::move($1) }; }
 STATEMENT: ASSIGNMENT           { $$ = { std::move($1) }; }
          | DECLARATION          { $$ = { std::move($1) }; }
          | FOR                  { $$ = { std::move($1) }; }
+         | RANGE_FOR            { $$ = { std::move($1) }; }
          | IF_STATEMENT         { $$ = { std::move($1) }; }
          | FUNCTION_CALL        { $$ = { std::move($1) }; }
          | FUNCTION_DEFINITION  { $$ = { std::move($1) }; }

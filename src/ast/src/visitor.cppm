@@ -21,6 +21,7 @@ class IfStatement;
 class IfExpression;
 class While;
 class ForLoop;
+class RangeForLoop;
 class ReturnStatement;
 class BreakStatement;
 class ContinueStatement;
@@ -62,6 +63,7 @@ public:
   virtual void visit(const IfExpression &node, OutputIterator &out) = 0;
   virtual void visit(const While &node, OutputIterator &out) = 0;
   virtual void visit(const ForLoop &node, OutputIterator &out) = 0;
+  virtual void visit(const RangeForLoop &node, OutputIterator &out) = 0;
   virtual void visit(const ReturnStatement &node, OutputIterator &out) = 0;
   virtual void visit(const BreakStatement &node, OutputIterator &out) = 0;
   virtual void visit(const ContinueStatement &node, OutputIterator &out) = 0;

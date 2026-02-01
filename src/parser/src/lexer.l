@@ -32,7 +32,6 @@ FLOAT    [+-]?({DIGIT}+\.{DIGIT}*|\.{DIGIT}+)
 %}
 
 {FLOAT}                     { yylval->emplace<double>(std::stod(yytext)); return Token::fnum; }
-{INTEGER}                   { yylval->emplace<std::int64_t>(std::stoll(yytext)); return Token::num; }
 \"                          { BEGIN(STR); yylval->emplace<std::string>(); }
 <STR>\"                     { BEGIN(INITIAL); return Token::string; }
 <STR>\\[nt]                 { yylval->as<std::string>() += yytext; }
@@ -50,7 +49,9 @@ FLOAT    [+-]?({DIGIT}+\.{DIGIT}*|\.{DIGIT}+)
 "/="                        { return Token::div_equal; }
 "%="                        { return Token::mod_equal; }
 "^="                        { return Token::pow_equal; }
-".="                        { return Token::concat_equal; }
+"..="                       { return Token::dot_dot_equal; }
+".."                        { return Token::dot_dot; }
+{INTEGER}                   { yylval->emplace<std::int64_t>(std::stoll(yytext)); return Token::num; }
 "("                         { return Token::lparen; }
 ")"                         { return Token::rparen; }
 "["                         { return Token::lbracket; }
@@ -75,6 +76,7 @@ FLOAT    [+-]?({DIGIT}+\.{DIGIT}*|\.{DIGIT}+)
 "while"                     { return Token::_while; }
 "for"                       { return Token::_for; }
 "in"                        { return Token::in; }
+"step"                      { return Token::step; }
 "do"                        { return Token::_do; }
 "return"                    { return Token::_return; }
 "break"                     { return Token::_break; }

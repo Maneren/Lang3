@@ -24,6 +24,7 @@ class Statement {
       NameAssignment,
       NamedFunction,
       OperatorAssignment,
+      RangeForLoop,
       While>
       inner;
 
@@ -47,6 +48,7 @@ public:
   Statement(NameAssignment &&assignment) : inner(std::move(assignment)) {}
   Statement(NamedFunction &&function) : inner(std::move(function)) {}
   Statement(OperatorAssignment &&assignment) : inner(std::move(assignment)) {}
+  Statement(RangeForLoop &&loop) : inner(std::move(loop)) {}
   Statement(While &&loop) : inner(std::move(loop)) {}
 
   VISIT(inner)

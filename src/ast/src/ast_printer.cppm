@@ -201,6 +201,41 @@ public:
     }
   }
 
+  void visit(const RangeForLoop &node, OutputIterator &out) override {
+    format_indented_line(
+        out,
+        "RangeForLoop ({}, {})",
+        node.get_mutability(),
+        node.get_range_type()
+    );
+    DepthGuard guard(depth);
+    format_indented_line(out, "Variable");
+    {
+      DepthGuard var_guard(depth);
+      visit(node.get_variable(), out);
+    }
+    format_indented_line(out, "Start");
+    {
+      DepthGuard start_guard(depth);
+      visit(node.get_start(), out);
+    }
+    format_indented_line(out, "End");
+    {
+      DepthGuard end_guard(depth);
+      visit(node.get_end(), out);
+    }
+    if (const auto &step = node.get_step()) {
+      format_indented_line(out, "Step");
+      DepthGuard step_guard(depth);
+      visit(**step, out);
+    }
+    format_indented_line(out, "Block");
+    {
+      DepthGuard block_guard(depth);
+      visit(node.get_body(), out);
+    }
+  }
+
   void visit(const ReturnStatement &node, OutputIterator &out) override {
     format_indented_line(out, "Return");
     if (node.get_expression()) {
