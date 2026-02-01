@@ -7,6 +7,7 @@ module;
 #include <optional>
 #include <print>
 #include <ranges>
+#include <utility>
 #include <vector>
 
 module l3.vm;
@@ -23,6 +24,24 @@ import :storage;
 import :value;
 import :variable;
 
+template <>
+struct std::formatter<l3::vm::VM::FlowControl>
+    : utils::static_formatter<l3::vm::VM::FlowControl> {
+  static auto format(auto obj, std::format_context &ctx) {
+    switch (obj) {
+      using namespace l3::vm;
+    case VM::FlowControl::Normal:
+      return std::format_to(ctx.out(), "normal");
+    case VM::FlowControl::Break:
+      return std::format_to(ctx.out(), "break");
+    case VM::FlowControl::Continue:
+      return std::format_to(ctx.out(), "continue");
+    case VM::FlowControl::Return:
+      return std::format_to(ctx.out(), "return");
+    }
+  }
+};
+
 namespace l3::vm {
 
 constexpr size_t GC_OBJECT_TRIGGER_TRESHOLD = 10000;
@@ -31,15 +50,12 @@ RefValue VM::evaluate(const ast::UnaryExpression &unary) {
   debug_print("Evaluating unary expression {}", unary.get_op());
   const auto argument = evaluate(unary.get_expression());
   switch (unary.get_op()) {
-  case ast::UnaryOperator::Minus: {
+  case ast::UnaryOperator::Minus:
     return store_value(argument->negative());
-  }
-  case ast::UnaryOperator::Plus: {
+  case ast::UnaryOperator::Plus:
     return argument;
-  }
-  case ast::UnaryOperator::Not: {
+  case ast::UnaryOperator::Not:
     return store_value(argument->not_op());
-  }
   }
   throw std::runtime_error("unreachable");
 }
@@ -53,22 +69,16 @@ RefValue VM::evaluate(const ast::BinaryExpression &binary) {
   debug_print("  Right: {}", right);
 
   switch (binary.get_op()) {
-  case ast::BinaryOperator::Plus: {
+  case ast::BinaryOperator::Plus:
     return store_value(left.add(right));
-  }
-  case ast::BinaryOperator::Minus: {
+  case ast::BinaryOperator::Minus:
     return store_value(left.sub(right));
-  }
-  case ast::BinaryOperator::Multiply: {
+  case ast::BinaryOperator::Multiply:
     return store_value(left.mul(right));
-  }
-  case ast::BinaryOperator::Divide: {
+  case ast::BinaryOperator::Divide:
     return store_value(left.div(right));
-  }
-  case ast::BinaryOperator::Modulo: {
+  case ast::BinaryOperator::Modulo:
     return store_value(left.mod(right));
-  }
-
   default:
     throw std::runtime_error(
         std::format("not implemented: {}", binary.get_op())
@@ -300,13 +310,18 @@ RefValue VM::evaluate(const ast::FunctionCall &function_call) {
     debug_print("  {}", argument);
   }
 
-  try {
-    auto result = function_ptr->operator()(*this, evaluated_arguments);
-    debug_print("Result: {}", result);
-    return result;
-  } catch (const LoopFlowException &error) {
-    throw RuntimeError("Unexpected {} outside of loop", error.type());
+  auto result = function_ptr->operator()(*this, evaluated_arguments);
+
+  switch (flow_control) {
+  case FlowControl::Break:
+  case FlowControl::Continue:
+    throw RuntimeError("Unexpected {} outside a loop", flow_control);
+  default:
+    break;
   }
+
+  debug_print("Result: {}", result);
+  return result;
 };
 void VM::execute(const ast::Statement &statement) {
   debug_print("Executing statement");
@@ -316,10 +331,13 @@ void VM::execute(const ast::Statement &statement) {
 void VM::execute(const ast::Program &program) {
   try {
     execute(static_cast<const ast::Block &>(program));
+
+    if (flow_control != FlowControl::Normal) {
+      throw RuntimeError("Return from top-level code is not allowed");
+    }
+
   } catch (const RuntimeError &error) {
     std::println(std::cerr, "{}: {}", error.type(), error.what());
-  } catch (const ReturnException &error) {
-    std::println(std::cerr, "Unexpected return outside of function");
   }
 }
 
@@ -329,6 +347,9 @@ void VM::execute(const ast::Block &block) {
   const auto scope_guard = scopes->with_frame();
   for (const auto &statement : block.get_statements()) {
     execute(statement);
+
+    if (flow_control != FlowControl::Normal)
+      return;
   }
 
   const auto &last_statement = block.get_last_statement();
@@ -399,42 +420,38 @@ RefValue VM::evaluate_function_body(
   debug_print("arguments: {}", arguments.get_variables());
 
   const auto overlay = ScopeStackOverlay{*this, captures};
-  std::optional<RefValue> return_value;
+  const auto scope_guard = scopes->with_frame(std::move(arguments));
 
-  {
-    const auto scope_guard = scopes->with_frame(std::move(arguments));
+  execute(body.get_block());
 
-    try {
-      execute(body.get_block());
-    } catch (const ReturnException &exception) {
-      return_value = exception.get_value();
-    } catch (const LoopFlowException &exception) {
-      throw RuntimeError("Unexpected {} outside of loop", exception.type());
-    }
+  if (flow_control == FlowControl::Return) {
+    auto value = std::move(*return_value);
+    return_value = std::nullopt;
+    flow_control = FlowControl::Normal;
+    debug_print("Returning from function: {}", value);
+    return stack.push_value(std::move(value));
   }
 
-  return stack.push_value(return_value.value_or(nil()));
+  return nil();
 }
 
 void VM::execute(const ast::LastStatement &last_statement) {
   debug_print("Evaluating last statement");
   last_statement.visit(
-      match::Overloaded{
-          [this](const ast::ReturnStatement &return_statement) {
-            const auto value = return_statement.get_expression()
-                                   .transform([this](const auto &expression) {
-                                     return evaluate(expression);
-                                   })
-                                   .value_or(VM::nil());
-            debug_print("Returning {}", value);
-            throw ReturnException(value);
-          },
-          [](const ast::BreakStatement & /*expression*/) {
-            throw BreakLoopException();
-          },
-          [](const ast::ContinueStatement & /*expression*/) {
-            throw ContinueLoopException();
-          }
+      [this](const ast::ReturnStatement &return_statement) {
+        return_value = return_statement.get_expression()
+                           .transform([this](const auto &expression) {
+                             return evaluate(expression);
+                           })
+                           .value_or(VM::nil());
+        flow_control = FlowControl::Return;
+        debug_print("Returning {}", *return_value);
+      },
+      [this](const ast::BreakStatement & /*expression*/) {
+        flow_control = FlowControl::Break;
+      },
+      [this](const ast::ContinueStatement & /*expression*/) {
+        flow_control = FlowControl::Continue;
       }
   );
 }
@@ -624,18 +641,24 @@ RefValue VM::_true() { return RefValue{GCStorage::_true()}; }
 RefValue VM::_false() { return RefValue{GCStorage::_false()}; }
 
 RefValue VM::evaluate(const ast::IfExpression &if_expr) {
-  std::optional<RefValue> result;
+  execute(static_cast<const ast::IfElseBase &>(if_expr));
 
-  try {
-    execute(static_cast<const ast::IfElseBase &>(if_expr));
-    const auto &else_expr = if_expr.get_else_block();
-    execute(else_expr);
-  } catch (const ReturnException &e) {
-    result = e.get_value();
+  if (flow_control == FlowControl::Return) {
+    auto value = std::move(*return_value);
+    return_value = std::nullopt;
+    flow_control = FlowControl::Normal;
+    debug_print("Returning from if expression: {}", value);
+    return value;
   }
 
-  if (result) {
-    return *result;
+  execute(if_expr.get_else_block());
+
+  if (flow_control == FlowControl::Return) {
+    auto value = std::move(*return_value);
+    return_value = std::nullopt;
+    flow_control = FlowControl::Normal;
+    debug_print("Returning from if expression: {}", value);
+    return value;
   }
 
   throw RuntimeError("if expression did not return a value");
@@ -646,12 +669,21 @@ void VM::execute(const ast::While &while_loop) {
   const auto &body = while_loop.get_body();
 
   while (evaluate(condition)->is_truthy()) {
-    try {
-      execute(body);
-    } catch (const BreakLoopException &e) {
+    execute(body);
+
+    switch (flow_control) {
+    case FlowControl::Normal:
       break;
-    } catch (const ContinueLoopException &e) {
-      continue;
+    case FlowControl::Continue:
+      flow_control = FlowControl::Normal;
+      debug_print("Continue in a while loop");
+      break;
+    case FlowControl::Break:
+      flow_control = FlowControl::Normal;
+      debug_print("Break in a while loop");
+      return;
+    default:
+      return;
     }
   }
 }
@@ -662,38 +694,46 @@ void VM::execute(const ast::ForLoop &for_loop) {
   const auto &body = for_loop.get_body();
   const auto mutability = for_loop.get_mutability();
 
-  auto collection_value = evaluate(collection);
-
   const auto scope_guard = scopes->with_frame();
   const auto frame_guard = stack.with_frame();
   auto &value = declare_variable(variable, mutability);
-  if (auto vector_opt = collection_value->as_vector()) {
+
+  const auto loop_body = [&](const auto &item) -> bool {
+    *value = item;
+    execute(body);
+
+    switch (flow_control) {
+    case FlowControl::Normal:
+      return true;
+    case FlowControl::Continue:
+      flow_control = FlowControl::Normal;
+      debug_print("Continue in a for loop");
+      return true;
+    case FlowControl::Break:
+      flow_control = FlowControl::Normal;
+      debug_print("Break in a for loop");
+      return false;
+    default:
+      return false;
+    }
+  };
+
+  const auto collection_value = evaluate(collection);
+  if (const auto vector_opt = collection_value->as_vector()) {
     const auto &vector = vector_opt->get();
     for (const auto &item : vector) {
-      *value = item;
-      try {
-        execute(body);
-      } catch (const BreakLoopException &e) {
-        break;
-      } catch (const ContinueLoopException &e) {
-        continue;
-      }
+      if (!loop_body(item))
+        return;
     }
     return;
   }
 
-  if (auto primitive_opt = collection_value->as_primitive()) {
-    if (auto string_opt = primitive_opt->get().as_string()) {
+  if (const auto primitive_opt = collection_value->as_primitive()) {
+    if (const auto string_opt = primitive_opt->get().as_string()) {
       const auto &string = string_opt->get();
       for (char c : string) {
-        *value = store_value(Primitive{std::string{c}});
-        try {
-          execute(body);
-        } catch (const BreakLoopException &e) {
-          break;
-        } catch (const ContinueLoopException &e) {
-          continue;
-        }
+        if (!loop_body(store_value(Primitive{std::string{c}})))
+          return;
       }
       return;
     }

@@ -90,6 +90,17 @@ private:
   Stack stack;
   GCStorage gc_storage;
 
+  enum class FlowControl : std::uint_fast8_t {
+    Normal,
+    Return,
+    Break,
+    Continue
+  };
+  friend std::formatter<FlowControl>;
+
+  FlowControl flow_control = FlowControl::Normal;
+  std::optional<RefValue> return_value = std::nullopt;
+
   template <typename... Ts>
   void debug_print(std::format_string<Ts...> message, Ts &&...args) const {
     if (debug) [[unlikely]] {
@@ -117,68 +128,6 @@ private:
       vm.scopes = std::move(vm.unused_scopes.back());
       vm.unused_scopes.pop_back();
     }
-  };
-
-  class FlowException {
-    [[nodiscard]] virtual constexpr std::string_view type() const {
-      return "<nil>";
-    }
-
-  public:
-    FlowException() = default;
-    FlowException(const FlowException &) = default;
-    FlowException(FlowException &&) = default;
-    FlowException &operator=(const FlowException &) = default;
-    FlowException &operator=(FlowException &&) = default;
-    virtual ~FlowException() = default;
-  };
-  class ReturnException final : public FlowException {
-    std::optional<RefValue> value;
-
-  public:
-    explicit ReturnException(std::optional<RefValue> value = {})
-        : value(value) {}
-    [[nodiscard]] constexpr std::string_view type() const override {
-      return "return";
-    }
-
-    [[nodiscard]] std::optional<RefValue> get_value() const { return value; }
-  };
-  struct LoopFlowException : public FlowException {
-    explicit LoopFlowException() = default;
-    LoopFlowException(const LoopFlowException &) = default;
-    LoopFlowException(LoopFlowException &&) = default;
-    LoopFlowException &operator=(const LoopFlowException &) = default;
-    LoopFlowException &operator=(LoopFlowException &&) = default;
-    ~LoopFlowException() override = default;
-
-    [[nodiscard]] constexpr std::string_view type() const override {
-      return "loop";
-    };
-  };
-  struct BreakLoopException final : public LoopFlowException {
-    [[nodiscard]] constexpr std::string_view type() const override {
-      return "break";
-    }
-
-    explicit BreakLoopException() = default;
-    BreakLoopException(const BreakLoopException &) = default;
-    BreakLoopException(BreakLoopException &&) = default;
-    BreakLoopException &operator=(const BreakLoopException &) = default;
-    BreakLoopException &operator=(BreakLoopException &&) = default;
-    ~BreakLoopException() override = default;
-  };
-  struct ContinueLoopException final : public LoopFlowException {
-    [[nodiscard]] constexpr std::string_view type() const override {
-      return "continue";
-    }
-
-    explicit ContinueLoopException() = default;
-    ContinueLoopException(const ContinueLoopException &) = default;
-    ContinueLoopException(ContinueLoopException &&) = default;
-    ContinueLoopException &operator=(const ContinueLoopException &) = default;
-    ContinueLoopException &operator=(ContinueLoopException &&) = default;
-    ~ContinueLoopException() override = default;
   };
 };
 
