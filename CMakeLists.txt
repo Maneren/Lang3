@@ -40,9 +40,69 @@ include(cmake/LibraryTemplate.cmake)
 add_subdirectory(src)
 add_subdirectory(apps)
 
-enable_testing()
-add_subdirectory(test)
 if(IS_READABLE doc)
     add_subdirectory(doc EXCLUDE_FROM_ALL)
 endif()
 
+if(IS_READABLE test)
+    enable_testing()
+    add_subdirectory(test)
+endif()
+
+# Install configuration
+install(TARGETS lang3
+    RUNTIME DESTINATION bin
+    COMPONENT runtime
+)
+
+# Packaging
+set(PACKAGE_NAME "${PROJECT}-$<CONFIG>")
+set(PACKAGE_DIR "${CMAKE_BINARY_DIR}/package/${PACKAGE_NAME}")
+
+file(GLOB_RECURSE SOURCES
+    src/*.cpp src/*.cppm src/*.hpp src/*.h
+    src/*.y src/*.l
+    apps/*.cpp apps/*.hpp
+    cmake/*.cmake
+    CMakeLists.txt
+)
+list(APPEND SOURCES "README.md" "LICENSE")
+list(FILTER SOURCES EXCLUDE REGEX "${CMAKE_SOURCE_DIR}/(test|doc|build)/")
+
+set(SOURCE_ARCHIVE "${PACKAGE_DIR}/source.tgz")
+add_custom_command(
+    OUTPUT "${SOURCE_ARCHIVE}"
+    COMMAND ${CMAKE_COMMAND} -E tar cf "${SOURCE_ARCHIVE}" ${SOURCES}
+    COMMENT "Creating source archive ${SOURCE_ARCHIVE}"
+    DEPENDS ${SOURCES}
+    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+    VERBATIM
+)
+
+file(GLOB EXAMPLES examples/*.l3)
+
+add_custom_command(
+    OUTPUT "${CMAKE_BINARY_DIR}/${PACKAGE_NAME}.tgz"
+    COMMAND ${CMAKE_COMMAND} -E make_directory "${PACKAGE_DIR}/examples"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "$<TARGET_FILE:lang3>"
+        "${SOURCE_ARCHIVE}" "${DOC_PDF}"
+        "${PACKAGE_DIR}/"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${EXAMPLES}
+        "${PACKAGE_DIR}/examples"
+    COMMAND ${CMAKE_COMMAND} -E tar cf
+        "${CMAKE_BINARY_DIR}/${PACKAGE_NAME}.tgz"
+         "."
+    COMMENT "Creating package ${PACKAGE_NAME}.tgz"
+    DEPENDS ${SOURCE_ARCHIVE} ${EXAMPLES} ${DOC_PDF}
+    BYPRODUCTS ${PACKAGE_DIR}
+    WORKING_DIRECTORY "${PACKAGE_DIR}"
+    VERBATIM
+)
+
+add_custom_target(package
+    DEPENDS ${CMAKE_BINARY_DIR}/${PACKAGE_NAME}.tgz
+    COMMENT "Packaging ${PACKAGE_NAME}"
+    VERBATIM
+)
