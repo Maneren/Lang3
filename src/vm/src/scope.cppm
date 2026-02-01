@@ -2,7 +2,6 @@ module;
 
 #include <memory>
 #include <optional>
-#include <unordered_map>
 #include <utils/accessor.h>
 #include <vector>
 
@@ -13,11 +12,11 @@ import utils;
 import :identifier;
 import :mutability;
 
-template <> struct std::hash<l3::vm::Identifier> {
-  std::size_t operator()(const auto &id) const {
-    return std::hash<std::string>{}(id.get_name());
-  }
-};
+// template <> struct std::hash<l3::vm::Identifier> {
+//   std::size_t operator()(const auto &id) const {
+//     return std::hash<std::string>{}(id.get_name());
+//   }
+// };
 
 export namespace l3::vm {
 
@@ -28,8 +27,8 @@ class RefValue;
 
 class Scope {
 public:
-  using VariableMap = std::unordered_map<Identifier, Variable>;
-  using BuiltinsMap = std::unordered_map<Identifier, GCValue>;
+  using VariableMap = std::vector<std::pair<Identifier, Variable>>;
+  using BuiltinsMap = std::vector<std::pair<Identifier, GCValue>>;
 
 private:
   static BuiltinsMap builtins;

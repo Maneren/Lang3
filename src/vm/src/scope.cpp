@@ -15,29 +15,30 @@ import :formatting;
 namespace l3::vm {
 
 utils::optional_cref<Variable> Scope::get_variable(const Identifier &id) const {
-  auto present = variables.find(id);
-  if (present == variables.end()) {
-    return std::nullopt;
+  for (const auto &[name, var] : variables) {
+    if (name == id) {
+      return std::cref(var);
+    }
   }
-  return std::optional{std::cref(present->second)};
+  return std::nullopt;
 }
 utils::optional_ref<Variable> Scope::get_variable_mut(const Identifier &id) {
-  auto present = variables.find(id);
-  if (present == variables.end()) {
-    return std::nullopt;
+  for (auto &[name, var] : variables) {
+    if (name == id) {
+      return std::ref(var);
+    }
   }
-  return std::optional{std::ref(present->second)};
+  return std::nullopt;
 }
 
 Variable &Scope::declare_variable(
     const Identifier &id, RefValue ref_value, Mutability mutability
 ) {
-  const auto present = variables.find(id);
-  if (present != variables.end()) {
+  if (get_variable(id)) {
     throw NameError("variable '{}' already declared", id.get_name());
   }
   auto &[_, value] =
-      *variables.emplace_hint(present, id, Variable{ref_value, mutability});
+      variables.emplace_back(id, Variable{ref_value, mutability});
   return value;
 }
 
@@ -55,7 +56,7 @@ Scope::BuiltinsMap create_builtins() {
   Scope::BuiltinsMap builtins;
 
   for (const auto &[name, value] : builtins::BUILTINS) {
-    builtins.emplace(wrap_native_function(name, value));
+    builtins.emplace_back(wrap_native_function(name, value));
   }
 
   return builtins;
@@ -66,23 +67,24 @@ Scope::BuiltinsMap create_builtins() {
 Scope::BuiltinsMap Scope::builtins = create_builtins();
 
 std::optional<RefValue> Scope::get_builtin(const Identifier &id) {
-  auto present = builtins.find(id);
-  if (present == builtins.end()) {
-    return std::nullopt;
+  for (auto &[name, ref] : builtins) {
+    if (name == id) {
+      return RefValue{ref};
+    }
   }
-  return RefValue{present->second};
+  return std::nullopt;
 }
 
 Scope::Scope() = default;
 Scope::Scope(VariableMap &&variables) : variables{std::move(variables)} {};
 
 void Scope::mark_gc() {
-  for (auto &[_, it] : variables) {
-    it->get_gc_mut().mark();
+  for (auto &[_, var] : variables) {
+    var->get_gc_mut().mark();
   }
 }
 bool Scope::has_variable(const Identifier &id) const {
-  return variables.contains(id);
+  return get_variable(id).has_value();
 }
 
 size_t Scope::size() const { return variables.size(); }

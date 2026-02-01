@@ -344,7 +344,7 @@ RefValue VM::read_variable(const Identifier &id) {
                    .transform([this](const auto &variable) {
                      return store_value(variable->clone());
                    })
-                   .or_else([&id, this] { return Scope::get_builtin(id); });
+                   .or_else([&id] { return Scope::get_builtin(id); });
   if (value) {
     return *value;
   }

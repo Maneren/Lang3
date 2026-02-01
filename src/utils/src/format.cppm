@@ -96,6 +96,15 @@ export {
     }
   };
 
+  template <typename T, typename U>
+    requires(utils::formattable<T> && utils::formattable<U>)
+  struct std::formatter<std::pair<T, U>>
+      : utils::static_formatter<std::pair<T, U>> {
+    static auto format(auto &obj, std::format_context &ctx) {
+      return std::format_to(ctx.out(), "({}, {})", obj.first, obj.second);
+    }
+  };
+
   template <typename... Ts>
     requires(utils::formattable<Ts> && ...)
   struct std::formatter<std::tuple<Ts...>>

@@ -107,7 +107,7 @@ std::partial_ordering Value::compare(const Value &other) const {
       []<typename T>(const T &lhs, const T &rhs) -> std::partial_ordering
         requires requires(T lhs, T rhs) { lhs <=> rhs; }
       { return lhs <=> rhs; },
-      [](const auto &lhs, const auto &rhs) -> std::partial_ordering {
+      [](const auto &, const auto &) -> std::partial_ordering {
         return std::partial_ordering::unordered;
       }
       );
