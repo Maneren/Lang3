@@ -21,9 +21,7 @@
 
 %x STR
 
-DIGIT    [0-9]
-INTEGER  [+-]?{DIGIT}+
-FLOAT    [+-]?({DIGIT}+\.{DIGIT}*)
+NUMBER   [0-9]+
 
 %%
 
@@ -50,7 +48,8 @@ FLOAT    [+-]?({DIGIT}+\.{DIGIT}*)
 "^="                        { return Token::pow_equal; }
 "..="                       { return Token::dot_dot_equal; }
 ".."                        { return Token::dot_dot; }
-{INTEGER}                   { yylval->emplace<std::int64_t>(std::stoll(yytext)); return Token::num; }
+"."                         { return Token::dot; }
+{NUMBER}                    { yylval->emplace<std::int64_t>(std::stoll(yytext)); return Token::number; }
 "("                         { return Token::lparen; }
 ")"                         { return Token::rparen; }
 "["                         { return Token::lbracket; }

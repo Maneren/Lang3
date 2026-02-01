@@ -57,10 +57,10 @@
 %token _if _else _while _break _continue _return _for in _do _true _false then
        end nil function let equal _not lparen rparen lbrace rbrace lbracket
        rbracket comma semi plus_equal minus_equal mul_equal div_equal mod_equal
-       pow_equal elif mut step dot_dot dot_dot_equal
+       pow_equal elif mut step dot dot_dot dot_dot_equal
        <std::string> id
        <std::string> string
-       <std::int64_t> num
+       <std::int64_t> number
 
 %type
       <AnonymousFunction> ANONYMOUS_FUNCTION
@@ -111,12 +111,14 @@
 %%
 
 // Literals
-LITERAL: nil     { $$ = { Nil {} }; }
-       | _true   { $$ = { Boolean { true } }; }
-       | _false  { $$ = { Boolean { false } }; }
-       | num     { $$ = { Number { $1 } }; }
-       | string  { $$ = { String { $1 } }; }
-       | ARRAY   { $$ = { std::move($1) }; }
+LITERAL: nil               { $$ = { Nil {} }; }
+       | _true             { $$ = { Boolean { true } }; }
+       | _false            { $$ = { Boolean { false } }; }
+       | number            { $$ = { Number { $1 } }; }
+       | number dot        { $$ = { Float { $1 } }; }
+       | number dot number { $$ = { Float { $1, $3 } }; }
+       | string            { $$ = { String { $1 } }; }
+       | ARRAY             { $$ = { std::move($1) }; }
 
 ARRAY: lbracket EXPRESSION_LIST rbracket { $$ = { std::move($2) }; }
 
