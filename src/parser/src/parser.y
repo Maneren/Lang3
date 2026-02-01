@@ -61,7 +61,6 @@
        <std::string> id
        <std::string> string
        <std::int64_t> num
-       <double> fnum
 
 %type
       <AnonymousFunction> ANONYMOUS_FUNCTION
@@ -116,7 +115,6 @@ LITERAL: nil     { $$ = { Nil {} }; }
        | _true   { $$ = { Boolean { true } }; }
        | _false  { $$ = { Boolean { false } }; }
        | num     { $$ = { Number { $1 } }; }
-       | fnum    { $$ = { Float { $1 } }; }
        | string  { $$ = { String { $1 } }; }
        | ARRAY   { $$ = { std::move($1) }; }
 

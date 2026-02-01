@@ -23,7 +23,7 @@
 
 DIGIT    [0-9]
 INTEGER  [+-]?{DIGIT}+
-FLOAT    [+-]?({DIGIT}+\.{DIGIT}*|\.{DIGIT}+)
+FLOAT    [+-]?({DIGIT}+\.{DIGIT}*)
 
 %%
 
@@ -31,7 +31,6 @@ FLOAT    [+-]?({DIGIT}+\.{DIGIT}*|\.{DIGIT}+)
     using Token = parser::L3Parser::token;
 %}
 
-{FLOAT}                     { yylval->emplace<double>(std::stod(yytext)); return Token::fnum; }
 \"                          { BEGIN(STR); yylval->emplace<std::string>(); }
 <STR>\"                     { BEGIN(INITIAL); return Token::string; }
 <STR>\\[nt]                 { yylval->as<std::string>() += yytext; }
