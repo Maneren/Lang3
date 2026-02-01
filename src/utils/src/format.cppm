@@ -36,7 +36,7 @@ export {
     requires(utils::formattable<T>)
   struct std::formatter<std::vector<T, A>>
       : utils::static_formatter<std::vector<T, A>> {
-    static auto format(auto &obj, std::format_context &ctx) {
+    static auto format(const auto &obj, std::format_context &ctx) {
       std::format_to(ctx.out(), "[");
       for (const auto &item : obj) {
         if (&item != &obj.front()) {
@@ -52,7 +52,7 @@ export {
     requires(utils::formattable<T>)
   struct std::formatter<std::unordered_set<T, H, P, A>>
       : utils::static_formatter<std::unordered_set<T, H, P, A>> {
-    static auto format(auto &obj, std::format_context &ctx) {
+    static auto format(const auto &obj, std::format_context &ctx) {
       std::format_to(ctx.out(), "{{");
       bool first = true;
       for (const auto &item : obj) {
@@ -70,7 +70,7 @@ export {
     requires(utils::all_formattable<T, U>)
   struct std::formatter<std::unordered_map<T, U, H, P, A>>
       : utils::static_formatter<std::unordered_map<T, U, H, P, A>> {
-    static auto format(auto &obj, std::format_context &ctx) {
+    static auto format(const auto &obj, std::format_context &ctx) {
       std::format_to(ctx.out(), "{{");
       bool first = true;
       for (const auto &[key, value] : obj) {
@@ -88,7 +88,7 @@ export {
     requires(utils::formattable<T>)
   struct std::formatter<std::optional<T>>
       : utils::static_formatter<std::optional<T>> {
-    static auto format(auto &obj, std::format_context &ctx) {
+    static auto format(const auto &obj, std::format_context &ctx) {
       if (obj.has_value()) {
         return std::format_to(ctx.out(), "{}", obj.value());
       }
@@ -100,7 +100,7 @@ export {
     requires(utils::formattable<T> && utils::formattable<U>)
   struct std::formatter<std::pair<T, U>>
       : utils::static_formatter<std::pair<T, U>> {
-    static auto format(auto &obj, std::format_context &ctx) {
+    static auto format(const auto &obj, std::format_context &ctx) {
       return std::format_to(ctx.out(), "({}, {})", obj.first, obj.second);
     }
   };
@@ -109,7 +109,7 @@ export {
     requires(utils::formattable<Ts> && ...)
   struct std::formatter<std::tuple<Ts...>>
       : utils::static_formatter<std::tuple<Ts...>> {
-    static auto format(auto &obj, std::format_context &ctx) {
+    static auto format(const auto &obj, std::format_context &ctx) {
       auto out = std::format_to(ctx.out(), "(");
       std::apply(
           [&](const auto &...args) {
@@ -128,7 +128,7 @@ export {
     requires(utils::formattable<T>)
   struct std::formatter<std::unique_ptr<T>>
       : utils::static_formatter<std::optional<T>> {
-    static auto format(auto &obj, std::format_context &ctx) {
+    static auto format(const auto &obj, std::format_context &ctx) {
       return std::format_to(ctx.out(), "{}", *obj);
     }
   };
@@ -137,7 +137,7 @@ export {
     requires(utils::formattable<T>)
   struct std::formatter<std::shared_ptr<T>>
       : utils::static_formatter<std::optional<T>> {
-    static auto format(auto &obj, std::format_context &ctx) {
+    static auto format(const auto &obj, std::format_context &ctx) {
       return std::format_to(ctx.out(), "{}", *obj);
     }
   };
@@ -145,7 +145,7 @@ export {
   template <>
   struct std::formatter<std::source_location>
       : utils::static_formatter<std::source_location> {
-    static auto format(auto &obj, std::format_context &ctx) {
+    static auto format(const auto &obj, std::format_context &ctx) {
       return std::format_to(
           ctx.out(),
           "{}({},{}) `{}`",
@@ -161,7 +161,7 @@ export {
     requires(utils::formattable<T>)
   struct std::formatter<std::reference_wrapper<T>>
       : utils::static_formatter<std::reference_wrapper<T>> {
-    static auto format(auto &obj, std::format_context &ctx) {
+    static auto format(const auto &obj, std::format_context &ctx) {
       return std::format_to(ctx.out(), "{}", obj.get());
     }
   };
@@ -169,7 +169,7 @@ export {
   template <>
   struct std::formatter<std::strong_ordering>
       : utils::static_formatter<std::strong_ordering> {
-    static auto format(auto &obj, std::format_context &ctx) {
+    static auto format(const auto &obj, std::format_context &ctx) {
       switch (obj) {
       case std::strong_ordering::less:
         return std::format_to(ctx.out(), "less");
@@ -184,7 +184,7 @@ export {
   template <>
   struct std::formatter<std::weak_ordering>
       : utils::static_formatter<std::weak_ordering> {
-    static auto format(auto &obj, std::format_context &ctx) {
+    static auto format(const auto &obj, std::format_context &ctx) {
       switch (obj) {
       case std::weak_ordering::less:
         return std::format_to(ctx.out(), "less");
@@ -199,7 +199,7 @@ export {
   template <>
   struct std::formatter<std::partial_ordering>
       : utils::static_formatter<std::partial_ordering> {
-    static auto format(auto &obj, std::format_context &ctx) {
+    static auto format(const auto &obj, std::format_context &ctx) {
       if (obj == std::partial_ordering::equivalent) {
         return std::format_to(ctx.out(), "equivalent");
       } else if (obj == std::partial_ordering::greater) {
