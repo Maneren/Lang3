@@ -31,6 +31,7 @@ run config="Debug" +args="": (build config executable)
 test config="Debug": (build config "tests")
 
 clean:
+    cmake --build {{ builddir }} --target clean
     rm -rf {{ builddir }}
 
 lint:

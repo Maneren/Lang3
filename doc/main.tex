@@ -1,0 +1,79 @@
+% LTeX: language=en-US
+\documentclass[12pt,parskip=half-]{scrartcl}
+\usepackage[english]{babel}\selectlanguage{english}
+
+\usepackage[utf8x]{inputenc}
+\usepackage{lmodern}
+\usepackage{graphicx}
+% \usepackage{xevlna}
+% \usepackage{amssymb,amsmath,amsthm}
+% \usepackage{esvect}
+% \usepackage{tikz}
+% \usepackage{pgf-umlcd}
+\usepackage{underscore}
+\usepackage{framed}
+\usepackage{microtype}
+\usepackage[autostyle=true]{csquotes}
+% \usepackage{showframe}
+% \usepackage{minted}
+\usepackage{fnpct}
+\usepackage[onehalfspacing]{setspace}
+\usepackage{caption}
+\DeclareCaptionType{listing}[Listing][List of Code Listings]
+
+\PassOptionsToPackage{hyphens}{url}
+
+\usepackage[pdfborderstyle={/S/U/W 1},breaklinks]{hyperref}
+\usepackage{cleveref}
+\hypersetup{
+  colorlinks=true,
+  linkcolor=black,
+  filecolor=magenta,
+  urlcolor=blue,
+  pdftitle={Lang3 interpreter},
+  pdfauthor={Pavel Altmann}
+}
+\urlstyle{same}
+
+% make footnotes rules as wide as the text
+\renewcommand{\footnoterule}{%
+  \kern -4pt
+  \hrule width \textwidth height 0.4pt
+  \kern 3.6pt
+}
+
+% define helper command for typesetting code
+\newcommand{\code}[1]{\texttt{#1}}
+
+\setstretch{1.125}
+
+\begin{document}
+
+\begin{titlepage}
+  \begin{figure}[h]
+    \centering
+    \includegraphics[width=0.7\textwidth]{assets/logo_fakultat_im.png}
+  \end{figure}
+
+  \vspace{1cm}
+
+  \begin{center}
+    \LARGE{Lang3 interpreter}\\
+    \vspace{.5cm}
+    \large{Compiler Construction 2025/26}
+  \end{center}
+
+  \vfill
+
+  \noindent
+  OTH Regensburg \hfill Pavel Altmann --- Matnr. 3536630\\
+  Faculty of Computer Science and Mathematics \hfill \today
+\end{titlepage}
+
+\tableofcontents
+
+\addcontentsline{toc}{section}{Contents}
+
+\newpage
+
+\end{document}

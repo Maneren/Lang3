@@ -42,3 +42,7 @@ add_subdirectory(apps)
 
 enable_testing()
 add_subdirectory(test)
+if(IS_READABLE doc)
+    add_subdirectory(doc EXCLUDE_FROM_ALL)
+endif()
+

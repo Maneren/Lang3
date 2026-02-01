@@ -42,8 +42,7 @@
 
 include/divisible/*
 
-
-## Local 
+## Local
 
 .idea/*.xml
 
@@ -53,3 +52,4 @@ include/*
 lib/*
 bin/*
 test/test_runner
+**/*.pdf
