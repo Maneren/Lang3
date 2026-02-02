@@ -1,4 +1,4 @@
-#include "parser.tab.h"
+#include <parser.tab.hpp>
 
 namespace l3::parser {
 

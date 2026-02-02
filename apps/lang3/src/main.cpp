@@ -2,7 +2,7 @@
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
-#include <parser/lexer.hpp>
+#include <lexer/lexer.hpp>
 #include <print>
 
 import cli;

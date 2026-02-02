@@ -1,4 +1,4 @@
-#include <parser/lexer.hpp>
+#include <lexer/lexer.hpp>
 
 namespace l3::lexer {
 

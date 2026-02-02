@@ -40,7 +40,7 @@
 
 %code {
     #include <string>
-    #include <parser/lexer.hpp>
+    #include <lexer/lexer.hpp>
 
     #define yylex lexer.lex
 }

@@ -1,6 +1,6 @@
 %{
-    #include <parser/lexer.hpp>
-    #include <parser/parser.tab.h>
+    #include <lexer/lexer.hpp>
+    #include <parser.tab.hpp>
 
     using namespace l3;
 

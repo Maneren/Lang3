@@ -10,7 +10,7 @@ namespace l3::lexer {
 class L3Lexer;
 }
 
-#include <parser/parser.tab.h>
+#include <parser.tab.hpp>
 
 namespace l3::lexer {
 

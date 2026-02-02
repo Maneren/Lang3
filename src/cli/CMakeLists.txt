@@ -8,7 +8,7 @@ add_library(${LIB_NAME} STATIC
 )
 
 target_sources(${LIB_NAME} PUBLIC
-  FILE_SET cxx_modules TYPE CXX_MODULES
+  FILE_SET CXX_MODULES
   FILES ${MODULES}
 )
 
