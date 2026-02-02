@@ -102,7 +102,6 @@ fn main()
 
   while true do
     shuffle_deck(deck)
-    println(deck)
 
     # Deal initial cards
     let mut player_card1, player_card2, dealer_card1, dealer_card2
