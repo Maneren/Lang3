@@ -155,4 +155,10 @@ ScopeStack::read_variable_mut(const Identifier &id) {
   return std::nullopt;
 }
 
+void ScopeStack::mark_gc() {
+  for (auto &scope : scopes) {
+    scope->mark_gc();
+  }
+}
+
 } // namespace l3::vm

@@ -36,11 +36,13 @@ public:
       const Identifier &id, RefValue ref_value, Mutability mutability
   );
 
-  utils::optional_cref<Variable> get_variable(const Identifier &id) const;
-  utils::optional_ref<Variable> get_variable_mut(const Identifier &id);
+  [[nodiscard]] utils::optional_cref<Variable>
+  get_variable(const Identifier &id) const;
+  [[nodiscard]] utils::optional_ref<Variable>
+  get_variable_mut(const Identifier &id);
 
-  bool has_variable(const Identifier &id) const;
-  size_t size() const;
+  [[nodiscard]] bool has_variable(const Identifier &id) const;
+  [[nodiscard]] size_t size() const;
 
   DEFINE_ACCESSOR_X(variables);
 
@@ -68,6 +70,8 @@ public:
   void pop_back();
   void push_back(std::shared_ptr<Scope> &&scope);
   [[nodiscard]] size_t size() const;
+
+  void mark_gc();
 
   DEFINE_ACCESSOR_X(scopes);
 

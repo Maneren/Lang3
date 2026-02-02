@@ -15,13 +15,13 @@ module l3.vm;
 import utils;
 import l3.ast;
 import :error;
+import :gc_value;
 import :formatting;
 import :identifier;
 import :ref_value;
 import :scope;
 import :stack;
 import :storage;
-import :value;
 import :variable;
 
 template <>
@@ -336,7 +336,9 @@ void VM::execute(const ast::Program &program) {
     execute(static_cast<const ast::Block &>(program));
 
     if (flow_control != FlowControl::Normal) {
-      throw RuntimeError("Return from top-level code is not allowed");
+      throw RuntimeError(
+          "Return, break or continue from top-level code is not allowed"
+      );
     }
 
   } catch (const RuntimeError &error) {
@@ -498,15 +500,11 @@ size_t VM::run_gc() {
   }
 
   debug_print("[GC] Running");
-  for (const auto &scope : scopes->get_scopes()) {
-    scope->mark_gc();
-  }
-  for (auto &scope_stack : unused_scopes) {
-    for (const auto &scope : scope_stack->get_scopes()) {
-      scope->mark_gc();
-    }
-  }
+  scopes->mark_gc();
   stack.mark_gc();
+  if (return_value) {
+    return_value->get_gc_mut().mark();
+  }
   auto erased = gc_storage.sweep();
   if (debug) {
     debug_print(

@@ -29,7 +29,7 @@ void Stack::mark_gc() {
   }
 }
 
-Stack::FrameGuard::~FrameGuard() {
+Stack::FrameGuard::~FrameGuard() { // NOLINT(bugprone-exception-escape)
   stack.debug_print("Popping stack frame {}", frame_index);
   stack.frames.pop_back();
 }

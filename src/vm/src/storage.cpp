@@ -8,6 +8,7 @@ module l3.vm;
 import utils;
 import :gc_value;
 import :value;
+import :formatting;
 
 namespace l3::vm {
 
