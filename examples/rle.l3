@@ -30,12 +30,14 @@ end
 
 let load_brackets = load_brackets_inner(1, "")
 
+fn is_digit(x) return "0" <= x <= "9" end
+
 fn load_number(data)
   fn inner(acc, data)
     if not data then return [int(acc), data] end
 
     let x, xs = head(data)
-    if "0" <= x and x <= "9" then
+    if is_digit(x) then
       return inner(acc + x, xs)
     end
 
@@ -50,7 +52,7 @@ fn rle_decoder(data)
 
   let x, xs = head(data)
 
-  if "0" <= x and x <= "9" then
+  if is_digit(x) then
     let count, xs = load_number(data)
 
     if not xs then error("Number can't be followed by EOF") end
