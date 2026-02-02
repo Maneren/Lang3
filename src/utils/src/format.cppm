@@ -2,6 +2,8 @@ module;
 
 #include <compare>
 #include <concepts>
+#include <flat_map>
+#include <flat_set>
 #include <format>
 #include <memory>
 #include <optional>
@@ -70,6 +72,42 @@ export {
     requires(utils::all_formattable<T, U>)
   struct std::formatter<std::unordered_map<T, U, H, P, A>>
       : utils::static_formatter<std::unordered_map<T, U, H, P, A>> {
+    static auto format(const auto &obj, std::format_context &ctx) {
+      std::format_to(ctx.out(), "{{");
+      bool first = true;
+      for (const auto &[key, value] : obj) {
+        if (!first) {
+          std::format_to(ctx.out(), ", ");
+        }
+        std::format_to(ctx.out(), "{}: {}", key, value);
+        first = false;
+      }
+      return std::format_to(ctx.out(), "}}");
+    }
+  };
+
+  template <typename K, typename C, typename KC>
+    requires(utils::formattable<K>)
+  struct std::formatter<std::flat_set<K, C, KC>>
+      : utils::static_formatter<std::flat_set<K, C, KC>> {
+    static auto format(const auto &obj, std::format_context &ctx) {
+      std::format_to(ctx.out(), "{{");
+      bool first = true;
+      for (const auto &item : obj) {
+        if (!first) {
+          std::format_to(ctx.out(), ", ");
+        }
+        std::format_to(ctx.out(), "{}", item);
+        first = false;
+      }
+      return std::format_to(ctx.out(), "}}");
+    }
+  };
+
+  template <typename K, typename V, typename C, typename KC, typename VC>
+    requires(utils::all_formattable<K, V>)
+  struct std::formatter<std::flat_map<K, V, C, KC, VC>>
+      : utils::static_formatter<std::flat_map<K, V, C, KC, VC>> {
     static auto format(const auto &obj, std::format_context &ctx) {
       std::format_to(ctx.out(), "{{");
       bool first = true;
