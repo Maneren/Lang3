@@ -295,7 +295,8 @@ RefValue builtin_random(VM &vm, L3Args args) {
     throw RuntimeError("random() takes one or two arguments");
   }
 
-  std::optional<std::int64_t> min_opt, max_opt;
+  std::optional<std::int64_t> min_opt;
+  std::optional<std::int64_t> max_opt;
 
   if (args.size() == 2) {
     min_opt = args[0]->as_primitive().and_then(&Primitive::as_integer);

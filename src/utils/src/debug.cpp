@@ -15,9 +15,9 @@ ConstructorLogger::ConstructorLogger(const ConstructorLogger &other)
   std::println("Copy constructor <{}>", name);
 }
 ConstructorLogger::ConstructorLogger(ConstructorLogger &&other) noexcept
-    : name(other.name) { // NOLINT
+    : name(std::move(other.name)) {
   std::println("Move constructor <{}>", name);
-  other.name += " (moved)";
+  other.name = name + " (moved)";
 }
 ConstructorLogger &
 ConstructorLogger::operator=(const ConstructorLogger &other) {

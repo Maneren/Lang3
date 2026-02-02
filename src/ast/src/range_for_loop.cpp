@@ -18,7 +18,7 @@ RangeForLoop::RangeForLoop(
     Expression &&start,
     RangeOperator range_type,
     Expression &&end,
-    std::optional<Expression> &&step,
+    std::optional<Expression> &step,
     Block &&body
 )
     : variable(std::move(variable)),

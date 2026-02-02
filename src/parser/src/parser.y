@@ -253,7 +253,7 @@ RANGE_FOR: _for MUTABILITY IDENTIFIER in ATOMIC_EXPRESSION RANGE_OPERATOR ATOMIC
               std::move($5), // start
               $6,            // range operator
               std::move($7), // end
-              std::move($8), // step
+              $8,            // step
               std::move($10) // block
              }; }
 

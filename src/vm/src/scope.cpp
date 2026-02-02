@@ -119,7 +119,7 @@ ScopeStack::FrameGuard::FrameGuard(ScopeStack &scope_stack, Scope &&scope)
 ScopeStack::FrameGuard::~FrameGuard() { scope_stack.scopes.pop_back(); }
 void ScopeStack::pop_back() { scopes.pop_back(); }
 void ScopeStack::push_back(std::shared_ptr<Scope> &&scope) {
-  scopes.push_back(scope);
+  scopes.push_back(std::move(scope));
 }
 
 const Scope &ScopeStack::top() const { return *scopes.back(); }

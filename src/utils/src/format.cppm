@@ -202,11 +202,14 @@ export {
     static auto format(const auto &obj, std::format_context &ctx) {
       if (obj == std::partial_ordering::equivalent) {
         return std::format_to(ctx.out(), "equivalent");
-      } else if (obj == std::partial_ordering::greater) {
+      }
+      if (obj == std::partial_ordering::greater) {
         return std::format_to(ctx.out(), "greater");
-      } else if (obj == std::partial_ordering::less) {
+      }
+      if (obj == std::partial_ordering::less) {
         return std::format_to(ctx.out(), "less");
-      } else {
+      }
+      {
         return std::format_to(ctx.out(), "unordered");
       }
     }

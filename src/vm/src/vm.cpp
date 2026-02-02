@@ -351,8 +351,9 @@ void VM::execute(const ast::Block &block) {
   for (const auto &statement : block.get_statements()) {
     execute(statement);
 
-    if (flow_control != FlowControl::Normal)
+    if (flow_control != FlowControl::Normal) {
       return;
+    }
   }
 
   const auto &last_statement = block.get_last_statement();
@@ -428,11 +429,11 @@ RefValue VM::evaluate_function_body(
   execute(body.get_block());
 
   if (flow_control == FlowControl::Return) {
-    auto value = std::move(*return_value);
+    auto value = *return_value;
     return_value = std::nullopt;
     flow_control = FlowControl::Normal;
     debug_print("Returning from function: {}", value);
-    return stack.push_value(std::move(value));
+    return stack.push_value(value);
   }
 
   return nil();
@@ -647,7 +648,7 @@ RefValue VM::evaluate(const ast::IfExpression &if_expr) {
   execute(static_cast<const ast::IfElseBase &>(if_expr));
 
   if (flow_control == FlowControl::Return) {
-    auto value = std::move(*return_value);
+    auto value = *return_value;
     return_value = std::nullopt;
     flow_control = FlowControl::Normal;
     debug_print("Returning from if expression: {}", value);
@@ -657,7 +658,7 @@ RefValue VM::evaluate(const ast::IfExpression &if_expr) {
   execute(if_expr.get_else_block());
 
   if (flow_control == FlowControl::Return) {
-    auto value = std::move(*return_value);
+    auto value = *return_value;
     return_value = std::nullopt;
     flow_control = FlowControl::Normal;
     debug_print("Returning from if expression: {}", value);

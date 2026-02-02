@@ -331,16 +331,16 @@ Value Value::slice(Slice slice) const {
 
 Value Value::not_op() const {
   return visit(
-      [](const Primitive &primitive) -> Value { return Value{!primitive}; },
+      [](const Primitive &primitive) -> Value { return {!primitive}; },
       [this](const auto & /*value*/) -> Value {
-        return Value{Primitive{!is_truthy()}};
+        return {Primitive{!is_truthy()}};
       }
   );
 }
 
 Value Value::negative() const {
   return visit(
-      [](const Primitive &primitive) -> Value { return Value{-primitive}; },
+      [](const Primitive &primitive) -> Value { return {-primitive}; },
       [this](const auto & /*value*/) -> Value {
         throw UnsupportedOperation("cannot negate a {} value", type_name());
       }
