@@ -55,19 +55,19 @@ fn count_neighbors(board, row, col)
   return count
 end
 
-fn next_generation(board, new_board)
+fn next_generation(board)
+  let mut new_board = create_board()
+
   for_cell_in_board(board, fn(i, j)
       let neighbors = count_neighbors(board, i, j)
       # Game of Life rules:
       # 1. Any live cell with 2-3 neighbors survives
       # 2. Any dead cell with exactly 3 neighbors becomes alive
       # 3. All other cells die or stay dead
-      new_board[i][j] = (
-          (board[i][j] and neighbors == 2) or neighbors == 3
-      )
+      new_board[i][j] = (board[i][j] and neighbors == 2) or neighbors == 3
   end)
 
-  return [new_board, board]
+  return new_board
 end
 
 let HORIZONTAL_BORDER = "+" + 2 * WIDTH * "-" + "+"
@@ -93,21 +93,17 @@ fn display_board(board)
   println(HORIZONTAL_BORDER)
 end
 
-# Main simulation
 fn main()
   let mut board = create_board()
-  let mut second_board = create_board()
   randomize_board(board)
 
   for gen in 0..GENERATIONS do
+    println("[2J") # clear the screen
     println("Conway's Game of Life - Generation:", str(gen))
     println()
     display_board(board)
-    board, second_board = next_generation(board, second_board)
+    board = next_generation(board)
   end
-
-  println()
-  println("Simulation complete!")
 end
 
 main()
