@@ -12,11 +12,13 @@ import :scope;
 export namespace l3::vm {
 
 struct PrimitivePrettyPrinter {
-  const Primitive &primitive; // NOLINT
+  const Primitive
+      &primitive; // NOLINT(cppcoreguidelines-avoid-const-or-ref-data-members)
 };
 
 struct ValuePrettyPrinter {
-  const Value &value; // NOLINT
+  const Value
+      &value; // NOLINT(cppcoreguidelines-avoid-const-or-ref-data-members)
 };
 
 } // namespace l3::vm

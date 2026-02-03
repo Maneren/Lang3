@@ -1,5 +1,6 @@
 module;
 
+#include <cstddef>
 #include <format>
 #include <iterator>
 
@@ -254,7 +255,7 @@ public:
   }
 
   void visit(const LastStatement &node, OutputIterator &out) override {
-    node.visit([this, &out](const auto &inner) { visit(inner, out); });
+    node.visit([&](const auto &inner) { visit(inner, out); });
   }
 
   void visit(const Identifier &node, OutputIterator &out) override {
@@ -282,19 +283,19 @@ public:
   }
 
   void visit(const Literal &node, OutputIterator &out) override {
-    node.visit([this, &out](const auto &inner) { visit(inner, out); });
+    node.visit([&](const auto &inner) { visit(inner, out); });
   }
 
   void visit(const Variable &node, OutputIterator &out) override {
-    node.visit([this, &out](const auto &inner) { visit(inner, out); });
+    node.visit([&](const auto &inner) { visit(inner, out); });
   }
 
   void visit(const Expression &node, OutputIterator &out) override {
-    node.visit([this, &out](const auto &inner) { visit(inner, out); });
+    node.visit([&](const auto &inner) { visit(inner, out); });
   }
 
   void visit(const Statement &node, OutputIterator &out) override {
-    node.visit([this, &out](const auto &inner) { visit(inner, out); });
+    node.visit([&](const auto &inner) { visit(inner, out); });
   }
 
   void visit(const Block &node, OutputIterator &out) override {

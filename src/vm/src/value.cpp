@@ -93,6 +93,8 @@ Value Value::sub(const Value &other) const {
   );
 }
 
+namespace {
+
 void multiply_container_inplace(
     ValueContainer auto &container, const Primitive &primitive
 ) {
@@ -124,6 +126,8 @@ auto multiply_container(
   multiply_container_inplace(result, primitive);
   return result;
 }
+
+} // namespace
 
 Value Value::mul(const Value &other) const {
   return match::match(
@@ -356,10 +360,10 @@ Value slice_vector(const Value::vector_type &vector, Slice slice) {
     end += static_cast<std::int64_t>(size);
   }
 
-  if (static_cast<std::size_t>(end) > size) {
+  if (std::cmp_greater(end, size)) {
     throw ValueError("end index out of bounds");
   }
-  if (static_cast<std::size_t>(start) > size) {
+  if (std::cmp_greater(start, size)) {
     throw ValueError("start index out of bounds");
   }
   return {Value::vector_type(vector.begin() + start, vector.begin() + end)};

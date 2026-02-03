@@ -31,9 +31,9 @@ class Statement {
 public:
   Statement();
   Statement(const Statement &) = delete;
-  Statement(Statement &&);
+  Statement(Statement &&) noexcept;
   Statement &operator=(const Statement &) = delete;
-  Statement &operator=(Statement &&);
+  Statement &operator=(Statement &&) noexcept;
   ~Statement();
 
   Statement(Assignment &&assignment);

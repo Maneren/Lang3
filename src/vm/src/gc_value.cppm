@@ -9,8 +9,8 @@ import :value;
 export namespace l3::vm {
 
 class GCValue {
-  bool marked = false;
   Value value;
+  bool marked = false;
 
 public:
   GCValue(Value &&value);

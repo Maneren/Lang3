@@ -3,6 +3,7 @@ module;
 #include <memory>
 #include <optional>
 #include <ranges>
+#include <utility>
 
 module l3.vm;
 

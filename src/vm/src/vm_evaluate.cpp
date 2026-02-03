@@ -163,15 +163,12 @@ RefValue VM::evaluate(const ast::Literal &literal) {
   Value value = literal.visit(
       [](const ast::Nil & /*unused*/) -> Value { return {Nil{}}; },
       [this](const ast::Array &array) -> Value {
-        return {
-            std::views::transform(
-                array.get_elements(),
-                [this](const auto &element) -> RefValue {
-                  return evaluate(element);
-                }
-            ) |
-            std::ranges::to<std::vector>()
-        };
+        Value::vector_type values;
+        values.reserve(array.get_elements().size());
+        for (const auto &element : array.get_elements()) {
+          values.push_back(evaluate(element));
+        }
+        return {std::move(values)};
       },
       [](const ast::String &string) -> Value {
         return {std::string{string.get_value()}};

@@ -1,3 +1,7 @@
+module;
+
+#include <utility>
+
 module l3.ast;
 
 import :assignment;
@@ -5,8 +9,8 @@ import :assignment;
 namespace l3::ast {
 
 Statement::Statement() = default;
-Statement::Statement(Statement &&) = default;
-Statement &Statement::operator=(Statement &&) = default;
+Statement::Statement(Statement &&) noexcept = default;
+Statement &Statement::operator=(Statement &&) noexcept = default;
 Statement::~Statement() = default;
 
 Statement::Statement(Assignment &&assignment) {

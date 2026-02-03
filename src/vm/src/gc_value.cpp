@@ -10,7 +10,7 @@ namespace l3::vm {
 
 GCValue::GCValue(Value &&value) : value{std::move(value)} {}
 GCValue::GCValue(GCValue &&other) noexcept
-    : marked{other.marked}, value{std::move(other.value)} {
+    : value{std::move(other.value)}, marked{other.marked} {
   other.marked = false;
 }
 GCValue &GCValue::operator=(GCValue &&other) noexcept {

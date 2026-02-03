@@ -41,7 +41,7 @@ RefValue builtin_println(VM &vm, L3Args args) {
 }
 
 RefValue builtin_trigger_gc(VM &vm, L3Args args) {
-  if (args.size() > 0) {
+  if (!args.empty()) {
     throw RuntimeError("trigger_gc() takes no arguments");
   }
   vm.run_gc();
@@ -64,7 +64,7 @@ RefValue builtin_error(VM & /*vm*/, L3Args args) {
 }
 
 RefValue builtin_input(VM &vm, L3Args args) {
-  if (args.size() > 0) {
+  if (!args.empty()) {
     builtin_print(vm, args);
   }
   std::string input;

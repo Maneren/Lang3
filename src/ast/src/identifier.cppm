@@ -1,7 +1,9 @@
 module;
 
+#include <compare>
 #include <format>
 #include <string>
+#include <string_view>
 #include <utils/accessor.h>
 
 export module l3.ast:identifier;
@@ -20,8 +22,8 @@ public:
 
   DEFINE_ACCESSOR_X(name);
 
-  [[nodiscard]] constexpr std::compare_three_way
-  operator<=>(const Identifier &) const = default;
+  [[nodiscard]] constexpr auto
+  operator<=>(const Identifier &other) const = default;
 };
 
 } // namespace l3::ast

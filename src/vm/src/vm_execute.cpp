@@ -307,7 +307,7 @@ void VM::execute(const ast::ForLoop &for_loop) {
 
   if (const auto string_opt = collection_value->as_string()) {
     const auto &string = string_opt->get();
-    for (char c : string) {
+    for (const char c : string) {
       if (!loop_body(store_value(std::string{c}))) {
         return;
       }

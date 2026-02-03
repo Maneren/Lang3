@@ -111,7 +111,7 @@ private:
   }
 
   class ScopeStackOverlay {
-    VM &vm; // NOLINT
+    VM &vm; // NOLINT(cppcoreguidelines-avoid-const-or-ref-data-members)
 
   public:
     ScopeStackOverlay(const ScopeStackOverlay &) = delete;
