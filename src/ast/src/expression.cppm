@@ -30,18 +30,18 @@ class Expression {
       inner;
 
 public:
-  Expression() = default;
+  Expression();
 
-  Expression(AnonymousFunction &&function) : inner(std::move(function)) {}
-  Expression(BinaryExpression &&expression) : inner(std::move(expression)) {}
-  Expression(Comparison &&comparison) : inner(std::move(comparison)) {}
-  Expression(FunctionCall &&call) : inner(std::move(call)) {}
-  Expression(IfExpression &&clause) : inner(std::move(clause)) {}
-  Expression(IndexExpression &&index) : inner(std::move(index)) {}
-  Expression(Literal &&literal) : inner(std::move(literal)) {}
-  Expression(LogicalExpression &&expression) : inner(std::move(expression)) {}
-  Expression(UnaryExpression &&expression) : inner(std::move(expression)) {}
-  Expression(Variable &&variable) : inner(std::move(variable)) {}
+  Expression(AnonymousFunction &&function);
+  Expression(BinaryExpression &&expression);
+  Expression(Comparison &&comparison);
+  Expression(FunctionCall &&call);
+  Expression(IfExpression &&clause);
+  Expression(IndexExpression &&index);
+  Expression(Literal &&literal);
+  Expression(LogicalExpression &&expression);
+  Expression(UnaryExpression &&expression);
+  Expression(Variable &&variable);
 
   VISIT(inner)
 };

@@ -1,7 +1,6 @@
 module;
 
 #include <optional>
-#include <utility>
 #include <utils/accessor.h>
 
 export module l3.ast:declaration;
@@ -18,14 +17,12 @@ class Declaration {
   Mutability mutability = Mutability::Immutable;
 
 public:
-  Declaration() = default;
+  Declaration();
   Declaration(
       NameList &&names,
       std::optional<Expression> &&expression,
       Mutability mutability
-  )
-      : names(std::move(names)), expression(std::move(expression)),
-        mutability(mutability) {}
+  );
 
   DEFINE_ACCESSOR_X(names);
   DEFINE_ACCESSOR_X(expression);

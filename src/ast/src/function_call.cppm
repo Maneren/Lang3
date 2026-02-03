@@ -1,6 +1,5 @@
 module;
 
-#include <utility>
 #include <utils/accessor.h>
 
 export module l3.ast:function_call;
@@ -15,9 +14,8 @@ class FunctionCall {
   ExpressionList arguments;
 
 public:
-  FunctionCall() = default;
-  FunctionCall(Identifier &&name, ExpressionList &&args)
-      : name(std::move(name)), arguments(std::move(args)) {}
+  FunctionCall();
+  FunctionCall(Identifier &&name, ExpressionList &&args);
 
   DEFINE_ACCESSOR_X(name);
   DEFINE_ACCESSOR_X(arguments);

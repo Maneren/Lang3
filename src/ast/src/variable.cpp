@@ -17,4 +17,8 @@ IndexExpression &
 IndexExpression::operator=(IndexExpression &&) noexcept = default;
 IndexExpression::~IndexExpression() = default;
 
+Variable::Variable() = default;
+Variable::Variable(Identifier &&id) : inner(std::move(id)) {}
+Variable::Variable(IndexExpression &&ie) : inner(std::move(ie)) {}
+
 } // namespace l3::ast

@@ -36,9 +36,9 @@ class Variable {
   std::variant<Identifier, IndexExpression> inner;
 
 public:
-  Variable() = default;
-  Variable(Identifier &&id) : inner(std::move(id)) {}
-  Variable(IndexExpression &&ie) : inner(std::move(ie)) {}
+  Variable();
+  Variable(Identifier &&id);
+  Variable(IndexExpression &&ie);
 
   VISIT(inner);
 };

@@ -1,6 +1,5 @@
 module;
 
-#include <format>
 #include <memory>
 #include <optional>
 #include <utils/accessor.h>
@@ -9,13 +8,12 @@ export module l3.ast:range_for_loop;
 
 import :identifier;
 import :mutability;
+export import :range_operator;
 
 export namespace l3::ast {
 
 class Block;
 class Expression;
-
-enum class RangeOperator : std::uint8_t { Inclusive, Exclusive };
 
 class RangeForLoop {
   Identifier variable;
@@ -61,17 +59,3 @@ public:
 };
 
 } // namespace l3::ast
-
-template <>
-struct std::formatter<l3::ast::RangeOperator>
-    : utils::static_formatter<l3::ast::RangeOperator> {
-  static constexpr auto
-  format(l3::ast::RangeOperator range_type, std::format_context &ctx) {
-    switch (range_type) {
-    case l3::ast::RangeOperator::Inclusive:
-      return std::format_to(ctx.out(), "Inclusive");
-    case l3::ast::RangeOperator::Exclusive:
-      return std::format_to(ctx.out(), "Exclusive");
-    }
-  }
-};

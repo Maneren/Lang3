@@ -14,7 +14,7 @@ class Boolean {
   bool value;
 
 public:
-  Boolean(bool value) : value(value) {}
+  Boolean(bool value);
 
   DEFINE_ACCESSOR_X(value);
 };
@@ -23,7 +23,7 @@ class Number {
   std::int64_t value;
 
 public:
-  Number(std::int64_t value) : value(value) {}
+  Number(std::int64_t value);
 
   DEFINE_ACCESSOR_X(value);
 };
@@ -32,17 +32,8 @@ class Float {
   double value;
 
 public:
-  Float(std::int64_t integral) : value(static_cast<double>(integral)) {}
-  Float(std::int64_t integral, std::int64_t fractional) // NOLINT
-      : value(static_cast<double>(integral)) {
-
-    auto frac = static_cast<double>(fractional);
-
-    while (frac >= 1.0) {
-      frac /= 10.0; // NOLINT
-    }
-    value += frac;
-  }
+  Float(std::int64_t integral);
+  Float(std::int64_t integral, std::int64_t fractional); // NOLINT
 
   DEFINE_ACCESSOR_X(value);
 };

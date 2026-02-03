@@ -2,7 +2,6 @@ module;
 
 #include <deque>
 #include <optional>
-#include <utility>
 #include <utils/accessor.h>
 
 export module l3.ast:block;
@@ -17,17 +16,11 @@ class Block {
   std::optional<LastStatement> last_statement;
 
 public:
-  Block() = default;
-  Block(Statement &&statement) {
-    statements.emplace_front(std::move(statement));
-  }
-  Block(LastStatement &&lastStatement)
-      : last_statement(std::move(lastStatement)) {}
+  Block();
+  Block(Statement &&statement);
+  Block(LastStatement &&lastStatement);
 
-  Block &with_statement(Statement &&statement) {
-    statements.push_front(std::move(statement));
-    return *this;
-  }
+  Block &with_statement(Statement &&statement);
 
   DEFINE_ACCESSOR_X(statements)
   DEFINE_ACCESSOR_X(last_statement)
@@ -35,8 +28,8 @@ public:
 
 class Program : public Block {
 public:
-  Program() = default;
-  Program(Block &&block) : Block(std::move(block)) {}
+  Program();
+  Program(Block &&block);
 };
 
 } // namespace l3::ast

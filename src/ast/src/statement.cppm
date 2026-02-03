@@ -29,27 +29,23 @@ class Statement {
       inner;
 
 public:
-  Statement() = default;
+  Statement();
   Statement(const Statement &) = delete;
-  Statement(Statement &&) = default;
+  Statement(Statement &&);
   Statement &operator=(const Statement &) = delete;
-  Statement &operator=(Statement &&) = default;
-  ~Statement() = default;
+  Statement &operator=(Statement &&);
+  ~Statement();
 
-  Statement(Assignment &&assignment) {
-    match::match(std::move(assignment), [this](auto &&assignment) {
-      inner = std::forward<decltype(assignment)>(assignment);
-    });
-  }
-  Statement(Declaration &&declaration) : inner(std::move(declaration)) {}
-  Statement(ForLoop &&loop) : inner(std::move(loop)) {}
-  Statement(FunctionCall &&call) : inner(std::move(call)) {}
-  Statement(IfStatement &&clause) : inner(std::move(clause)) {}
-  Statement(NameAssignment &&assignment) : inner(std::move(assignment)) {}
-  Statement(NamedFunction &&function) : inner(std::move(function)) {}
-  Statement(OperatorAssignment &&assignment) : inner(std::move(assignment)) {}
-  Statement(RangeForLoop &&loop) : inner(std::move(loop)) {}
-  Statement(While &&loop) : inner(std::move(loop)) {}
+  Statement(Assignment &&assignment);
+  Statement(Declaration &&declaration);
+  Statement(ForLoop &&loop);
+  Statement(FunctionCall &&call);
+  Statement(IfStatement &&clause);
+  Statement(NameAssignment &&assignment);
+  Statement(NamedFunction &&function);
+  Statement(OperatorAssignment &&assignment);
+  Statement(RangeForLoop &&loop);
+  Statement(While &&loop);
 
   VISIT(inner)
 };

@@ -22,6 +22,22 @@ char decode_escape(char c) {
 
 namespace l3::ast {
 
+Boolean::Boolean(bool value) : value(value) {}
+
+Number::Number(std::int64_t value) : value(value) {}
+
+Float::Float(std::int64_t integral) : value(static_cast<double>(integral)) {}
+Float::Float(std::int64_t integral, std::int64_t fractional) // NOLINT
+    : value(static_cast<double>(integral)) {
+
+  auto frac = static_cast<double>(fractional);
+
+  while (frac >= 1.0) {
+    frac /= 10.0; // NOLINT
+  }
+  value += frac;
+}
+
 String::String(const std::string &literal) {
   using namespace std::ranges;
 
@@ -40,5 +56,13 @@ String::String(const std::string &literal) {
     }
   }
 }
+
+Literal::Literal() = default;
+Literal::Literal(Nil nil) : inner(nil) {}
+Literal::Literal(Boolean boolean) : inner(boolean) {}
+Literal::Literal(Number num) : inner(num) {}
+Literal::Literal(Float num) : inner(num) {}
+Literal::Literal(String &&string) : inner(std::move(string)) {}
+Literal::Literal(Array &&array) : inner(std::move(array)) {}
 
 } // namespace l3::ast

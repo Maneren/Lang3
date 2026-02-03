@@ -10,6 +10,7 @@ module;
 
 export module l3.vm;
 
+import utils;
 import :error;
 import :function;
 import :identifier;
@@ -133,3 +134,23 @@ private:
 };
 
 } // namespace l3::vm
+
+export {
+  template <>
+  struct std::formatter<l3::vm::VM::FlowControl>
+      : utils::static_formatter<l3::vm::VM::FlowControl> {
+    static auto format(auto obj, std::format_context &ctx) {
+      switch (obj) {
+        using namespace l3::vm;
+      case VM::FlowControl::Normal:
+        return std::format_to(ctx.out(), "normal");
+      case VM::FlowControl::Break:
+        return std::format_to(ctx.out(), "break");
+      case VM::FlowControl::Continue:
+        return std::format_to(ctx.out(), "continue");
+      case VM::FlowControl::Return:
+        return std::format_to(ctx.out(), "return");
+      }
+    }
+  };
+}

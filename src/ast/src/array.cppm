@@ -1,6 +1,5 @@
 module;
 
-#include <utility>
 #include <utils/accessor.h>
 
 export module l3.ast:array;
@@ -13,8 +12,8 @@ class Array {
   ExpressionList elements;
 
 public:
-  Array() = default;
-  Array(ExpressionList &&elements) : elements(std::move(elements)) {}
+  Array();
+  Array(ExpressionList &&elements);
 
   DEFINE_ACCESSOR_X(elements);
 };

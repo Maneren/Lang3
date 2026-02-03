@@ -1,0 +1,7 @@
+module;
+
+#include <utils/accessor.h>
+
+export module l3.ast:name_assignment;
+
+export namespace l3::ast {} // namespace l3::ast

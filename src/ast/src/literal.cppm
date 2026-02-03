@@ -17,13 +17,13 @@ class Literal {
   std::variant<Nil, Boolean, Number, Float, String, Array> inner;
 
 public:
-  Literal() = default;
-  Literal(Nil nil) : inner(nil) {}
-  Literal(Boolean boolean) : inner(boolean) {}
-  Literal(Number num) : inner(num) {}
-  Literal(Float num) : inner(num) {}
-  Literal(String &&string) : inner(std::move(string)) {}
-  Literal(Array &&array) : inner(std::move(array)) {}
+  Literal();
+  Literal(Nil nil);
+  Literal(Boolean boolean);
+  Literal(Number num);
+  Literal(Float num);
+  Literal(String &&string);
+  Literal(Array &&array);
 
   VISIT(inner)
 };

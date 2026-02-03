@@ -14,9 +14,9 @@ class Identifier {
   std::string name;
 
 public:
-  Identifier() = default;
-  Identifier(std::string &&name) : name(std::move(name)) {};
-  Identifier(std::string_view name) : name(name) {}
+  Identifier();
+  Identifier(std::string &&name);
+  Identifier(std::string_view name);
 
   DEFINE_ACCESSOR_X(name);
 

@@ -1,6 +1,5 @@
 module;
 
-#include <utility>
 #include <utils/accessor.h>
 
 export module l3.vm:gc_value;
@@ -14,19 +13,11 @@ class GCValue {
   Value value;
 
 public:
-  GCValue(Value &&value) : value{std::move(value)} {};
+  GCValue(Value &&value);
   GCValue(const GCValue &) = delete;
-  GCValue(GCValue &&other) noexcept
-      : marked{other.marked}, value{std::move(other.value)} {
-    other.marked = false;
-  }
+  GCValue(GCValue &&other) noexcept;
   GCValue &operator=(const GCValue &) = delete;
-  GCValue &operator=(GCValue &&other) noexcept {
-    marked = other.marked;
-    value = std::move(other.value);
-    other.marked = false;
-    return *this;
-  }
+  GCValue &operator=(GCValue &&other) noexcept;
   ~GCValue() = default;
 
   void mark();

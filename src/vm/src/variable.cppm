@@ -16,8 +16,7 @@ class Variable {
 
 public:
   Variable() = delete;
-  Variable(RefValue ref_value, Mutability mutability)
-      : ref_value(ref_value), mutability(mutability) {}
+  Variable(RefValue ref_value, Mutability mutability);
 
   [[nodiscard]] const RefValue &get() const { return ref_value; }
   [[nodiscard]] RefValue &get() { return ref_value; }
