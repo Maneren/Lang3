@@ -18,4 +18,7 @@ target_sources(${LIB_NAME} PUBLIC
   FILES ${MODULES}
 )
 
+target_precompile_headers(${LIB_NAME}
+  PUBLIC <string> <string_view> <tuple> <utility> <variant> <format> <print>
+)
 set_compiler_and_linker_flags(${LIB_NAME})
