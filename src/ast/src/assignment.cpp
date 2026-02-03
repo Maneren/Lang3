@@ -19,7 +19,7 @@ OperatorAssignment::OperatorAssignment(
 OperatorAssignment::OperatorAssignment(
     Variable &&variable, AssignmentOperator op, Expression &&expression
 )
-    : variable(std::move(variable)), op(op),
-      expression(std::move(expression)) {}
+    : variable(std::move(variable)), op(op), expression(std::move(expression)) {
+}
 
 } // namespace l3::ast
