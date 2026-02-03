@@ -59,8 +59,6 @@ public:
   Value(vector_ptr_type &&vector);
   Value(vector_type &&vector);
 
-  [[nodiscard]] Value clone() const;
-
   [[nodiscard]] Value add(const Value &other) const;
   [[nodiscard]] Value sub(const Value &other) const;
   [[nodiscard]] Value mul(const Value &other) const;

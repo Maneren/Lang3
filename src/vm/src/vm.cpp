@@ -235,7 +235,7 @@ void VM::execute(const ast::OperatorAssignment &assignment) {
 
   switch (assignment.get_operator()) {
   case ast::AssignmentOperator::Assign:
-    lhs = store_value(rhs->clone());
+    lhs = rhs;
     break;
   case ast::AssignmentOperator::Plus:
     lhs = store_value(lhs->add(*rhs));
@@ -367,12 +367,10 @@ void VM::execute(const ast::Block &block) {
 
 RefValue VM::read_variable(const Identifier &id) {
   debug_print("Reading variable {}", id.get_name());
-  auto value = scopes->read_variable(id)
-                   .transform([this](const auto &variable) {
-                     return store_value(variable->clone());
-                   })
-                   .or_else([&id] { return Scope::get_builtin(id); });
-  if (value) {
+  if (auto value = scopes->read_variable(id)) {
+    return *value;
+  }
+  if (auto value = Scope::get_builtin(id)) {
     return *value;
   }
   throw UndefinedVariableError(id);
@@ -525,6 +523,9 @@ size_t VM::run_gc() {
 Variable &VM::declare_variable(
     const Identifier &id, Mutability mutability, RefValue ref_value
 ) {
+  debug_print(
+      "Declaring {} variable {} = {}", mutability, id.get_name(), ref_value
+  );
   return scopes->top().declare_variable(id, ref_value, mutability);
 }
 
@@ -550,12 +551,8 @@ RefValue VM::store_new_value(NewValue &&value) {
 }
 
 void VM::execute(const ast::Declaration &declaration) {
+  debug_print("Executing declaration");
   const auto &names = declaration.get_names();
-  debug_print(
-      "Executing declaration of {}",
-      std::views::transform(names, &ast::Identifier::get_name) |
-          std::ranges::to<std::vector>()
-  );
 
   const auto mutability = declaration.get_mutability();
 
@@ -571,7 +568,8 @@ void VM::execute(const ast::Declaration &declaration) {
   auto value = evaluate(*expr_opt);
 
   if (names.size() == 1) {
-    declare_variable(names.front(), mutability, value);
+    const auto &name = names.front();
+    declare_variable(name, mutability, value);
     return;
   }
 

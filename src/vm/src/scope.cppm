@@ -60,7 +60,7 @@ public:
   [[nodiscard]] const Scope &top() const;
   [[nodiscard]] Scope &top();
 
-  [[nodiscard]] ScopeStack clone(VM &vm) const;
+  [[nodiscard]] ScopeStack clone() const;
 
   [[nodiscard]]
   std::optional<RefValue> read_variable(const Identifier &id) const;

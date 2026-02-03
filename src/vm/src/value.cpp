@@ -137,10 +137,6 @@ Value::Value(vector_type &&vector)
 Value::Value(Function &&function)
     : inner{std::make_shared<Function>(std::move(function))} {}
 
-Value Value::clone() const {
-  return visit([](auto inner) { return Value{std::move(inner)}; });
-}
-
 bool Value::is_nil() const { return std::holds_alternative<Nil>(inner); }
 bool Value::is_function() const {
   return std::holds_alternative<function_type>(inner);
