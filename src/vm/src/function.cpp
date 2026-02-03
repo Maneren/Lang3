@@ -14,32 +14,36 @@ namespace l3::vm {
 L3Function::L3Function(
     std::shared_ptr<ScopeStack> captures, const ast::AnonymousFunction &function
 )
-    : captures{std::move(captures)},
-      curried_arguments{std::make_shared<Scope>()},
-      body{std::make_shared<ast::FunctionBody>(function.get_body())} {}
+    : captures{std::move(captures)}, curried_arguments{nullptr},
+      body{function.get_body()} {}
 L3Function::L3Function(
     std::shared_ptr<ScopeStack> captures, const ast::NamedFunction &function
 )
-    : captures{std::move(captures)},
-      curried_arguments{std::make_shared<Scope>()},
-      body{std::make_shared<ast::FunctionBody>(function.get_body())},
-      name{function.get_name()} {}
+    : captures{std::move(captures)}, curried_arguments{nullptr},
+      body{function.get_body()}, name{function.get_name()} {}
 
 L3Function::L3Function(
     std::shared_ptr<ScopeStack> captures,
     Scope &&curried_arguments,
-    std::shared_ptr<ast::FunctionBody> body,
+    std::reference_wrapper<const ast::FunctionBody> body,
     std::optional<Identifier> name
 )
     : captures{std::move(captures)},
-      curried_arguments{std::make_shared<Scope>(std::move(curried_arguments))},
-      body{std::move(body)}, name{std::move(name)} {};
+      curried_arguments{std::make_unique<Scope>(std::move(curried_arguments))},
+      body{body}, name{std::move(name)} {};
 
 RefValue L3Function::operator()(VM &vm, L3Args args) {
-  const auto &parameters = body->get_parameters();
-  auto needed_arguments = parameters.size() - curried_arguments->size();
-  auto remaining_parameters =
-      parameters | std::views::drop(curried_arguments->size());
+  const auto &parameters = body.get().get_parameters();
+
+  Scope arguments;
+  if (curried_arguments) {
+    arguments = *curried_arguments;
+  } else {
+    arguments = Scope{};
+  }
+
+  auto needed_arguments = parameters.size() - arguments.size();
+  auto remaining_parameters = parameters | std::views::drop(arguments.size());
 
   if (args.size() > needed_arguments) {
     throw RuntimeError{
@@ -50,23 +54,17 @@ RefValue L3Function::operator()(VM &vm, L3Args args) {
     };
   }
 
-  if (args.size() < needed_arguments) {
-    auto new_curried = curried_arguments->clone(vm);
-    for (auto [parameter, arg] : std::views::zip(parameters, args)) {
-      new_curried.declare_variable(parameter, arg, Mutability::Mutable);
-    }
-    return vm.store_value(
-        {L3Function{captures, std::move(new_curried), body, name}}
-    );
-  }
-
-  auto arguments = curried_arguments->clone(vm);
-
   for (auto [parameter, arg] : std::views::zip(remaining_parameters, args)) {
     arguments.declare_variable(parameter, arg, Mutability::Mutable);
   }
 
-  return vm.evaluate_function_body(captures, std::move(arguments), *body);
+  if (args.size() < needed_arguments) {
+    return vm.store_value(
+        {L3Function{captures, std::move(arguments), body, name}}
+    );
+  }
+
+  return vm.evaluate_function_body(captures, std::move(arguments), body.get());
 }
 
 L3Function::~L3Function() = default;

@@ -13,20 +13,19 @@ import l3.ast;
 import utils;
 import :identifier;
 import :ref_value;
+import :scope;
 
 export namespace l3::vm {
 
 class VM;
 class Value;
-class Scope;
-class ScopeStack;
 
 using L3Args = std::span<const RefValue>;
 
 class L3Function {
   std::shared_ptr<ScopeStack> captures;
-  std::shared_ptr<Scope> curried_arguments;
-  std::shared_ptr<ast::FunctionBody> body;
+  std::unique_ptr<Scope> curried_arguments;
+  std::reference_wrapper<const ast::FunctionBody> body;
   std::optional<Identifier> name;
 
 public:
@@ -44,17 +43,19 @@ public:
   L3Function(
       std::shared_ptr<ScopeStack> captures,
       Scope &&curried_arguments,
-      std::shared_ptr<ast::FunctionBody> body,
+      std::reference_wrapper<const ast::FunctionBody> body,
       std::optional<Identifier> name
   );
   ~L3Function();
 
   RefValue operator()(VM &vm, L3Args args);
 
-  DEFINE_ACCESSOR_X(body);
+  DEFINE_VALUE_ACCESSOR_X(body);
   DEFINE_ACCESSOR_X(captures);
-  DEFINE_PTR_ACCESSOR_X(curried_arguments);
   [[nodiscard]] const Identifier &get_name() const;
+  [[nodiscard]] const std::unique_ptr<Scope> &get_curried_arguments() const {
+    return curried_arguments;
+  }
 
 private:
   static Identifier anonymous_function_name;

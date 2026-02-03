@@ -222,9 +222,9 @@ RefValue builtin_len(VM &vm, L3Args args) {
     throw RuntimeError("len() takes exactly one arguments");
   }
   return args[0]->visit(
-      [&vm](const Value::vector_ptr_type &vector) -> RefValue {
+      [&vm](const Value::vector_type &vector) -> RefValue {
         return vm.store_value(
-            {Primitive{static_cast<std::int64_t>(vector->size())}}
+            {Primitive{static_cast<std::int64_t>(vector.size())}}
         );
       },
       [&vm](const Primitive &primitive) -> RefValue {
@@ -254,7 +254,9 @@ RefValue builtin_drop(VM &vm, L3Args args) {
   }
   auto index = *index_opt;
 
-  return vm.store_value(args[0]->slice(Slice{index, std::nullopt}));
+  return vm.store_value(
+      args[0]->slice(Slice{.start = index, .end = std::nullopt})
+  );
 }
 
 RefValue builtin_take(VM &vm, L3Args args) {
@@ -268,7 +270,9 @@ RefValue builtin_take(VM &vm, L3Args args) {
   }
   auto index = *index_opt;
 
-  return vm.store_value(args[0]->slice(Slice{std::nullopt, index}));
+  return vm.store_value(
+      args[0]->slice(Slice{.start = std::nullopt, .end = index})
+  );
 }
 
 RefValue builtin_slice(VM &vm, L3Args args) {
@@ -284,7 +288,7 @@ RefValue builtin_slice(VM &vm, L3Args args) {
   auto start = *start_opt;
   auto end = *end_opt;
 
-  return vm.store_value(args[0]->slice(Slice{start, end}));
+  return vm.store_value(args[0]->slice(Slice{.start = start, .end = end}));
 }
 
 RefValue builtin_random(VM &vm, L3Args args) {

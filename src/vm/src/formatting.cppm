@@ -78,12 +78,15 @@ export {
   struct std::formatter<l3::vm::L3Function>
       : utils::static_formatter<l3::vm::L3Function> {
     static constexpr auto format(const auto &obj, std::format_context &ctx) {
-      return std::format_to(
-          ctx.out(),
-          "function <{}>{}",
-          obj.get_name(),
-          obj.get_curried_arguments()
-      );
+      if (obj.get_curried_arguments()) {
+        return std::format_to(
+            ctx.out(),
+            "function <{}>{}",
+            obj.get_name(),
+            *obj.get_curried_arguments()
+        );
+      }
+      return std::format_to(ctx.out(), "function <{}>", obj.get_name());
     }
   };
 
@@ -143,7 +146,7 @@ export {
           [&ctx](const l3::vm::Value::function_type &function) {
             return std::format_to(ctx.out(), "{}", *function);
           },
-          [&ctx](const l3::vm::Value::vector_ptr_type &vector) {
+          [&ctx](const l3::vm::Value::vector_type &vector) {
             return std::format_to(ctx.out(), "{}", vector);
           }
       );
@@ -167,8 +170,8 @@ export {
           [&ctx](const l3::vm::Value::function_type &function) {
             return std::format_to(ctx.out(), "{}", *function);
           },
-          [&ctx](const l3::vm::Value::vector_ptr_type &vector) {
-            return std::format_to(ctx.out(), "{}", *vector);
+          [&ctx](const l3::vm::Value::vector_type &vector) {
+            return std::format_to(ctx.out(), "{}", vector);
           }
       );
     }

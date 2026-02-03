@@ -38,10 +38,9 @@ class Value {
 public:
   using function_type = std::shared_ptr<Function>;
   using vector_type = std::vector<RefValue>;
-  using vector_ptr_type = std::shared_ptr<vector_type>;
 
 private:
-  std::variant<Nil, Primitive, function_type, vector_ptr_type> inner;
+  std::variant<Nil, Primitive, function_type, vector_type> inner;
 
 public:
   Value();
@@ -56,7 +55,6 @@ public:
   Value(Primitive &&primitive);
   Value(Function &&function);
   Value(function_type &&function);
-  Value(vector_ptr_type &&vector);
   Value(vector_type &&vector);
 
   [[nodiscard]] Value add(const Value &other) const;

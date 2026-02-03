@@ -12,6 +12,7 @@ import utils;
 import :error;
 import :primitive;
 import :ref_value;
+import :variable;
 
 namespace l3::vm {
 
@@ -52,9 +53,9 @@ Value Value::add(const Value &other) const {
       [](const Primitive &lhs, const Primitive &rhs) -> Value {
         return {lhs + rhs};
       },
-      [](const vector_ptr_type &lhs, const vector_ptr_type &rhs) -> Value {
-        auto result = *lhs;
-        result.insert(result.end(), rhs->begin(), rhs->end());
+      [](const vector_type &lhs, const vector_type &rhs) -> Value {
+        auto result = lhs;
+        result.insert(result.end(), rhs.begin(), rhs.end());
         return {std::move(result)};
       },
       [&other, this](const auto &, const auto &) -> Value {
@@ -123,7 +124,7 @@ bool Value::is_truthy() const {
             "function?"
         );
       },
-      [](const Value::vector_ptr_type &value) { return !value->empty(); }
+      [](const Value::vector_type &value) { return !value.empty(); }
   );
 }
 
@@ -131,9 +132,7 @@ Value::Value() : inner{Nil{}} {}
 Value::Value(Nil /*unused*/) : inner{Nil{}} {}
 Value::Value(Primitive &&primitive) : inner{std::move(primitive)} {}
 Value::Value(function_type &&function) : inner{std::move(function)} {}
-Value::Value(vector_ptr_type &&vector) : inner{std::move(vector)} {}
-Value::Value(vector_type &&vector)
-    : inner{std::make_shared<vector_type>(std::move(vector))} {}
+Value::Value(vector_type &&vector) : inner{std::move(vector)} {}
 Value::Value(Function &&function)
     : inner{std::make_shared<Function>(std::move(function))} {}
 
@@ -170,11 +169,11 @@ NewValue Value::index(const Value &index_value) const {
 }
 NewValue Value::index(size_t index) const {
   return visit(
-      [&index](const vector_ptr_type &values) -> NewValue {
-        if (index >= values->size()) {
+      [&index](const vector_type &values) -> NewValue {
+        if (index >= values.size()) {
           throw ValueError("index out of bounds");
         }
-        return (*values)[index];
+        return values[index];
       },
       [&index](const Primitive &primitive) -> NewValue {
         const auto string_opt = primitive.as_string();
@@ -202,11 +201,11 @@ RefValue &Value::index_mut(const Value &index) {
 }
 RefValue &Value::index_mut(size_t index) {
   return visit(
-      [&index](const vector_ptr_type &values) -> RefValue & {
-        if (index >= values->size()) {
+      [&index](vector_type &values) -> RefValue & {
+        if (index >= values.size()) {
           throw ValueError("index out of bounds");
         }
-        return (*values)[index];
+        return values[index];
       },
       [this](const auto & /*value*/) -> RefValue & {
         throw TypeError("cannot mutaly index a {} value", type_name());
@@ -238,8 +237,8 @@ copt_function_type Value::as_function() const {
 using copt_vector_type = utils::optional_cref<Value::vector_type>;
 copt_vector_type Value::as_vector() const {
   return visit(
-      [](const Value::vector_ptr_type &vector) -> copt_vector_type {
-        return *vector;
+      [](const Value::vector_type &vector) -> copt_vector_type {
+        return vector;
       },
       [](const auto &) -> copt_vector_type { return std::nullopt; }
   );
@@ -247,36 +246,37 @@ copt_vector_type Value::as_vector() const {
 using opt_vector_type = utils::optional_ref<Value::vector_type>;
 opt_vector_type Value::as_mut_vector() {
   return visit(
-      [](Value::vector_ptr_type &vector) -> opt_vector_type { return *vector; },
+      [](Value::vector_type &vector) -> opt_vector_type { return vector; },
       [](auto &) -> opt_vector_type { return std::nullopt; }
   );
 }
 
 namespace {
 
-Value slice_vector(const Value::vector_ptr_type &vector, Slice slice) {
+Value slice_vector(const Value::vector_type &vector, Slice slice) {
   const auto [start_opt, end_opt] = slice;
   auto start = start_opt.value_or(0);
-  auto end = end_opt.value_or(vector->size());
+  auto size = vector.size();
+  auto end = end_opt.value_or(size);
 
   if (start > end) {
     throw ValueError("start index must be less than end index");
   }
 
   if (start < 0) {
-    start += static_cast<std::int64_t>(vector->size());
+    start += static_cast<std::int64_t>(size);
   }
   if (end < 0) {
-    end += static_cast<std::int64_t>(vector->size());
+    end += static_cast<std::int64_t>(size);
   }
 
-  if (static_cast<std::size_t>(end) > vector->size()) {
+  if (static_cast<std::size_t>(end) > size) {
     throw ValueError("end index out of bounds");
   }
-  if (static_cast<std::size_t>(start) > vector->size()) {
+  if (static_cast<std::size_t>(start) > size) {
     throw ValueError("start index out of bounds");
   }
-  return {Value::vector_type(vector->begin() + start, vector->begin() + end)};
+  return {Value::vector_type(vector.begin() + start, vector.begin() + end)};
 }
 Value slice_string(Slice slice, const std::string &string) {
   const auto [start_opt, end_opt] = slice;
@@ -309,7 +309,7 @@ Value slice_string(Slice slice, const std::string &string) {
 
 Value Value::slice(Slice slice) const {
   return visit(
-      [slice](const vector_ptr_type &vector) -> Value {
+      [slice](const vector_type &vector) -> Value {
         return slice_vector(vector, slice);
       },
       [this, slice](const Primitive &primitive) -> Value {
@@ -349,7 +349,7 @@ std::string_view Value::type_name() const {
       [](const Primitive &primitive) { return primitive.type_name(); },
       [](const Nil & /*value*/) { return "nil"sv; },
       [](const function_type & /*value*/) { return "function"sv; },
-      [](const Value::vector_ptr_type & /*value*/) { return "vector"sv; }
+      [](const Value::vector_type & /*value*/) { return "vector"sv; }
   );
 }
 

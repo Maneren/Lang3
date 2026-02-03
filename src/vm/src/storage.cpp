@@ -67,8 +67,8 @@ void GCValue::mark() {
   marked = true;
 
   get_value_mut().visit(
-      [](Value::vector_ptr_type &vector) {
-        for (auto &item : *vector) {
+      [](Value::vector_type &vector) {
+        for (auto &item : vector) {
           item.get_gc_mut().mark();
         }
       },
