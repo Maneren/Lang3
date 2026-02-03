@@ -1,7 +1,6 @@
 module;
 
 #include <memory>
-#include <vector>
 
 module l3.ast;
 

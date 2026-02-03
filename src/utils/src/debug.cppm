@@ -2,7 +2,6 @@ module;
 
 #include <string>
 #include <string_view>
-#include <type_traits>
 
 export module utils:debug;
 
