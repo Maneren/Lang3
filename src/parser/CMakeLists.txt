@@ -61,6 +61,7 @@ target_sources(${LIB_NAME} PUBLIC
     FILES ${PARSER_HEADER}
 )
 
-target_link_libraries(${LIB_NAME} PUBLIC ast)
+target_link_libraries(${LIB_NAME} PRIVATE ast)
+target_precompile_headers(${LIB_NAME} REUSE_FROM ast)
 
 set_compiler_and_linker_flags(${LIB_NAME})
