@@ -5,6 +5,7 @@ module;
 #include <flat_map>
 #include <flat_set>
 #include <format>
+#include <functional>
 #include <memory>
 #include <optional>
 #include <source_location>
@@ -199,6 +200,15 @@ export {
     requires(utils::formattable<T>)
   struct std::formatter<std::reference_wrapper<T>>
       : utils::static_formatter<std::reference_wrapper<T>> {
+    static auto format(const auto &obj, std::format_context &ctx) {
+      return std::format_to(ctx.out(), "{}", obj.get());
+    }
+  };
+
+  template <typename T>
+    requires(utils::formattable<T>)
+  struct std::formatter<std::reference_wrapper<const T>>
+      : utils::static_formatter<std::reference_wrapper<const T>> {
     static auto format(const auto &obj, std::format_context &ctx) {
       return std::format_to(ctx.out(), "{}", obj.get());
     }

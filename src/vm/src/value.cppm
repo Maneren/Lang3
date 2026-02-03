@@ -16,6 +16,14 @@ import :ref_value;
 
 export namespace l3::vm {
 
+// Abstraction over vector and string
+template <typename T>
+concept ValueContainer = requires(T &container) {
+  { container.size() } -> std::convertible_to<std::size_t>;
+  { container.empty() } -> std::convertible_to<bool>;
+  { container.reserve(std::size_t{}) } -> std::convertible_to<void>;
+};
+
 struct Nil {
   std::strong_ordering operator<=>(Nil /*unused*/) const {
     return std::strong_ordering::equal;
@@ -38,9 +46,10 @@ class Value {
 public:
   using function_type = std::shared_ptr<Function>;
   using vector_type = std::vector<RefValue>;
+  using string_type = std::string;
 
 private:
-  std::variant<Nil, Primitive, function_type, vector_type> inner;
+  std::variant<Nil, Primitive, function_type, vector_type, string_type> inner;
 
 public:
   Value();
@@ -56,10 +65,13 @@ public:
   Value(Function &&function);
   Value(function_type &&function);
   Value(vector_type &&vector);
+  Value(string_type &&string);
 
   [[nodiscard]] Value add(const Value &other) const;
+  void add_assign(const Value &other);
   [[nodiscard]] Value sub(const Value &other) const;
   [[nodiscard]] Value mul(const Value &other) const;
+  void mul_assign(const Value &other);
   [[nodiscard]] Value div(const Value &other) const;
   [[nodiscard]] Value mod(const Value &other) const;
   [[nodiscard]] std::partial_ordering compare(const Value &other) const;
@@ -73,11 +85,14 @@ public:
   [[nodiscard]] bool is_function() const;
   [[nodiscard]] bool is_primitive() const;
   [[nodiscard]] bool is_vector() const;
+  [[nodiscard]] bool is_string() const;
 
   [[nodiscard]] utils::optional_cref<Primitive> as_primitive() const;
   [[nodiscard]] utils::optional_cref<function_type> as_function() const;
   [[nodiscard]] utils::optional_cref<vector_type> as_vector() const;
   [[nodiscard]] utils::optional_ref<vector_type> as_mut_vector();
+  [[nodiscard]] utils::optional_cref<string_type> as_string() const;
+  [[nodiscard]] utils::optional_ref<string_type> as_mut_string();
 
   [[nodiscard]] bool is_truthy() const;
   [[nodiscard]] bool is_falsy() const { return !is_truthy(); }

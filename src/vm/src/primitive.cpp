@@ -78,21 +78,8 @@ Primitive operator*(const Primitive &lhs, const Primitive &rhs) {
       rhs,
       []<typename T>(const T &lhs, const T &rhs) -> Primitive
         requires requires(T lhs, T rhs) { lhs * rhs; } &&
-                     (!std::is_same_v<T, bool>)
-      { return Primitive{lhs * rhs}; },
-      [](const std::int64_t &lhs, const std::string &rhs) -> Primitive {
-        if (lhs < 0) {
-          throw UnsupportedOperation(
-              "negative string multiplication not supported"
-          );
-        }
-        std::string result;
-        result.reserve(static_cast<std::size_t>(lhs) * rhs.size());
-        for (std::size_t i = 0; i < static_cast<std::size_t>(lhs); ++i) {
-          result += rhs;
-        }
-        return Primitive{result};
-      }
+                 (!std::is_same_v<T, bool>)
+      { return Primitive{lhs * rhs}; }
       );
 }
 
@@ -167,24 +154,12 @@ bool Primitive::is_truthy() const {
   return visit(
       [](const bool &value) { return value; },
       [](const std::int64_t &value) { return value != 0; },
-      [](const string_type &value) { return !value.empty(); },
       [](const double & /*value*/) -> bool {
         throw RuntimeError("cannot convert a floating point number to bool");
       }
   );
 }
 
-std::optional<std::reference_wrapper<const Primitive::string_type>>
-Primitive::as_string() const {
-  return visit(
-      [](const string_type &value) -> utils::optional_cref<string_type> {
-        return std::cref(value);
-      },
-      [](const auto &) -> utils::optional_cref<string_type> {
-        return std::nullopt;
-      }
-  );
-}
 std::optional<double> Primitive::as_double() const {
   return visit(
       [](const double &value) -> std::optional<double> { return value; },
@@ -209,8 +184,6 @@ std::optional<bool> Primitive::as_bool() const {
 Primitive::Primitive(bool value) : inner{value} {}
 Primitive::Primitive(std::int64_t value) : inner{value} {}
 Primitive::Primitive(double value) : inner{value} {}
-Primitive::Primitive(const std::string &value) : inner{value} {}
-Primitive::Primitive(std::string &&value) : inner{std::move(value)} {}
 
 bool Primitive::is_bool() const { return std::holds_alternative<bool>(inner); }
 bool Primitive::is_integer() const {
@@ -218,9 +191,6 @@ bool Primitive::is_integer() const {
 }
 bool Primitive::is_double() const {
   return std::holds_alternative<double>(inner);
-}
-bool Primitive::is_string() const {
-  return std::holds_alternative<string_type>(inner);
 }
 
 std::string_view Primitive::type_name() const {

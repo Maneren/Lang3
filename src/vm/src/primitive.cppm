@@ -15,7 +15,7 @@ import utils;
 export namespace l3::vm {
 
 class Primitive {
-  std::variant<bool, std::int64_t, double, std::string> inner;
+  std::variant<bool, std::int64_t, double> inner;
 
 public:
   using string_type = std::string;
@@ -23,17 +23,14 @@ public:
   explicit Primitive(std::int64_t value);
   explicit Primitive(double value);
   explicit Primitive(const std::string &value);
-  explicit Primitive(std::string &&value);
 
   [[nodiscard]] bool is_bool() const;
   [[nodiscard]] bool is_integer() const;
   [[nodiscard]] bool is_double() const;
-  [[nodiscard]] bool is_string() const;
 
   [[nodiscard]] std::optional<bool> as_bool() const;
   [[nodiscard]] std::optional<std::int64_t> as_integer() const;
   [[nodiscard]] std::optional<double> as_double() const;
-  [[nodiscard]] utils::optional_cref<string_type> as_string() const;
 
   VISIT(inner);
 

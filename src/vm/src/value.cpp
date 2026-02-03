@@ -53,12 +53,29 @@ Value Value::add(const Value &other) const {
       [](const Primitive &lhs, const Primitive &rhs) -> Value {
         return {lhs + rhs};
       },
-      [](const vector_type &lhs, const vector_type &rhs) -> Value {
+      []<ValueContainer T>(const T &lhs, const T &rhs) -> Value {
         auto result = lhs;
         result.insert(result.end(), rhs.begin(), rhs.end());
         return {std::move(result)};
       },
       [&other, this](const auto &, const auto &) -> Value {
+        throw UnsupportedOperation(
+            "add between {} and {} not supported",
+            type_name(),
+            other.type_name()
+        );
+      }
+  );
+}
+
+void Value::add_assign(const Value &other) {
+  match::match(
+      std::forward_as_tuple(inner, other.inner),
+      [](Primitive &lhs, const Primitive &rhs) { lhs = lhs + rhs; },
+      []<ValueContainer T>(T &lhs, const T &rhs) {
+        lhs.insert(lhs.end(), rhs.begin(), rhs.end());
+      },
+      [&other, this](auto &, const auto &) {
         throw UnsupportedOperation(
             "add between {} and {} not supported",
             type_name(),
@@ -76,10 +93,73 @@ Value Value::sub(const Value &other) const {
   );
 }
 
+void multiply_container_inplace(
+    ValueContainer auto &container, const Primitive &primitive
+) {
+  const auto count_opt = primitive.as_integer();
+  if (!count_opt) {
+    throw UnsupportedOperation("container multiplication requires an integer");
+  }
+  if (*count_opt <= 0) {
+    throw UnsupportedOperation(
+        "container can be multiplied only by a positive integer"
+    );
+  }
+  const auto count = static_cast<std::size_t>(*count_opt);
+
+  container.reserve(count * container.size());
+
+  // Since we reserve the space, the container won't reallocate and as such
+  // iterators won't be invalidated
+  const auto span = std::span(container);
+  for (std::size_t i = 0; i < count - 1; ++i) {
+    container.insert(container.end(), span.begin(), span.end());
+  }
+};
+
+auto multiply_container(
+    const ValueContainer auto &container, const Primitive &primitive
+) {
+  auto result = container;
+  multiply_container_inplace(result, primitive);
+  return result;
+}
+
 Value Value::mul(const Value &other) const {
-  return binary_op(
-      "multiply", *this, other, [](const Primitive &lhs, const Primitive &rhs) {
-        return Value{lhs * rhs};
+  return match::match(
+      std::forward_as_tuple(inner, other.inner),
+      [](const Primitive &lhs, const Primitive &rhs) -> Value {
+        return {lhs * rhs};
+      },
+      [](const Primitive &count_prim, const ValueContainer auto &vec) -> Value {
+        return multiply_container(vec, count_prim);
+      },
+      [](const ValueContainer auto &vec, const Primitive &count_prim) -> Value {
+        return multiply_container(vec, count_prim);
+      },
+      [&other, this](const auto &, const auto &) -> Value {
+        throw UnsupportedOperation(
+            "multiply between {} and {} not supported",
+            type_name(),
+            other.type_name()
+        );
+      }
+  );
+}
+
+void Value::mul_assign(const Value &other) {
+  match::match(
+      std::forward_as_tuple(inner, other.inner),
+      [](Primitive &lhs, const Primitive &rhs) { lhs = lhs * rhs; },
+      [](ValueContainer auto &lhs, const Primitive &rhs) {
+        multiply_container_inplace(lhs, rhs);
+      },
+      [&other, this](auto &, const auto &) {
+        throw UnsupportedOperation(
+            "multiplication between {} and {} not supported",
+            type_name(),
+            other.type_name()
+        );
       }
   );
 }
@@ -124,7 +204,7 @@ bool Value::is_truthy() const {
             "function?"
         );
       },
-      [](const Value::vector_type &value) { return !value.empty(); }
+      [](const ValueContainer auto &value) { return !value.empty(); }
   );
 }
 
@@ -133,6 +213,7 @@ Value::Value(Nil /*unused*/) : inner{Nil{}} {}
 Value::Value(Primitive &&primitive) : inner{std::move(primitive)} {}
 Value::Value(function_type &&function) : inner{std::move(function)} {}
 Value::Value(vector_type &&vector) : inner{std::move(vector)} {}
+Value::Value(string_type &&string) : inner{std::move(string)} {}
 Value::Value(Function &&function)
     : inner{std::make_shared<Function>(std::move(function))} {}
 
@@ -143,6 +224,9 @@ bool Value::is_function() const {
 bool Value::is_primitive() const {
   return std::holds_alternative<Primitive>(inner);
 }
+bool Value::is_string() const {
+  return std::holds_alternative<string_type>(inner);
+}
 
 namespace {
 
@@ -150,7 +234,7 @@ size_t value_to_index(const Value &value) {
   const auto index_opt = value.as_primitive().and_then(&Primitive::as_integer);
 
   if (!index_opt) {
-    throw TypeError("index to a vector must be an integer");
+    throw TypeError("index to a container must be an integer");
   }
 
   const auto index = *index_opt;
@@ -175,20 +259,12 @@ NewValue Value::index(size_t index) const {
         }
         return values[index];
       },
-      [&index](const Primitive &primitive) -> NewValue {
-        const auto string_opt = primitive.as_string();
-
-        if (!string_opt) {
-          throw TypeError("cannot index a primitive non-string value");
-        }
-
-        const auto &string = string_opt->get();
-
+      [&index](const string_type &string) -> NewValue {
         if (index >= string.size()) {
           throw ValueError("index out of bounds");
         }
 
-        return Primitive{string.substr(index, 1)};
+        return {string.substr(index, 1)};
       },
       [this](const auto & /*value*/) -> NewValue {
         throw TypeError("cannot index a {} value", type_name());
@@ -251,6 +327,16 @@ opt_vector_type Value::as_mut_vector() {
   );
 }
 
+using copt_string_type = utils::optional_cref<Value::string_type>;
+copt_string_type Value::as_string() const {
+  return visit(
+      [](const string_type &value) -> copt_string_type {
+        return std::cref(value);
+      },
+      [](const auto &) -> copt_string_type { return std::nullopt; }
+  );
+}
+
 namespace {
 
 Value slice_vector(const Value::vector_type &vector, Slice slice) {
@@ -300,7 +386,7 @@ Value slice_string(Slice slice, const std::string &string) {
   if (static_cast<std::size_t>(start) > string.size()) {
     throw ValueError("start index out of bounds");
   }
-  return Primitive{string.substr(
+  return {string.substr(
       static_cast<std::size_t>(start), static_cast<std::size_t>(end - start)
   )};
 }
@@ -312,12 +398,8 @@ Value Value::slice(Slice slice) const {
       [slice](const vector_type &vector) -> Value {
         return slice_vector(vector, slice);
       },
-      [this, slice](const Primitive &primitive) -> Value {
-        if (const auto string_opt = primitive.as_string()) {
-          return slice_string(slice, *string_opt);
-        }
-
-        throw TypeError("cannot slice a {} value", type_name());
+      [slice](const string_type &string) -> Value {
+        return slice_string(slice, string);
       },
       [this](const auto & /*value*/) -> Value {
         throw TypeError("cannot slice a {} value", type_name());
@@ -349,7 +431,8 @@ std::string_view Value::type_name() const {
       [](const Primitive &primitive) { return primitive.type_name(); },
       [](const Nil & /*value*/) { return "nil"sv; },
       [](const function_type & /*value*/) { return "function"sv; },
-      [](const Value::vector_type & /*value*/) { return "vector"sv; }
+      [](const Value::vector_type & /*value*/) { return "vector"sv; },
+      [](const Value::string_type & /*value*/) { return "string"sv; }
   );
 }
 

@@ -29,13 +29,13 @@ void VM::execute(const ast::OperatorAssignment &assignment) {
     lhs = rhs;
     break;
   case ast::AssignmentOperator::Plus:
-    lhs = store_value(lhs->add(*rhs));
+    lhs->add_assign(*rhs);
     break;
   case ast::AssignmentOperator::Minus:
     lhs = store_value(lhs->sub(*rhs));
     break;
   case ast::AssignmentOperator::Multiply:
-    lhs = store_value(lhs->mul(*rhs));
+    lhs->mul_assign(*rhs);
     break;
   case ast::AssignmentOperator::Divide:
     lhs = store_value(lhs->div(*rhs));
@@ -305,16 +305,14 @@ void VM::execute(const ast::ForLoop &for_loop) {
     return;
   }
 
-  if (const auto primitive_opt = collection_value->as_primitive()) {
-    if (const auto string_opt = primitive_opt->get().as_string()) {
-      const auto &string = string_opt->get();
-      for (char c : string) {
-        if (!loop_body(store_value(Primitive{std::string{c}}))) {
-          return;
-        }
+  if (const auto string_opt = collection_value->as_string()) {
+    const auto &string = string_opt->get();
+    for (char c : string) {
+      if (!loop_body(store_value(std::string{c}))) {
+        return;
       }
-      return;
     }
+    return;
   }
 
   throw TypeError(

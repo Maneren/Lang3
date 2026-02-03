@@ -173,6 +173,9 @@ RefValue VM::evaluate(const ast::Literal &literal) {
             std::ranges::to<std::vector>()
         };
       },
+      [](const ast::String &string) -> Value {
+        return {std::string{string.get_value()}};
+      },
       [](const auto &literal_value) -> Value {
         return Primitive{literal_value.get_value()};
       }

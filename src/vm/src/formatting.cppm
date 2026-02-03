@@ -44,9 +44,6 @@ export {
           },
           [&ctx](const double &value) {
             return std::format_to(ctx.out(), "{}", value);
-          },
-          [&ctx](const l3::vm::Primitive::string_type &value) {
-            return std::format_to(ctx.out(), "\"{}\"", value);
           }
       );
     }
@@ -65,9 +62,6 @@ export {
             return std::format_to(ctx.out(), "{}", value);
           },
           [&ctx](const double &value) {
-            return std::format_to(ctx.out(), "{}", value);
-          },
-          [&ctx](const l3::vm::Primitive::string_type &value) {
             return std::format_to(ctx.out(), "{}", value);
           }
       );
@@ -137,17 +131,14 @@ export {
       : utils::static_formatter<l3::vm::Value> {
     static constexpr auto format(const auto &value, std::format_context &ctx) {
       return value.visit(
-          [&ctx](const l3::vm::Nil &value) {
-            return std::format_to(ctx.out(), "{}", value);
-          },
-          [&ctx](const l3::vm::Primitive &primitive) {
-            return std::format_to(ctx.out(), "{}", primitive);
-          },
           [&ctx](const l3::vm::Value::function_type &function) {
             return std::format_to(ctx.out(), "{}", *function);
           },
-          [&ctx](const l3::vm::Value::vector_type &vector) {
-            return std::format_to(ctx.out(), "{}", vector);
+          [&ctx](const l3::vm::Value::string_type &value) {
+            return std::format_to(ctx.out(), R"("{}")", value);
+          },
+          [&ctx](const auto &value) {
+            return std::format_to(ctx.out(), "{}", value);
           }
       );
     }
@@ -159,19 +150,16 @@ export {
     static constexpr auto
     format(const auto &value_pp, std::format_context &ctx) {
       return value_pp.value.visit(
-          [&ctx](const l3::vm::Nil &value) {
-            return std::format_to(ctx.out(), "{}", value);
-          },
           [&ctx](const l3::vm::Primitive &primitive) {
             return std::format_to(
                 ctx.out(), "{}", l3::vm::PrimitivePrettyPrinter{primitive}
             );
           },
-          [&ctx](const l3::vm::Value::function_type &function) {
-            return std::format_to(ctx.out(), "{}", *function);
+          [&ctx](const l3::vm::Value::string_type &value) {
+            return std::format_to(ctx.out(), "{}", value);
           },
-          [&ctx](const l3::vm::Value::vector_type &vector) {
-            return std::format_to(ctx.out(), "{}", vector);
+          [&ctx](const auto &value) {
+            return std::format_to(ctx.out(), "{}", value);
           }
       );
     }

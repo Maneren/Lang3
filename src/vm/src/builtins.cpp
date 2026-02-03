@@ -69,7 +69,7 @@ RefValue builtin_input(VM &vm, L3Args args) {
   }
   std::string input;
   std::getline(std::cin, input);
-  return vm.store_value({Primitive{std::move(input)}});
+  return vm.store_value({std::move(input)});
 }
 
 RefValue builtin_int(VM &vm, L3Args args) {
@@ -77,52 +77,44 @@ RefValue builtin_int(VM &vm, L3Args args) {
     throw RuntimeError("int() takes at least one arguments");
   }
 
-  auto primitive_opt = args[0]->as_primitive();
-  if (!primitive_opt) {
-    throw RuntimeError("int() takes only primitive values");
-  }
-  const auto &primitive = primitive_opt->get();
-
   if (args.size() > 2) {
     throw RuntimeError("int() takes at most two arguments");
   }
 
-  auto base_value =
-      args.size() == 2 ? std::make_optional(args[1]) : std::nullopt;
-
-  int base = 0;
-  if (!base_value) {
-    base = 10;
-  } else {
-    auto base_primitive =
-        base_value.value()->as_primitive().and_then(&Primitive::as_integer);
-
-    if (!base_primitive) {
+  int base = 10;
+  if (args.size() == 2) {
+    auto base_int = args[1]->as_primitive().and_then(&Primitive::as_integer);
+    if (!base_int) {
       throw RuntimeError("int() takes only an integer as a base argument");
     }
 
-    if (*base_primitive < 2 || *base_primitive > 36) {
+    if (*base_int < 2 || *base_int > 36) {
       throw RuntimeError("int() takes a base between 2 and 36");
     }
 
-    base = static_cast<int>(*base_primitive);
+    base = static_cast<int>(*base_int);
   }
 
-  auto value = primitive.visit(
-      [](const std::int64_t &integer) { return integer; },
-      [base](const std::string &string) {
-        std::int64_t value = 0;
+  std::int64_t value = 0;
 
-        if (std::from_chars(string.data(), &*string.end(), value, base)) {
-          return value;
-        }
-
-        throw RuntimeError(
-            "invalid integer literal '{}' in base {}", string, base
-        );
-      },
-      [](const auto &value) { return static_cast<std::int64_t>(value); }
-  );
+  const auto &arg = args[0];
+  if (auto primitive_opt = arg->as_primitive()) {
+    value = primitive_opt->get().visit([](const auto &value) {
+      return static_cast<std::int64_t>(value);
+    });
+  } else if (auto string_opt = arg->as_string()) {
+    const auto &string = string_opt->get();
+    auto result = std::from_chars(
+        string.data(), string.data() + string.size(), value, base
+    );
+    if (result.ec != std::errc{}) {
+      throw RuntimeError(
+          "invalid integer literal '{}' in base {}", string, base
+      );
+    }
+  } else {
+    throw RuntimeError("int() takes only primitive values or strings");
+  }
 
   return vm.store_value(Primitive{value});
 }
@@ -135,7 +127,7 @@ RefValue builtin_str(VM &vm, L3Args args) {
   std::string result;
   format_args(std::back_inserter(result), args);
 
-  return vm.store_value({Primitive{std::move(result)}});
+  return vm.store_value({std::move(result)});
 }
 
 RefValue builtin_head(VM &vm, L3Args args) {
@@ -159,17 +151,15 @@ RefValue builtin_head(VM &vm, L3Args args) {
     return vm.store_value({Value::vector_type{head, rest}});
   }
 
-  if (const auto &string_opt =
-          argument->as_primitive().and_then(&Primitive::as_string);
-      string_opt.has_value()) {
+  if (const auto &string_opt = argument->as_string()) {
     const auto &string = string_opt->get();
 
     if (string.empty()) {
       throw RuntimeError("head() takes a non-empty string");
     }
 
-    auto head = vm.store_new_value({Primitive{std::string{string.front()}}});
-    auto rest = vm.store_new_value({Primitive{string.substr(1)}});
+    auto head = vm.store_new_value({std::string{string.front()}});
+    auto rest = vm.store_new_value({string.substr(1)});
 
     return vm.store_new_value({Value::vector_type{head, rest}});
   }
@@ -198,18 +188,15 @@ RefValue builtin_tail(VM &vm, L3Args args) {
     return vm.store_value({Value::vector_type{rest, tail}});
   }
 
-  if (const auto &string_opt =
-          argument->as_primitive().and_then(&Primitive::as_string);
-      string_opt.has_value()) {
+  if (const auto &string_opt = argument->as_string()) {
     const auto &string = string_opt->get();
 
     if (string.empty()) {
       throw RuntimeError("tail() takes a non-empty string");
     }
 
-    auto tail = vm.store_value({Primitive{std::string{string.back()}}});
-    auto rest =
-        vm.store_value({Primitive{string.substr(0, string.size() - 1)}});
+    auto tail = vm.store_value({std::string{string.back()}});
+    auto rest = vm.store_value({string.substr(0, string.size() - 1)});
 
     return vm.store_value({Value::vector_type{rest, tail}});
   }
@@ -222,19 +209,9 @@ RefValue builtin_len(VM &vm, L3Args args) {
     throw RuntimeError("len() takes exactly one arguments");
   }
   return args[0]->visit(
-      [&vm](const Value::vector_type &vector) -> RefValue {
+      [&vm](const ValueContainer auto &container) -> RefValue {
         return vm.store_value(
-            {Primitive{static_cast<std::int64_t>(vector.size())}}
-        );
-      },
-      [&vm](const Primitive &primitive) -> RefValue {
-        if (const auto &string = primitive.as_string()) {
-          return vm.store_value(
-              {Primitive{static_cast<std::int64_t>(string->get().size())}}
-          );
-        }
-        throw TypeError(
-            "len() does not support {} values", primitive.type_name()
+            {Primitive{static_cast<std::int64_t>(container.size())}}
         );
       },
       [](const auto &) -> RefValue {
