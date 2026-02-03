@@ -37,7 +37,7 @@ RefValue L3Function::operator()(VM &vm, L3Args args) {
 
   Scope arguments;
   if (curried_arguments) {
-    arguments = *curried_arguments;
+    arguments = curried_arguments->clone(vm);
   } else {
     arguments = Scope{};
   }

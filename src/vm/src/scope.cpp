@@ -89,11 +89,30 @@ bool Scope::has_variable(const Identifier &id) const {
 
 size_t Scope::size() const { return variables.size(); }
 
-ScopeStack ScopeStack::clone() const {
+Scope Scope::clone(VM &vm) const {
+  Scope cloned;
+  cloned.variables.reserve(size());
+  for (const auto &[name, var] : variables) {
+    const auto value_ref = var.get();
+    const auto cloned_value =
+        value_ref->as_primitive()
+            .transform([&vm](Primitive primitive) -> RefValue {
+              return vm.store_value(std::move(primitive));
+            })
+            .value_or(value_ref);
+
+    cloned.variables.emplace_back(
+        name, Variable{cloned_value, var.get_mutability()}
+    );
+  }
+  return cloned;
+}
+
+ScopeStack ScopeStack::clone(VM &vm) const {
   ScopeStack cloned;
   cloned.scopes.reserve(size());
   for (const auto &scope : scopes) {
-    cloned.push_back(std::make_shared<Scope>(*scope));
+    cloned.push_back(std::make_shared<Scope>(scope->clone(vm)));
   }
   return cloned;
 }
