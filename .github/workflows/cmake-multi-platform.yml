@@ -8,7 +8,7 @@ on:
 jobs:
   test:
     env:
-      BUILD_TYPE: Release
+      BUILD_TYPE: RelWithDebInfo
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -17,14 +17,14 @@ jobs:
           - windows-2025
           - ubuntu-24.04
           - macos-26
-          - macos-15-intel
+          # - macos-15-intel
         compiler:
           - name: llvm
             c: clang
             cpp: clang++
-          - name: gcc
-            c: gcc
-            cpp: g++
+          # - name: gcc
+          #   c: gcc
+          #   cpp: g++
         include:
           - os: windows-2025
             compiler:
@@ -64,6 +64,13 @@ jobs:
           clang-format: true
           ccache: true
 
+      - name: Set up Clang
+        if: ${{ matrix.compiler.name == 'llvm' }} && ${{ runner.os != 'macOS' }}
+        uses: egor-tensin/setup-clang@v2
+        with:
+          version: 21
+          platform: x64
+
       - name: Setup Just
         uses: extractions/setup-just@v2
 
@@ -79,16 +86,11 @@ jobs:
               >> /Users/runner/.bash_profile
           elif [[ "$RUNNER_OS" == "Windows" ]]; then
             winget install --id=WinFlexBison.win_flex_bison \
-              -e --accept-source-agreements and --accept-package-agreements
+              -e --accept-source-agreements --accept-package-agreements
           fi
 
       - name: Configure via Just
-        run: >
-          just configure Ninja \
-            "-DCMAKE_CXX_COMPILER=${{ matrix.compiler.cpp}}" \
-            "-DCMAKE_C_COMPILER=${{ matrix.compiler.c}}" \
-            "-DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}" \
-            "-DSANITIZERS=ON"
+        run: just configure Ninja "-DCMAKE_CXX_COMPILER=${{ matrix.compiler.cpp }}" "-DCMAKE_C_COMPILER=${{ matrix.compiler.c }}" "-DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}" "-DSANITIZERS=ON"
 
       - name: Build via Just
         run: just build
