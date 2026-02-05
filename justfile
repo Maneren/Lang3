@@ -38,4 +38,4 @@ lint:
     clang-tidy -p {{ builddir }} --quiet $(find src test -type f -name "*.cpp" -or -name "*.h" -not -path "*/external/*")
 
 format:
-    clang-format -i $(find src test -type f -name "*.cpp" -or -name "*.h" -not -path "*/external/*")
+    clang-format -i $(find src test -type f -name "*.cppm" -or -name "*.cpp" -or -name "*.h" -and -path "*/utils/*" -and -not -path "*/external/*")
