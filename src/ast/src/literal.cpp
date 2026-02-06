@@ -1,9 +1,3 @@
-module;
-
-#include <ranges>
-#include <string>
-#include <utility>
-
 module l3.ast;
 
 import :expression;

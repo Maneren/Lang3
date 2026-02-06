@@ -1,8 +1,3 @@
-module;
-
-#include <optional>
-#include <utils/accessor.h>
-
 export module l3.ast:declaration;
 
 import :expression;

@@ -1,10 +1,3 @@
-module;
-
-#include <format>
-#include <iostream>
-#include <print>
-#include <utils/accessor.h>
-
 export module l3.vm:stack;
 
 import :ref_value;

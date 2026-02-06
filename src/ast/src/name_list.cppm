@@ -1,7 +1,3 @@
-module;
-
-#include <vector>
-
 export module l3.ast:name_list;
 
 export namespace l3::ast {

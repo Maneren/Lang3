@@ -1,7 +1,3 @@
-module;
-
-#include <utility>
-
 module l3.vm;
 
 import :gc_value;

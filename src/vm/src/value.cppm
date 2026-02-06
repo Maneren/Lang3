@@ -1,13 +1,3 @@
-module;
-
-#include <memory>
-#include <optional>
-#include <span>
-#include <utils/accessor.h>
-#include <utils/visit.h>
-#include <variant>
-#include <vector>
-
 export module l3.vm:value;
 
 import utils;

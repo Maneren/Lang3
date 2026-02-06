@@ -1,9 +1,6 @@
 #include <chrono>
-#include <cstdlib>
 #include <fstream>
-#include <iostream>
 #include <lexer/lexer.hpp>
-#include <print>
 #include <thread>
 
 import cli;

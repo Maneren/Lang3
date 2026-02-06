@@ -39,7 +39,6 @@
 };
 
 %code {
-    #include <string>
     #include <lexer/lexer.hpp>
 
     #define yylex lexer.lex

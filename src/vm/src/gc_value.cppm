@@ -1,7 +1,3 @@
-module;
-
-#include <utils/accessor.h>
-
 export module l3.vm:gc_value;
 
 import :value;

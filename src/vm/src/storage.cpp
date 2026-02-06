@@ -1,8 +1,3 @@
-module;
-
-#include <iterator>
-#include <utility>
-
 module l3.vm;
 
 import utils;

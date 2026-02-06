@@ -1,7 +1,3 @@
-module;
-
-#include <utils/accessor.h>
-
 export module l3.vm:variable;
 
 import l3.ast;

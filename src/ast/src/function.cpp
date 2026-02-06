@@ -1,7 +1,5 @@
 module;
 
-#include <memory>
-
 module l3.ast;
 
 namespace l3::ast {

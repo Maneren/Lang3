@@ -1,7 +1,3 @@
-module;
-
-#include <deque>
-
 export module l3.ast:expression_list;
 
 export namespace l3::ast {

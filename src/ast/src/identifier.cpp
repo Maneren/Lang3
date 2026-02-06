@@ -1,9 +1,3 @@
-module;
-
-#include <string>
-#include <string_view>
-#include <utility>
-
 module l3.ast;
 
 namespace l3::ast {

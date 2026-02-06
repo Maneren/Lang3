@@ -1,7 +1,3 @@
-module;
-
-#include <utils/accessor.h>
-
 export module l3.ast:array;
 
 import :expression_list;

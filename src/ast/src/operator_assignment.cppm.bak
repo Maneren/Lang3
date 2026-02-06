@@ -1,3 +1,0 @@
-module;
-
-export namespace l3::ast {} // namespace l3::ast

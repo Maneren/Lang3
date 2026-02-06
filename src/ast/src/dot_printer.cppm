@@ -1,9 +1,3 @@
-module;
-
-#include <cstddef>
-#include <format>
-#include <iterator>
-
 export module l3.ast.dot_printer;
 
 import l3.ast;

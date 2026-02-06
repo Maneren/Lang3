@@ -1,8 +1,3 @@
-module;
-
-#include <ranges>
-#include <vector>
-
 module l3.vm;
 
 import utils;
@@ -210,8 +205,8 @@ RefValue VM::evaluate(const L3Function &function, L3Args arguments) {
   const auto &curried = function.get_curried();
 
   Scope argument_scope;
-  if (curried.has_value()) {
-    argument_scope = curried->get().clone(*this);
+  if (curried.get() != nullptr) {
+    argument_scope = curried->clone(*this);
   } else {
     argument_scope = {};
   }

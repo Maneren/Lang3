@@ -1,11 +1,3 @@
-module;
-
-#include <compare>
-#include <format>
-#include <string>
-#include <string_view>
-#include <utils/accessor.h>
-
 export module l3.ast:identifier;
 
 import utils;

@@ -1,13 +1,3 @@
-module;
-
-#include <cstdint>
-#include <functional>
-#include <optional>
-#include <string>
-#include <string_view>
-#include <tuple>
-#include <variant>
-
 module l3.vm;
 
 import utils;

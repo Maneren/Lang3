@@ -1,7 +1,3 @@
-module;
-
-#include <vector>
-
 module l3.vm;
 
 import :ref_value;

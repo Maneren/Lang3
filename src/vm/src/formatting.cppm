@@ -1,7 +1,3 @@
-module;
-
-#include <format>
-
 export module l3.vm:formatting;
 
 import utils;

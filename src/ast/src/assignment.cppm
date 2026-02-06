@@ -1,9 +1,3 @@
-module;
-
-#include <variant>
-
-#include <utils/accessor.h>
-
 export module l3.ast:assignment;
 
 import :expression;

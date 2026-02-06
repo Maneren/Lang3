@@ -1,9 +1,3 @@
-module;
-
-#include <cstdint>
-#include <string>
-#include <utils/accessor.h>
-
 export module l3.ast:literal_parts;
 
 export namespace l3::ast {

@@ -1,8 +1,3 @@
-module;
-
-#include <functional>
-#include <utils/accessor.h>
-
 export module l3.vm:ref_value;
 
 export namespace l3::vm {

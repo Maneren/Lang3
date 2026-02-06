@@ -1,11 +1,3 @@
-module;
-
-#include <cstdint>
-#include <memory>
-#include <utility>
-#include <utils/accessor.h>
-#include <vector>
-
 export module l3.ast:expression_parts;
 
 import :identifier;

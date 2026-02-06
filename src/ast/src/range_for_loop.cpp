@@ -1,9 +1,3 @@
-module;
-
-#include <memory>
-#include <optional>
-#include <utility>
-
 module l3.ast;
 
 import :block;

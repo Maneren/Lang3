@@ -1,5 +1,3 @@
-module;
-
 module l3.vm;
 
 import utils;

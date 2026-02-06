@@ -1,11 +1,3 @@
-module;
-
-#include <functional>
-#include <memory>
-#include <optional>
-#include <tuple>
-#include <variant>
-
 module l3.vm;
 
 import utils;

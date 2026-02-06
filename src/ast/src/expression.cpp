@@ -1,9 +1,3 @@
-module;
-
-#include <deque>
-#include <memory>
-#include <utility>
-
 module l3.ast;
 
 import :expression;

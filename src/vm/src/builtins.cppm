@@ -1,7 +1,6 @@
 module;
 
 #include <initializer_list>
-#include <string_view>
 
 export module l3.vm:builtins;
 

@@ -1,13 +1,3 @@
-module;
-
-#include <functional>
-#include <memory>
-#include <optional>
-#include <utility>
-#include <utils/accessor.h>
-#include <utils/visit.h>
-#include <variant>
-
 export module l3.ast:last_statement;
 
 import utils;

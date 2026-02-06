@@ -1,13 +1,3 @@
-module;
-
-#include <format>
-#include <iostream>
-#include <memory>
-#include <optional>
-#include <print>
-#include <utility>
-#include <vector>
-
 export module l3.vm;
 
 import utils;

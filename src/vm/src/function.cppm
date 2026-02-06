@@ -1,12 +1,3 @@
-module;
-
-#include <memory>
-#include <optional>
-#include <span>
-#include <utils/accessor.h>
-#include <utils/visit.h>
-#include <variant>
-
 export module l3.vm:function;
 
 import l3.ast;

@@ -1,8 +1,3 @@
-module;
-
-#include <memory>
-#include <utility>
-
 module l3.ast;
 
 import :expression;

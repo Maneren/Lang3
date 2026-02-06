@@ -18,10 +18,7 @@ target_sources(${LIB_NAME} PUBLIC
   FILES ${MODULES}
 )
 
-target_precompile_headers(${LIB_NAME}
-  PUBLIC <string> <variant> <optional> <iterator> <memory> <utility>
-         <deque> <vector> <format> <print> <iostream> <span> <string_view>
-)
+target_precompile_headers(${LIB_NAME} REUSE_FROM utils)
 
 target_link_libraries(${LIB_NAME} PRIVATE utils)
 

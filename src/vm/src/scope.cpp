@@ -1,9 +1,3 @@
-module;
-
-#include <memory>
-#include <ranges>
-#include <utility>
-
 module l3.vm;
 
 import utils;

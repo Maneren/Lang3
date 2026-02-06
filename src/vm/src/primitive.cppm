@@ -1,13 +1,3 @@
-module;
-
-#include <cstdint>
-#include <optional>
-#include <string>
-#include <string_view>
-#include <utils/accessor.h>
-#include <utils/visit.h>
-#include <variant>
-
 export module l3.vm:primitive;
 
 import utils;

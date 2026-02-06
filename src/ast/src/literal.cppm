@@ -1,8 +1,3 @@
-module;
-
-#include <utils/visit.h>
-#include <variant>
-
 export module l3.ast:literal;
 
 import utils;

@@ -1,8 +1,3 @@
-module;
-
-#include <cstdint>
-#include <format>
-
 export module l3.ast:mutability;
 
 import utils;

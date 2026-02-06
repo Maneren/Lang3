@@ -1,7 +1,3 @@
-module;
-
-#include <utils/accessor.h>
-
 export module l3.ast:function_call;
 
 import :identifier;

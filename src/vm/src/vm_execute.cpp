@@ -1,10 +1,3 @@
-module;
-
-#include <algorithm>
-#include <functional>
-#include <ranges>
-#include <vector>
-
 module l3.vm;
 
 import utils;

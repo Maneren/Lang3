@@ -1,10 +1,3 @@
-module;
-
-#include <memory>
-#include <optional>
-#include <utils/accessor.h>
-#include <vector>
-
 export module l3.vm:scope;
 
 import l3.ast;
