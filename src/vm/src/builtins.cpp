@@ -316,7 +316,7 @@ RefValue builtin_map(VM &vm, L3Args args) {
   if (!func_opt) {
     throw TypeError("map() first argument must be a function");
   }
-  const auto &func = func_opt->get();
+  const auto &func = *func_opt->get();
 
   const auto list_opt = args[1]->as_vector();
   if (!list_opt) {
@@ -342,7 +342,7 @@ RefValue builtin_filter(VM &vm, L3Args args) {
   if (!func_opt) {
     throw TypeError("filter() first argument must be a function");
   }
-  const auto &func = func_opt->get();
+  const auto &func = *func_opt->get();
 
   const auto list_opt = args[1]->as_vector();
   if (!list_opt) {
@@ -432,7 +432,7 @@ RefValue builtin_count(VM &vm, L3Args args) {
   if (!fn_opt) {
     throw TypeError("count() first argument must be a function");
   }
-  const auto &fn = fn_opt->get();
+  const auto &fn = *fn_opt->get();
 
   const auto list_opt = args[1]->as_vector();
   if (!list_opt) {

@@ -205,8 +205,8 @@ RefValue VM::evaluate(const L3Function &function, L3Args arguments) {
   const auto &curried = function.get_curried();
 
   Scope argument_scope;
-  if (curried.get() != nullptr) {
-    argument_scope = curried->clone(*this);
+  if (curried.has_value()) {
+    argument_scope = curried->get().clone(*this);
   } else {
     argument_scope = {};
   }
@@ -269,7 +269,9 @@ RefValue VM::evaluate(const ast::FunctionCall &function_call) {
   const auto evaluated_function = evaluate(function_name);
 
   const Function &function = evaluated_function->visit(
-      [](const Function &function) -> const Function & { return function; },
+      [](const Value::function_type &function) -> const Function & {
+        return *function;
+      },
       [](const auto &value) -> const Function & {
         throw std::runtime_error(std::format("{} is not a function", value));
       }

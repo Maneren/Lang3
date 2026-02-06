@@ -207,7 +207,8 @@ bool Value::is_truthy() const {
 Value::Value() : inner{Nil{}} {}
 Value::Value(Nil /*unused*/) : inner{Nil{}} {}
 Value::Value(Primitive &&primitive) : inner{std::move(primitive)} {}
-Value::Value(function_type &&function) : inner{std::move(function)} {}
+Value::Value(Function &&function)
+    : inner{std::make_unique<Function>(std::move(function))} {}
 Value::Value(vector_type &&vector) : inner{std::move(vector)} {}
 Value::Value(string_type &&string) : inner{std::move(string)} {}
 
@@ -284,7 +285,6 @@ RefValue &Value::index_mut(size_t index) {
 }
 
 using copt_primitive_type = utils::optional_cref<Primitive>;
-
 copt_primitive_type Value::as_primitive() const {
   return visit(
       [](const Primitive &primitive) -> copt_primitive_type {
@@ -294,8 +294,7 @@ copt_primitive_type Value::as_primitive() const {
   );
 }
 
-using copt_function_type = utils::optional_cref<Function>;
-
+using copt_function_type = utils::optional_cref<Value::function_type>;
 copt_function_type Value::as_function() const {
   return visit(
       [](const function_type &function) -> copt_function_type {
@@ -304,6 +303,7 @@ copt_function_type Value::as_function() const {
       [](const auto &) -> copt_function_type { return std::nullopt; }
   );
 }
+
 using copt_vector_type = utils::optional_cref<Value::vector_type>;
 copt_vector_type Value::as_vector() const {
   return visit(
@@ -313,6 +313,7 @@ copt_vector_type Value::as_vector() const {
       [](const auto &) -> copt_vector_type { return std::nullopt; }
   );
 }
+
 using opt_vector_type = utils::optional_ref<Value::vector_type>;
 opt_vector_type Value::as_mut_vector() {
   return visit(

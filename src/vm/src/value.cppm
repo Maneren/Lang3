@@ -31,7 +31,7 @@ struct Slice {
 
 class Value {
 public:
-  using function_type = Function;
+  using function_type = std::unique_ptr<Function>;
   using vector_type = std::vector<RefValue>;
   using string_type = std::string;
 
