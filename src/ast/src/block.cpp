@@ -10,8 +10,10 @@ Block::Block() = default;
 Block::Block(Statement &&statement) {
   statements.emplace_front(std::move(statement));
 }
-Block::Block(LastStatement &&lastStatement)
-    : last_statement(std::move(lastStatement)) {}
+Block::Block(LastStatement &&last_statement)
+    : last_statement(
+          std::make_unique<LastStatement>(std::move(last_statement))
+      ) {}
 
 Block &Block::with_statement(Statement &&statement) {
   statements.push_front(std::move(statement));

@@ -24,7 +24,7 @@ using L3Args = std::span<const RefValue>;
 
 class L3Function {
   std::shared_ptr<ScopeStack> captures;
-  std::unique_ptr<Scope> curried;
+  std::optional<Scope> curried;
   std::reference_wrapper<const ast::FunctionBody> body;
   std::optional<Identifier> name;
 
@@ -60,7 +60,7 @@ public:
     }
     return anonymous_function_name;
   }
-  [[nodiscard]] const std::unique_ptr<Scope> &get_curried() const {
+  [[nodiscard]] const utils::optional_cref<Scope> get_curried() const {
     return curried;
   }
 

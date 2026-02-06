@@ -29,13 +29,13 @@ Comparison::Comparison(
     Expression &&left, ComparisonOperator op, Expression &&right
 )
     : start(std::make_unique<Expression>(std::move(left))), type(get_type(op)) {
-  comparisons.emplace_back(op, std::make_unique<Expression>(std::move(right)));
+  comparisons.emplace_back(op, std::move(right));
 }
 bool Comparison::add_comparison(ComparisonOperator op, Expression &&right) {
   if (type != get_type(op)) {
     return false;
   }
-  comparisons.emplace_back(op, std::make_unique<Expression>(std::move(right)));
+  comparisons.emplace_back(op, std::move(right));
   return true;
 }
 

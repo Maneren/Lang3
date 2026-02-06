@@ -93,7 +93,7 @@ public:
     for (const auto &[op, rhs] : node.get_comparisons()) {
       format_indented_line(out, "{}", op);
       DepthGuard inner_guard(depth);
-      visit(*rhs, out);
+      visit(rhs, out);
     }
   }
 
@@ -228,7 +228,7 @@ public:
     if (const auto &step = node.get_step()) {
       format_indented_line(out, "Step");
       DepthGuard step_guard(depth);
-      visit(**step, out);
+      visit(*step, out);
     }
     format_indented_line(out, "Block");
     {

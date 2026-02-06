@@ -344,7 +344,7 @@ void VM::execute(const ast::RangeForLoop &range_for_loop) {
 
   if (step_expr) {
     const auto step_value =
-        evaluate(**step_expr)->as_primitive().and_then(&Primitive::as_integer);
+        evaluate(*step_expr)->as_primitive().and_then(&Primitive::as_integer);
 
     if (!step_value) {
       throw TypeError("range step must be an integer");

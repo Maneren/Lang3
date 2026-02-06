@@ -6,14 +6,16 @@ module;
 
 export module l3.ast:block;
 
-import :statement;
-import :last_statement;
+import utils;
 
 export namespace l3::ast {
 
+class Statement;
+class LastStatement;
+
 class Block {
   std::deque<Statement> statements;
-  std::optional<LastStatement> last_statement;
+  std::unique_ptr<LastStatement> last_statement;
 
 public:
   Block();
@@ -23,7 +25,13 @@ public:
   Block &with_statement(Statement &&statement);
 
   DEFINE_ACCESSOR_X(statements)
-  DEFINE_ACCESSOR_X(last_statement)
+  [[nodiscard]] utils::optional_cref<LastStatement> get_last_statement() const {
+    if (last_statement) {
+      return std::cref(*last_statement);
+    }
+
+    return std::nullopt;
+  }
 };
 
 class Program : public Block {

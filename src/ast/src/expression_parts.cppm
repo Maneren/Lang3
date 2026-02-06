@@ -69,8 +69,7 @@ class Comparison {
   }
 
   std::unique_ptr<Expression> start;
-  std::vector<std::pair<ComparisonOperator, std::unique_ptr<Expression>>>
-      comparisons;
+  std::vector<std::pair<ComparisonOperator, Expression>> comparisons;
   Type type = Type::Equality;
 
 public:

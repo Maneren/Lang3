@@ -17,9 +17,8 @@ ForLoop::ForLoop(
     Block &&body,
     Mutability mutability
 )
-    : variable(std::move(variable)),
-      collection(std::make_unique<Expression>(std::move(collection))),
-      body(std::make_unique<Block>(std::move(body))), mutability(mutability) {}
+    : variable(std::move(variable)), collection(std::move(collection)),
+      body(std::move(body)), mutability(mutability) {}
 
 ForLoop::ForLoop() = default;
 ForLoop::ForLoop(ForLoop &&) noexcept = default;

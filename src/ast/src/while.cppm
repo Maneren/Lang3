@@ -5,14 +5,14 @@ module;
 
 export module l3.ast:while_loop;
 
+import :block;
+import :expression;
+
 export namespace l3::ast {
 
-class Block;
-class Expression;
-
 class While {
-  std::unique_ptr<Expression> condition;
-  std::unique_ptr<Block> body;
+  Expression condition;
+  Block body;
 
 public:
   While();
@@ -24,8 +24,8 @@ public:
   While &operator=(While &&) noexcept;
   ~While();
 
-  DEFINE_PTR_ACCESSOR_X(condition);
-  DEFINE_PTR_ACCESSOR_X(body);
+  DEFINE_ACCESSOR_X(condition);
+  DEFINE_ACCESSOR_X(body);
 };
 
 } // namespace l3::ast

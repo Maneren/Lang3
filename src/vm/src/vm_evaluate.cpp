@@ -101,7 +101,7 @@ RefValue VM::evaluate(const ast::Comparison &chained) {
   debug_print("  Comparisons:");
 
   for (const auto &[op, right] : operands) {
-    const auto rhs = evaluate(*right);
+    const auto rhs = evaluate(right);
 
     const auto comparison = lhs->compare(*rhs);
     debug_print("  Comparing {} {} {}", *lhs, op, *rhs);
@@ -210,8 +210,8 @@ RefValue VM::evaluate(const L3Function &function, L3Args arguments) {
   const auto &curried = function.get_curried();
 
   Scope argument_scope;
-  if (curried.get() != nullptr) {
-    argument_scope = curried->clone(*this);
+  if (curried.has_value()) {
+    argument_scope = curried->get().clone(*this);
   } else {
     argument_scope = {};
   }

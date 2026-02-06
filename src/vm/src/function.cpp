@@ -15,13 +15,12 @@ namespace l3::vm {
 L3Function::L3Function(
     std::shared_ptr<ScopeStack> captures, const ast::AnonymousFunction &function
 )
-    : captures{std::move(captures)}, curried{nullptr},
-      body{function.get_body()} {}
+    : captures{std::move(captures)}, body{function.get_body()} {}
 L3Function::L3Function(
     std::shared_ptr<ScopeStack> captures, const ast::NamedFunction &function
 )
-    : captures{std::move(captures)}, curried{nullptr},
-      body{function.get_body()}, name{function.get_name()} {}
+    : captures{std::move(captures)}, body{function.get_body()},
+      name{function.get_name()} {}
 
 L3Function::L3Function(
     std::shared_ptr<ScopeStack> captures,
@@ -29,8 +28,7 @@ L3Function::L3Function(
     std::reference_wrapper<const ast::FunctionBody> body,
     std::optional<Identifier> name
 )
-    : captures{std::move(captures)},
-      curried{std::make_unique<Scope>(std::move(curried))}, body{body},
+    : captures{std::move(captures)}, curried{std::move(curried)}, body{body},
       name{std::move(name)} {};
 
 L3Function::~L3Function() = default;

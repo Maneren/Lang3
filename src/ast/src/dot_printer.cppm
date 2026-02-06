@@ -99,7 +99,7 @@ public:
       write_edge(out, id, op_id);
       write_node(out, op_id, "{}", op);
       write_edge(out, id, node_id);
-      visit(*rhs, out);
+      visit(rhs, out);
     }
   }
 
@@ -241,7 +241,7 @@ public:
 
     if (const auto &step = node.get_step()) {
       write_edge_labeled(out, id, node_id, "step");
-      visit(**step, out);
+      visit(*step, out);
     }
 
     write_edge_labeled(out, id, node_id, "body");

@@ -9,6 +9,8 @@ export module l3.ast:if_else;
 
 import utils;
 
+import :block;
+
 export namespace l3::ast {
 
 class Block;
@@ -16,14 +18,14 @@ class Expression;
 
 class IfBase {
   std::unique_ptr<Expression> condition;
-  std::unique_ptr<Block> block;
+  Block block;
 
 public:
   IfBase() = default;
   IfBase(Expression &&condition, Block &&block);
 
-  DEFINE_PTR_ACCESSOR(condition, Expression, condition)
-  DEFINE_PTR_ACCESSOR(block, Block, block)
+  DEFINE_PTR_ACCESSOR_X(condition)
+  DEFINE_ACCESSOR_X(block)
 };
 
 class ElseIfList {
@@ -62,7 +64,7 @@ public:
 };
 
 class IfExpression final : public IfElseBase {
-  std::unique_ptr<Block> else_block;
+  Block else_block;
 
 public:
   IfExpression() = default;
@@ -77,11 +79,11 @@ public:
 
   IfExpression &&with_elseif(IfBase &&elseif);
 
-  DEFINE_PTR_ACCESSOR(else_block, Block, else_block)
+  DEFINE_ACCESSOR_X(else_block);
 };
 
 class IfStatement final : public IfElseBase {
-  std::optional<std::unique_ptr<Block>> else_block;
+  std::optional<Block> else_block;
 
 public:
   IfStatement() = default;

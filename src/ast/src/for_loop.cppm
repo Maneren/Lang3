@@ -5,18 +5,17 @@ module;
 
 export module l3.ast:for_loop;
 
+import :block;
 import :identifier;
+import :expression;
 import :mutability;
 
 export namespace l3::ast {
 
-class Block;
-class Expression;
-
 class ForLoop {
   Identifier variable;
-  std::unique_ptr<Expression> collection;
-  std::unique_ptr<Block> body;
+  Expression collection;
+  Block body;
   Mutability mutability = Mutability::Immutable;
 
 public:
@@ -35,8 +34,8 @@ public:
   ~ForLoop();
 
   DEFINE_ACCESSOR_X(variable);
-  DEFINE_PTR_ACCESSOR_X(collection);
-  DEFINE_PTR_ACCESSOR_X(body);
+  DEFINE_ACCESSOR_X(collection);
+  DEFINE_ACCESSOR_X(body);
   DEFINE_VALUE_ACCESSOR_X(mutability);
 
   [[nodiscard]] bool is_const() const {

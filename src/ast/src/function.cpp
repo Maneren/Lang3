@@ -4,17 +4,18 @@ module;
 
 module l3.ast;
 
-import :block;
-import :name_list;
-
 namespace l3::ast {
 
+FunctionBody::FunctionBody() = default;
 FunctionBody::FunctionBody(NameList &&parameters, Block &&block)
-    : parameters(std::move(parameters)),
-      block(std::make_unique<Block>(std::move(block))) {};
+    : parameters(std::move(parameters)), block(std::move(block)) {};
 
-FunctionBody::FunctionBody(FunctionBody &&) noexcept = default;
-FunctionBody &FunctionBody::operator=(FunctionBody &&) noexcept = default;
-FunctionBody::~FunctionBody() = default;
+NamedFunction ::NamedFunction() = default;
+NamedFunction::NamedFunction(Identifier &&name, FunctionBody &&body)
+    : name(std::move(name)), body(std::move(body)) {}
+
+AnonymousFunction::AnonymousFunction() = default;
+AnonymousFunction::AnonymousFunction(FunctionBody &&body)
+    : body(std::move(body)) {}
 
 } // namespace l3::ast

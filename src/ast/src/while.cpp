@@ -11,8 +11,7 @@ import :expression;
 namespace l3::ast {
 
 While::While(Expression &&condition, Block &&block)
-    : condition(std::make_unique<Expression>(std::move(condition))),
-      body(std::make_unique<Block>(std::move(block))) {}
+    : condition(std::move(condition)), body(std::move(block)) {}
 
 While::While() = default;
 While::While(While &&) noexcept = default;

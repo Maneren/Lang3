@@ -18,18 +18,12 @@ RangeForLoop::RangeForLoop(
     Expression &&start,
     RangeOperator range_type,
     Expression &&end,
-    std::optional<Expression> &step,
+    std::optional<Expression> &&step,
     Block &&body
 )
-    : variable(std::move(variable)),
-      start(std::make_unique<Expression>(std::move(start))),
-      end(std::make_unique<Expression>(std::move(end))),
-      body(std::make_unique<Block>(std::move(body))), range_type(range_type),
-      mutability(mutability) {
-  if (step.has_value()) {
-    this->step = std::make_unique<Expression>(std::move(*step));
-  }
-}
+    : variable(std::move(variable)), start(std::move(start)),
+      end(std::move(end)), step(std::move(step)), body(std::move(body)),
+      range_type(range_type), mutability(mutability) {}
 
 RangeForLoop::RangeForLoop() = default;
 RangeForLoop::RangeForLoop(RangeForLoop &&) noexcept = default;
