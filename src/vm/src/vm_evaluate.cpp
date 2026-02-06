@@ -191,34 +191,103 @@ RefValue VM::evaluate(const ast::Expression &expression) {
   });
 }
 
+std::vector<RefValue> VM::evaluate(const ast::ExpressionList &expressions) {
+  std::vector<RefValue> result;
+  result.reserve(expressions.size());
+  for (const auto &expression : expressions) {
+    result.push_back(evaluate(expression));
+  }
+  return result;
+}
+
+RefValue VM::evaluate(const BuiltinFunction &function, L3Args arguments) {
+  return function.invoke(*this, arguments);
+}
+
+RefValue VM::evaluate(const L3Function &function, L3Args arguments) {
+  const auto &body = function.get_body().get();
+  const auto parameters = body.get_parameters();
+  const auto &curried = function.get_curried();
+
+  Scope argument_scope;
+  if (curried.get() != nullptr) {
+    argument_scope = curried->clone(*this);
+  } else {
+    argument_scope = {};
+  }
+
+  auto needed_arguments = parameters.size() - argument_scope.size();
+
+  if (arguments.size() > needed_arguments) {
+    throw RuntimeError{
+        "Function {} expected at most {} arguments, got {}",
+        function,
+        needed_arguments,
+        arguments.size()
+    };
+  }
+
+  for (auto [parameter, argument] :
+       std::views::zip(parameters.subspan(argument_scope.size()), arguments)) {
+    argument_scope.declare_variable(parameter, argument, Mutability::Mutable);
+  }
+
+  if (arguments.size() < needed_arguments) {
+    debug_print("Returning curried function", function);
+    return store_value(Function{function.curry(std::move(argument_scope))});
+  }
+
+  const auto &captures = function.get_captures();
+  for (const auto &capture : captures->get_scopes()) {
+    debug_print("captured: {}", capture->get_variables());
+  }
+  debug_print("Evaluating function body");
+
+  const auto overlay = ScopeStackOverlay{*this, captures};
+  const auto scope_guard = scopes->with_frame(std::move(argument_scope));
+
+  execute(body.get_block());
+
+  if (flow_control == FlowControl::Return) {
+    auto value = *return_value;
+    return_value = std::nullopt;
+    flow_control = FlowControl::Normal;
+    debug_print("Returning from function: {}", value);
+    return stack.push_value(value);
+  }
+
+  return nil();
+}
+
+RefValue VM::evaluate(const Function &function, L3Args arguments) {
+  return function.visit([&, this](const auto &function) {
+    return evaluate(function, arguments);
+  });
+}
+
 RefValue VM::evaluate(const ast::FunctionCall &function_call) {
-  const auto &function = function_call.get_name();
-  const auto &arguments = function_call.get_arguments();
+  const auto &function_name = function_call.get_name();
+  const auto &argument_expressions = function_call.get_arguments();
 
-  debug_print("Calling function {}", function);
+  debug_print("Calling function {}", function_name);
 
-  const auto evaluated_function = evaluate(function);
+  const auto evaluated_function = evaluate(function_name);
 
-  const Value::function_type &function_ptr = evaluated_function->visit(
-      [](const Value::function_type &function) -> Value::function_type {
-        return function;
-      },
-      [](const auto &value) -> Value::function_type {
+  const Function &function = evaluated_function->visit(
+      [](const Function &function) -> const Function & { return function; },
+      [](const auto &value) -> const Function & {
         throw std::runtime_error(std::format("{} is not a function", value));
       }
   );
 
-  auto evaluated_arguments =
-      arguments |
-      std::views::transform([this](const auto &arg) { return evaluate(arg); }) |
-      std::ranges::to<std::vector>();
+  auto arguments = evaluate(argument_expressions);
 
   debug_print("Arguments:");
-  for (const auto &argument : evaluated_arguments) {
+  for (const auto &argument : arguments) {
     debug_print("  {}", argument);
   }
 
-  auto result = function_ptr->operator()(*this, evaluated_arguments);
+  const auto result = evaluate(function, arguments);
 
   switch (flow_control) {
   case FlowControl::Break:
@@ -233,7 +302,7 @@ RefValue VM::evaluate(const ast::FunctionCall &function_call) {
 }
 
 RefValue VM::evaluate(const ast::AnonymousFunction &anonymous) {
-  return store_value(std::make_shared<Function>(L3Function{scopes, anonymous}));
+  return store_value(Function{L3Function{scopes, anonymous}});
 }
 
 RefValue VM::evaluate(const ast::IndexExpression &index_expression) {
@@ -270,32 +339,6 @@ bool VM::evaluate_if_branch(const ast::IfBase &if_base) {
 
   debug_print("Condition is falsy {}", condition_value);
   return false;
-}
-
-RefValue VM::evaluate_function_body(
-    const std::shared_ptr<ScopeStack> &captures,
-    Scope &&arguments,
-    const ast::FunctionBody &body
-) {
-  for (const auto &capture : captures->get_scopes()) {
-    debug_print("captured: {}", capture->get_variables());
-  }
-  debug_print("arguments: {}", arguments.get_variables());
-
-  const auto overlay = ScopeStackOverlay{*this, captures};
-  const auto scope_guard = scopes->with_frame(std::move(arguments));
-
-  execute(body.get_block());
-
-  if (flow_control == FlowControl::Return) {
-    auto value = *return_value;
-    return_value = std::nullopt;
-    flow_control = FlowControl::Normal;
-    debug_print("Returning from function: {}", value);
-    return stack.push_value(value);
-  }
-
-  return nil();
 }
 
 RefValue VM::evaluate(const ast::IfExpression &if_expr) {

@@ -218,8 +218,6 @@ Value::Value(Primitive &&primitive) : inner{std::move(primitive)} {}
 Value::Value(function_type &&function) : inner{std::move(function)} {}
 Value::Value(vector_type &&vector) : inner{std::move(vector)} {}
 Value::Value(string_type &&string) : inner{std::move(string)} {}
-Value::Value(Function &&function)
-    : inner{std::make_shared<Function>(std::move(function))} {}
 
 bool Value::is_nil() const { return std::holds_alternative<Nil>(inner); }
 bool Value::is_function() const {
@@ -304,7 +302,7 @@ copt_primitive_type Value::as_primitive() const {
   );
 }
 
-using copt_function_type = utils::optional_cref<Value::function_type>;
+using copt_function_type = utils::optional_cref<Function>;
 
 copt_function_type Value::as_function() const {
   return visit(

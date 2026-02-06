@@ -12,6 +12,7 @@ export module l3.vm:value;
 
 import utils;
 import :primitive;
+import :function;
 import :ref_value;
 
 export namespace l3::vm {
@@ -32,10 +33,6 @@ struct Nil {
 
 using L3Args = std::span<const RefValue>;
 
-class L3Function;
-class BuiltinFunction;
-class Function;
-
 using NewValue = std::variant<RefValue, Value>;
 
 struct Slice {
@@ -44,7 +41,7 @@ struct Slice {
 
 class Value {
 public:
-  using function_type = std::shared_ptr<Function>;
+  using function_type = Function;
   using vector_type = std::vector<RefValue>;
   using string_type = std::string;
 
@@ -63,7 +60,6 @@ public:
   Value(Nil /*unused*/);
   Value(Primitive &&primitive);
   Value(Function &&function);
-  Value(function_type &&function);
   Value(vector_type &&vector);
   Value(string_type &&string);
 

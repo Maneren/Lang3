@@ -28,11 +28,7 @@ public:
 
   void execute(const ast::Program &program);
 
-  RefValue evaluate_function_body(
-      const std::shared_ptr<ScopeStack> &captures,
-      Scope &&arguments,
-      const ast::FunctionBody &body
-  );
+  [[nodiscard]] RefValue evaluate(const Function &function, L3Args arguments);
 
   RefValue store_value(Value &&value);
   RefValue store_new_value(NewValue &&value);
@@ -75,6 +71,12 @@ private:
   [[nodiscard]] RefValue evaluate(const ast::FunctionCall &function_call);
   [[nodiscard]] RefValue evaluate(const ast::IfExpression &if_expr);
   [[nodiscard]] RefValue evaluate(const ast::Identifier &identifier);
+
+  std::vector<RefValue> evaluate(const ast::ExpressionList &expressions);
+
+  [[nodiscard]] RefValue evaluate(const L3Function &function, L3Args arguments);
+  [[nodiscard]] RefValue
+  evaluate(const BuiltinFunction &function, L3Args arguments);
 
   [[nodiscard]] RefValue &evaluate_mut(const ast::Variable &variable);
   [[nodiscard]] RefValue &evaluate_mut(const ast::Identifier &identifier);

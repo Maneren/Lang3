@@ -321,7 +321,7 @@ RefValue builtin_map(VM &vm, L3Args args) {
   if (!func_opt) {
     throw TypeError("map() first argument must be a function");
   }
-  auto &func = *func_opt->get();
+  const auto &func = func_opt->get();
 
   const auto list_opt = args[1]->as_vector();
   if (!list_opt) {
@@ -329,12 +329,13 @@ RefValue builtin_map(VM &vm, L3Args args) {
   }
   const auto &list = list_opt->get();
 
-  return vm.store_value(
-      {list | std::views::transform([&vm, &func](const auto &item) {
-         return func(vm, {item});
-       }) |
-       std::ranges::to<std::vector>()}
-  );
+  Value::vector_type result;
+  result.reserve(list.size());
+  for (const auto &item : list) {
+    result.push_back(vm.evaluate(func, {item}));
+  }
+
+  return vm.store_value(std::move(result));
 }
 
 RefValue builtin_filter(VM &vm, L3Args args) {
@@ -346,7 +347,7 @@ RefValue builtin_filter(VM &vm, L3Args args) {
   if (!func_opt) {
     throw TypeError("filter() first argument must be a function");
   }
-  auto &func = *func_opt->get();
+  const auto &func = func_opt->get();
 
   const auto list_opt = args[1]->as_vector();
   if (!list_opt) {
@@ -354,15 +355,17 @@ RefValue builtin_filter(VM &vm, L3Args args) {
   }
   const auto &list = list_opt->get();
 
-  return vm.store_value(
-      {list | std::views::filter([&vm, &func](const auto &item) {
-         return func(vm, {item})->is_truthy();
-       }) |
-       std::ranges::to<std::vector>()}
-  );
+  Value::vector_type result;
+  for (const auto &item : list) {
+    if (vm.evaluate(func, {item})->is_truthy()) {
+      result.push_back(item);
+    }
+  }
+
+  return vm.store_value(std::move(result));
 }
 
-RefValue builtin_sum(VM &vm, L3Args args) {
+RefValue builtin_sum(VM & /*vm*/, L3Args args) {
   if (args.size() != 1) {
     throw TypeError("sum() takes exactly 1 argument");
   }
@@ -379,7 +382,7 @@ RefValue builtin_sum(VM &vm, L3Args args) {
 
   RefValue total = list.front();
   for (auto item : list | std::views::drop(1)) {
-    total = vm.store_value(total->add(*item));
+    total->add_assign(*item);
   }
 
   return total;
@@ -434,7 +437,7 @@ RefValue builtin_count(VM &vm, L3Args args) {
   if (!fn_opt) {
     throw TypeError("count() first argument must be a function");
   }
-  auto &fn = *fn_opt->get();
+  const auto &fn = fn_opt->get();
 
   const auto list_opt = args[1]->as_vector();
   if (!list_opt) {
@@ -444,7 +447,7 @@ RefValue builtin_count(VM &vm, L3Args args) {
 
   std::int64_t count = 0;
   for (const auto &item : list) {
-    if (fn(vm, {item})->is_truthy()) {
+    if (vm.evaluate(fn, {item})->is_truthy()) {
       ++count;
     }
   }

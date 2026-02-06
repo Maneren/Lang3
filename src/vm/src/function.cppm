@@ -24,7 +24,7 @@ using L3Args = std::span<const RefValue>;
 
 class L3Function {
   std::shared_ptr<ScopeStack> captures;
-  std::unique_ptr<Scope> curried_arguments;
+  std::unique_ptr<Scope> curried;
   std::reference_wrapper<const ast::FunctionBody> body;
   std::optional<Identifier> name;
 
@@ -42,19 +42,26 @@ public:
   );
   L3Function(
       std::shared_ptr<ScopeStack> captures,
-      Scope &&curried_arguments,
+      Scope &&curried,
       std::reference_wrapper<const ast::FunctionBody> body,
       std::optional<Identifier> name
   );
   ~L3Function();
 
-  RefValue operator()(VM &vm, L3Args args);
+  L3Function curry(Scope &&arguments) const {
+    return L3Function{captures, std::move(arguments), body, name};
+  }
 
   DEFINE_VALUE_ACCESSOR_X(body);
   DEFINE_ACCESSOR_X(captures);
-  [[nodiscard]] const Identifier &get_name() const;
-  [[nodiscard]] const std::unique_ptr<Scope> &get_curried_arguments() const {
-    return curried_arguments;
+  [[nodiscard]] const Identifier &get_name() const {
+    if (name.has_value()) {
+      return name.value();
+    }
+    return anonymous_function_name;
+  }
+  [[nodiscard]] const std::unique_ptr<Scope> &get_curried() const {
+    return curried;
   }
 
 private:
@@ -72,22 +79,20 @@ private:
 public:
   BuiltinFunction(Identifier &&name, Body body);
 
-  RefValue operator()(VM &vm, L3Args args) const;
+  RefValue invoke(VM &vm, L3Args args) const { return body(vm, args); }
 
   DEFINE_ACCESSOR_X(name);
+  DEFINE_ACCESSOR_X(body);
 };
 
 class Function {
+  std::variant<L3Function, BuiltinFunction> inner;
+
 public:
   Function(L3Function &&function);
   Function(BuiltinFunction &&function);
 
-  RefValue operator()(VM &vm, L3Args args);
-
   VISIT(inner);
-
-private:
-  std::variant<L3Function, BuiltinFunction> inner;
 };
 
 } // namespace l3::vm

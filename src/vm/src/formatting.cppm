@@ -74,12 +74,9 @@ export {
   struct std::formatter<l3::vm::L3Function>
       : utils::static_formatter<l3::vm::L3Function> {
     static constexpr auto format(const auto &obj, std::format_context &ctx) {
-      if (obj.get_curried_arguments()) {
+      if (obj.get_curried()) {
         return std::format_to(
-            ctx.out(),
-            "function <{}>{}",
-            obj.get_name(),
-            *obj.get_curried_arguments()
+            ctx.out(), "function <{}>{}", obj.get_name(), *obj.get_curried()
         );
       }
       return std::format_to(ctx.out(), "function <{}>", obj.get_name());
@@ -133,8 +130,8 @@ export {
       : utils::static_formatter<l3::vm::Value> {
     static constexpr auto format(const auto &value, std::format_context &ctx) {
       return value.visit(
-          [&ctx](const l3::vm::Value::function_type &function) {
-            return std::format_to(ctx.out(), "{}", *function);
+          [&ctx](const l3::vm::Function &function) {
+            return std::format_to(ctx.out(), "{}", function);
           },
           [&ctx](const l3::vm::Value::string_type &value) {
             return std::format_to(ctx.out(), R"("{}")", value);

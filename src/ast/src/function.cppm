@@ -30,7 +30,9 @@ public:
 
   ~FunctionBody();
 
-  DEFINE_ACCESSOR_X(parameters);
+  [[nodiscard]] std::span<const Identifier> get_parameters() const {
+    return parameters;
+  }
   DEFINE_PTR_ACCESSOR(block, Block, block)
   [[nodiscard]] std::shared_ptr<Block> get_block_ptr() const { return block; }
   std::shared_ptr<Block> get_block_ptr_mut() { return block; }
