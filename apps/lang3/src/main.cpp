@@ -4,6 +4,7 @@
 #include <iostream>
 #include <lexer/lexer.hpp>
 #include <print>
+#include <thread>
 
 import cli;
 import l3.ast;
@@ -25,9 +26,52 @@ constexpr cli::Parser cli_parser() {
       .long_flag("timings");
 }
 
-} // namespace
+struct Debug {
+  bool lexer = false;
+  bool parser = false;
+  bool ast = false;
+  std::optional<std::string_view> ast_graph = std::nullopt;
+  bool vm = false;
+  bool timings = false;
+};
 
 using namespace l3;
+
+std::optional<ast::Program> parse_ast(
+    std::istream *input, const std::string &filename, const Debug &debug
+) {
+  auto start_time = std::chrono::steady_clock::now();
+
+  if (debug.lexer && debug.parser) {
+    std::println(std::cerr, "=== Lexer + Parser ===");
+  } else if (debug.lexer) {
+    std::println(std::cerr, "=== Lexer ===");
+  } else if (debug.parser) {
+    std::println(std::cerr, "=== Parser ===");
+  }
+  lexer::L3Lexer lexer(*input, debug.lexer);
+
+  auto program = ast::Program{};
+
+  parser::L3Parser parser(lexer, filename, debug.parser, program);
+  const auto result = parser.parse();
+
+  if (debug.timings) {
+    auto end_time = std::chrono::steady_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
+        end_time - start_time
+    );
+    std::println(std::cerr, "Parsed to AST in {}ms", duration.count());
+  }
+
+  if (result != 0) {
+    return std::nullopt;
+  }
+
+  return program;
+}
+
+} // namespace
 
 int main(int argc, char *argv[]) {
   const auto args = cli_parser().parse(argc, argv);
@@ -39,14 +83,16 @@ int main(int argc, char *argv[]) {
 
   const auto positional = args->positional();
 
-  const bool debug = args->has_flag("debug");
-  const bool debug_lexer = debug || args->has_flag("debug-lexer");
-  const bool debug_parser = debug || args->has_flag("debug-parser");
-  const bool debug_ast = debug || args->has_flag("debug-ast");
-  const bool debug_vm = debug || args->has_flag("debug-vm");
-  const bool timings = debug || args->has_flag("timings");
+  const bool debug_flag = args->has_flag("debug");
 
-  const auto debug_ast_graph = args->get_value("debug-ast-graph");
+  Debug debug{
+      .lexer = debug_flag || args->has_flag("debug-lexer"),
+      .parser = debug_flag || args->has_flag("debug-parser"),
+      .ast = debug_flag || args->has_flag("debug-ast"),
+      .ast_graph = args->get_value("debug-ast-graph"),
+      .vm = debug_flag || args->has_flag("debug-vm"),
+      .timings = debug_flag || args->has_flag("timings")
+  };
 
   std::istream *input = &std::cin;
   std::string filename = "<stdin>";
@@ -65,67 +111,43 @@ int main(int argc, char *argv[]) {
     );
   }
 
-  auto start_time = std::chrono::steady_clock::now();
-
-  if (debug_lexer && debug_parser) {
-    std::println(std::cerr, "=== Lexer + Parser ===");
-  } else if (debug_lexer) {
-    std::println(std::cerr, "=== Lexer ===");
-  } else if (debug_parser) {
-    std::println(std::cerr, "=== Parser ===");
+  auto program_opt = parse_ast(input, filename, debug);
+  if (!program_opt) {
+    return EXIT_FAILURE;
   }
-  lexer::L3Lexer lexer(*input, debug_lexer);
+  const auto &program = program_opt.value();
 
-  auto program = ast::Program{};
-
-  parser::L3Parser parser(lexer, filename, debug_parser, program);
-  const auto result = parser.parse();
-
-  if (timings) {
-    auto end_time = std::chrono::steady_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
-        end_time - start_time
-    );
-    std::println(std::cerr, "Parsed to AST in {}ms", duration.count());
-  }
-
-  if (result != 0) {
-    return result;
-  }
-
-  if (debug_ast) {
+  if (debug.ast) {
     std::println(std::cerr, "=== AST ===");
     ast::AstPrinter<char, std::ostreambuf_iterator<char>> printer;
     auto out_iter = std::ostreambuf_iterator<char>{std::cout};
     printer.visit(program, out_iter);
   }
 
-  if (debug_ast_graph) {
-    std::ofstream dot_file{std::string(*debug_ast_graph)};
+  if (debug.ast_graph) {
+    std::ofstream dot_file{std::string(*debug.ast_graph)};
     ast::DotPrinter<char, std::ostreambuf_iterator<char>> dot_printer;
     auto out_iter = std::ostreambuf_iterator<char>{dot_file};
-    dot_printer.write_header(out_iter);
-    dot_printer.visit(program, out_iter);
-    dot_printer.write_footer(out_iter);
-    std::println(std::cerr, "AST graph written to {}", *debug_ast_graph);
+    dot_printer.write_graph(program, out_iter);
+    std::println(std::cerr, "AST graph written to {}", *debug.ast_graph);
   }
 
-  if ((debug_lexer || debug_parser || debug_ast || debug_ast_graph) &&
-      !debug_vm) {
+  if ((debug.lexer || debug.parser || debug.ast || debug.ast_graph) &&
+      !debug.vm) {
     return EXIT_SUCCESS;
   }
 
-  if (debug_vm) {
+  if (debug.vm) {
     std::println(std::cerr, "=== VM ===");
   }
 
-  vm::VM vm{debug_vm};
+  vm::VM vm{debug.vm};
 
-  start_time = std::chrono::steady_clock::now();
+  const auto start_time = std::chrono::steady_clock::now();
 
   vm.execute(program);
 
-  if (timings) {
+  if (debug.timings) {
     auto end_time = std::chrono::steady_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
         end_time - start_time

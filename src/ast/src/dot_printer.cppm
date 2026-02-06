@@ -392,6 +392,12 @@ public:
   }
 
   void write_footer(OutputIterator &out) { std::format_to(out, "}}\n"); }
+
+  void write_graph(const auto &node, OutputIterator &out) {
+    write_header(out);
+    visit(node, out);
+    write_footer(out);
+  }
 };
 
 } // namespace l3::ast
