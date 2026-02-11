@@ -2,6 +2,7 @@ export module l3.vm:scope;
 
 import l3.ast;
 import utils;
+import std;
 import :identifier;
 import :mutability;
 
@@ -35,7 +36,7 @@ public:
   get_variable_mut(const Identifier &id);
 
   [[nodiscard]] bool has_variable(const Identifier &id) const;
-  [[nodiscard]] size_t size() const;
+  [[nodiscard]] std::size_t size() const;
 
   DEFINE_ACCESSOR_X(variables);
 
@@ -62,7 +63,7 @@ public:
 
   void pop_back();
   void push_back(std::shared_ptr<Scope> &&scope);
-  [[nodiscard]] size_t size() const;
+  [[nodiscard]] std::size_t size() const;
 
   void mark_gc();
 

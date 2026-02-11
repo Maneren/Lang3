@@ -1,19 +1,6 @@
-module;
-
-#include <algorithm>
-#include <cstddef>
-#include <expected>
-#include <format>
-#include <functional>
-#include <optional>
-#include <ranges>
-#include <span>
-#include <string>
-#include <string_view>
-#include <unordered_map>
-#include <vector>
-
 export module cli;
+
+import std;
 
 namespace {
 

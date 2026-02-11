@@ -1,6 +1,7 @@
 export module l3.vm:primitive;
 
 import utils;
+import std;
 
 export namespace l3::vm {
 

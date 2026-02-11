@@ -1,5 +1,7 @@
 export module l3.ast:name_list;
 
+import std;
+
 export namespace l3::ast {
 
 class Identifier;

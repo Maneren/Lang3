@@ -1,5 +1,7 @@
 module l3.ast;
 
+import std;
+
 namespace l3::ast {
 
 Declaration::Declaration() = default;

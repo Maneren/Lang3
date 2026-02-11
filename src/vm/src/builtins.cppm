@@ -1,10 +1,7 @@
-module;
-
-#include <initializer_list>
-
 export module l3.vm:builtins;
 
 import :function;
+import std;
 
 export namespace l3::vm::builtins {
 

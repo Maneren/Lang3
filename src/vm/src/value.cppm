@@ -84,10 +84,10 @@ public:
   [[nodiscard]] bool is_falsy() const { return !is_truthy(); }
 
   [[nodiscard]] NewValue index(const Value &index) const;
-  [[nodiscard]] NewValue index(size_t index) const;
+  [[nodiscard]] NewValue index(std::size_t index) const;
 
   [[nodiscard]] RefValue &index_mut(const Value &index);
-  [[nodiscard]] RefValue &index_mut(size_t index);
+  [[nodiscard]] RefValue &index_mut(std::size_t index);
 
   [[nodiscard]] Value slice(Slice slice) const;
 

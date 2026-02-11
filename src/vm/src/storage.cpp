@@ -18,11 +18,11 @@ GCValue &GCStorage::emplace(Value &&value) {
   return backing_store.emplace_front(std::move(value));
 }
 
-size_t GCStorage::sweep() {
+std::size_t GCStorage::sweep() {
   debug_print("[GC] Sweeping");
   sweep_count++;
   added_since_last_sweep = 0;
-  size_t erased = 0;
+  std::size_t erased = 0;
   // Remove all unmarked items from the front to ensure we start from a marked
   // value
   while (!backing_store.empty() && !backing_store.front().is_marked()) {

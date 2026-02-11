@@ -1,8 +1,6 @@
-module;
-
-#include <utility>
-
 export module utils:functional;
+
+import std;
 
 export namespace functional {
 

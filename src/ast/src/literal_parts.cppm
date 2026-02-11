@@ -1,5 +1,7 @@
 export module l3.ast:literal_parts;
 
+import std;
+
 export namespace l3::ast {
 
 struct Nil {};

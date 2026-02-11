@@ -1,8 +1,3 @@
-module;
-
-#include <random>
-#include <thread>
-
 module l3.vm;
 
 import l3.ast;

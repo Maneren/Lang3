@@ -1,6 +1,7 @@
 export module l3.ast.dot_printer;
 
 import l3.ast;
+import std;
 
 export namespace l3::ast {
 
@@ -40,7 +41,7 @@ class DotPrinter : public AstVisitor<T, OutputIterator> {
 
 public:
   void visit(const Array &node, OutputIterator &out) override {
-    size_t id = get_next_id();
+    std::size_t id = get_next_id();
     write_node(out, id, "Array");
     for (const auto &element : node.get_elements()) {
       write_edge(out, id, node_id);
@@ -49,7 +50,7 @@ public:
   }
 
   void visit(const NameList &node, OutputIterator &out) override {
-    size_t id = get_next_id();
+    std::size_t id = get_next_id();
     write_node(out, id, "NameList");
     for (const auto &name : node) {
       write_edge(out, id, node_id);
@@ -58,14 +59,14 @@ public:
   }
 
   void visit(const UnaryExpression &node, OutputIterator &out) override {
-    size_t id = get_next_id();
+    std::size_t id = get_next_id();
     write_node(out, id, "UnaryExpression\\n{}", node.get_op());
     write_edge(out, id, node_id);
     visit(node.get_expression(), out);
   }
 
   void visit(const BinaryExpression &node, OutputIterator &out) override {
-    size_t id = get_next_id();
+    std::size_t id = get_next_id();
     write_node(out, id, "BinaryExpression\\n{}", node.get_op());
     write_edge_labeled(out, id, node_id, "lhs");
     visit(node.get_lhs(), out);
@@ -74,7 +75,7 @@ public:
   }
 
   void visit(const LogicalExpression &node, OutputIterator &out) override {
-    size_t id = get_next_id();
+    std::size_t id = get_next_id();
     write_node(out, id, "LogicalExpression\\n{}", node.get_op());
     write_edge_labeled(out, id, node_id, "lhs");
     visit(node.get_lhs(), out);
@@ -83,9 +84,9 @@ public:
   }
 
   void visit(const Comparison &node, OutputIterator &out) override {
-    size_t id = get_next_id();
+    std::size_t id = get_next_id();
     write_node(out, id, "ChainedComparison");
-    size_t start_id = node_id;
+    std::size_t start_id = node_id;
     visit(node.get_start(), out);
     write_edge_labeled(out, id, start_id, "start");
     for (const auto &[op, rhs] : node.get_comparisons()) {
@@ -98,7 +99,7 @@ public:
   }
 
   void visit(const IndexExpression &node, OutputIterator &out) override {
-    size_t id = get_next_id();
+    std::size_t id = get_next_id();
     write_node(out, id, "IndexExpression");
     write_edge_labeled(out, id, node_id, "base");
     visit(node.get_base(), out);
@@ -107,7 +108,7 @@ public:
   }
 
   void visit(const FunctionCall &node, OutputIterator &out) override {
-    size_t id = get_next_id();
+    std::size_t id = get_next_id();
     write_node(out, id, "FunctionCall");
     write_edge_labeled(out, id, node_id, "name");
     visit(node.get_name(), out);
@@ -123,7 +124,7 @@ public:
   }
 
   void visit(const FunctionBody &node, OutputIterator &out) override {
-    size_t id = get_next_id();
+    std::size_t id = get_next_id();
     write_node(out, id, "FunctionBody");
 
     auto params_id = get_next_id();
@@ -140,7 +141,7 @@ public:
   }
 
   void visit(const IfBase &node, OutputIterator &out) override {
-    size_t id = get_next_id();
+    std::size_t id = get_next_id();
     write_node(out, id, "IfBase");
 
     write_edge_labeled(out, id, node_id, "condition");
@@ -151,7 +152,7 @@ public:
   }
 
   void visit(const ElseIfList &node, OutputIterator &out) override {
-    size_t id = get_next_id();
+    std::size_t id = get_next_id();
     write_node(out, id, "ElseIfList");
     for (const auto &elseif : node.get_elseifs()) {
       write_edge(out, id, node_id);
@@ -160,7 +161,7 @@ public:
   }
 
   void visit(const IfStatement &node, OutputIterator &out) override {
-    size_t id = get_next_id();
+    std::size_t id = get_next_id();
     write_node(out, id, "IfStatement");
 
     write_edge_labeled(out, id, node_id, "if");
@@ -176,7 +177,7 @@ public:
   }
 
   void visit(const IfExpression &node, OutputIterator &out) override {
-    size_t id = get_next_id();
+    std::size_t id = get_next_id();
     write_node(out, id, "IfExpression");
 
     write_edge_labeled(out, id, node_id, "if");
@@ -190,7 +191,7 @@ public:
   }
 
   void visit(const While &node, OutputIterator &out) override {
-    size_t id = get_next_id();
+    std::size_t id = get_next_id();
     write_node(out, id, "While");
 
     write_edge_labeled(out, id, node_id, "condition");
@@ -201,7 +202,7 @@ public:
   }
 
   void visit(const ForLoop &node, OutputIterator &out) override {
-    size_t id = get_next_id();
+    std::size_t id = get_next_id();
     write_node(out, id, "ForLoop\\n{}", node.get_mutability());
 
     write_edge_labeled(out, id, node_id, "variable");
@@ -215,7 +216,7 @@ public:
   }
 
   void visit(const RangeForLoop &node, OutputIterator &out) override {
-    size_t id = get_next_id();
+    std::size_t id = get_next_id();
     write_node(
         out,
         id,
@@ -243,7 +244,7 @@ public:
   }
 
   void visit(const ReturnStatement &node, OutputIterator &out) override {
-    size_t id = get_next_id();
+    std::size_t id = get_next_id();
     write_node(out, id, "Return");
     if (node.get_expression()) {
       write_edge(out, id, node_id);
@@ -305,7 +306,7 @@ public:
   }
 
   void visit(const Block &node, OutputIterator &out) override {
-    size_t id = get_next_id();
+    std::size_t id = get_next_id();
     write_node(out, id, "Block");
     for (const Statement &statement : node.get_statements()) {
       write_edge(out, id, node_id);
@@ -318,7 +319,7 @@ public:
   }
 
   void visit(const NamedFunction &node, OutputIterator &out) override {
-    size_t id = get_next_id();
+    std::size_t id = get_next_id();
     write_node(out, id, "NamedFunction");
     write_edge_labeled(out, id, node_id, "name");
     visit(node.get_name(), out);
@@ -327,14 +328,14 @@ public:
   }
 
   void visit(const AnonymousFunction &node, OutputIterator &out) override {
-    size_t id = get_next_id();
+    std::size_t id = get_next_id();
     write_node(out, id, "AnonymousFunction");
     write_edge(out, id, node_id);
     visit(node.get_body(), out);
   }
 
   void visit(const Declaration &node, OutputIterator &out) override {
-    size_t id = get_next_id();
+    std::size_t id = get_next_id();
     write_node(out, id, "Declaration\\n{}", node.get_mutability());
 
     write_edge_labeled(out, id, node_id, "names");
@@ -347,7 +348,7 @@ public:
   }
 
   void visit(const NameAssignment &node, OutputIterator &out) override {
-    size_t id = get_next_id();
+    std::size_t id = get_next_id();
     write_node(out, id, "NameAssignment");
 
     write_edge_labeled(out, id, node_id, "names");
@@ -358,7 +359,7 @@ public:
   }
 
   void visit(const OperatorAssignment &node, OutputIterator &out) override {
-    size_t id = get_next_id();
+    std::size_t id = get_next_id();
     write_node(out, id, "OperatorAssignment\\n{}", node.get_operator());
 
     write_edge_labeled(out, id, node_id, "variable");

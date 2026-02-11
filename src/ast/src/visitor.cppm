@@ -1,5 +1,7 @@
 export module l3.ast:visitor;
 
+import std;
+
 export namespace l3::ast {
 
 class Array;

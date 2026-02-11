@@ -1,5 +1,7 @@
 export module l3.ast:expression_list;
 
+import std;
+
 export namespace l3::ast {
 
 class Expression;

@@ -8,7 +8,7 @@ import :variable;
 
 namespace l3::vm {
 
-constexpr size_t GC_OBJECT_TRIGGER_TRESHOLD = 10000;
+constexpr std::size_t GC_OBJECT_TRIGGER_TRESHOLD = 10000;
 
 RefValue VM::read_variable(const Identifier &id) {
   debug_print("Reading variable {}", id.get_name());
@@ -36,7 +36,7 @@ VM::VM(bool debug)
     : debug{debug}, scopes{std::make_shared<ScopeStack>()}, stack{debug},
       gc_storage{debug} {}
 
-size_t VM::run_gc() {
+std::size_t VM::run_gc() {
   const auto since_last_sweep = gc_storage.get_added_since_last_sweep();
   if (since_last_sweep < GC_OBJECT_TRIGGER_TRESHOLD) {
     debug_print("[GC] Skipping... only {} values", since_last_sweep);

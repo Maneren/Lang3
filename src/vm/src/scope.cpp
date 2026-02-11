@@ -81,7 +81,7 @@ bool Scope::has_variable(const Identifier &id) const {
   return get_variable(id).has_value();
 }
 
-size_t Scope::size() const { return variables.size(); }
+std::size_t Scope::size() const { return variables.size(); }
 
 Scope Scope::clone(VM &vm) const {
   Scope cloned;
@@ -126,7 +126,7 @@ void ScopeStack::push_back(std::shared_ptr<Scope> &&scope) {
 
 const Scope &ScopeStack::top() const { return *scopes.back(); }
 Scope &ScopeStack::top() { return *scopes.back(); }
-size_t ScopeStack::size() const { return scopes.size(); }
+std::size_t ScopeStack::size() const { return scopes.size(); }
 
 ScopeStack::FrameGuard ScopeStack::with_frame() { return FrameGuard(*this); }
 ScopeStack::FrameGuard ScopeStack::with_frame(Scope &&scope) {

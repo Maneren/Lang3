@@ -10,9 +10,9 @@ class Value;
 class GCStorage {
   bool debug;
   ChunkedForwardList<GCValue, 1024> backing_store;
-  size_t sweep_count = 0;
-  size_t size = 0;
-  size_t added_since_last_sweep = 0;
+  std::size_t sweep_count = 0;
+  std::size_t size = 0;
+  std::size_t added_since_last_sweep = 0;
 
 public:
   GCStorage(bool debug = false);
@@ -23,7 +23,7 @@ public:
   GCStorage &operator=(GCStorage &&) noexcept;
   ~GCStorage();
 
-  size_t sweep();
+  std::size_t sweep();
 
   GCValue &emplace(Value &&value);
 

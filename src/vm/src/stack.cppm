@@ -10,7 +10,7 @@ class Stack {
 
   class FrameGuard {
     Stack &stack;
-    size_t frame_index;
+    std::size_t frame_index;
 
   public:
     explicit FrameGuard(Stack &stack);

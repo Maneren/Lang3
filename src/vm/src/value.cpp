@@ -225,7 +225,7 @@ bool Value::is_string() const {
 
 namespace {
 
-size_t value_to_index(const Value &value) {
+std::size_t value_to_index(const Value &value) {
   const auto index_opt = value.as_primitive().and_then(&Primitive::as_integer);
 
   if (!index_opt) {
@@ -246,7 +246,7 @@ size_t value_to_index(const Value &value) {
 NewValue Value::index(const Value &index_value) const {
   return index(value_to_index(index_value));
 }
-NewValue Value::index(size_t index) const {
+NewValue Value::index(std::size_t index) const {
   return visit(
       [&index](const vector_type &values) -> NewValue {
         if (index >= values.size()) {
@@ -270,7 +270,7 @@ NewValue Value::index(size_t index) const {
 RefValue &Value::index_mut(const Value &index) {
   return index_mut(value_to_index(index));
 }
-RefValue &Value::index_mut(size_t index) {
+RefValue &Value::index_mut(std::size_t index) {
   return visit(
       [&index](vector_type &values) -> RefValue & {
         if (index >= values.size()) {

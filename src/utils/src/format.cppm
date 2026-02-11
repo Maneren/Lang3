@@ -1,20 +1,6 @@
-module;
-
-#include <compare>
-#include <concepts>
-#include <flat_map>
-#include <flat_set>
-#include <format>
-#include <functional>
-#include <memory>
-#include <optional>
-#include <source_location>
-#include <tuple>
-#include <unordered_map>
-#include <unordered_set>
-#include <vector>
-
 export module utils:format;
+
+import std;
 
 export namespace utils {
 

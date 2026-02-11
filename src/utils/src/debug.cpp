@@ -1,7 +1,3 @@
-module;
-
-#include <print>
-
 module utils;
 
 namespace utils::debug {

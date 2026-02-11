@@ -1,6 +1,7 @@
 export module l3.ast:variable;
 
 import :identifier;
+import std;
 
 export namespace l3::ast {
 

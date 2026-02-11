@@ -31,7 +31,7 @@ public:
   static RefValue _true();
   static RefValue _false();
 
-  size_t run_gc();
+  std::size_t run_gc();
 
 private:
   void execute(const ast::Block &block);

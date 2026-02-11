@@ -2,6 +2,7 @@ export module l3.ast:while_loop;
 
 import :block;
 import :expression;
+import std;
 
 export namespace l3::ast {
 

@@ -19,11 +19,7 @@ target_sources(${LIB_NAME} PUBLIC
 )
 
 target_precompile_headers(${LIB_NAME}
-  PUBLIC <string> <variant> <optional> <ranges> <memory> <utility>
-         <deque> <vector> <format> <print> <iostream> <span>
-         <string_view> <functional> <tuple> <compare> <concepts>
-         <algorithm> <type_traits> <cstddef>
-         "include/utils/visit.h" "include/utils/accessor.h"
+  PUBLIC "include/utils/visit.h" "include/utils/accessor.h"
 )
 
 set_compiler_and_linker_flags(${LIB_NAME})

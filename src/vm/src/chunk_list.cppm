@@ -1,10 +1,6 @@
-module;
-
-#include <forward_list>
-#include <limits>
-#include <new>
-
 export module l3.vm:chunk_list;
+
+import std;
 
 export namespace l3::vm {
 
@@ -143,7 +139,7 @@ public:
     for (auto &chunk : std::views::reverse(chunks_)) {
       if (chunk->contains(ptr)) {
         chunk->deallocate(ptr);
-        static thread_local size_t cleanup_counter = 0;
+        static thread_local std::size_t cleanup_counter = 0;
         if (++cleanup_counter >= 2 * ChunkSize) {
           cleanup_counter = 0;
           cleanup_empty_chunks();

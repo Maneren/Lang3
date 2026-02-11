@@ -1,8 +1,6 @@
-#include <chrono>
-#include <fstream>
 #include <lexer/lexer.hpp>
-#include <thread>
 
+import std;
 import cli;
 import l3.ast;
 import l3.ast.printer;

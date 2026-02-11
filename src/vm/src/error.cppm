@@ -1,10 +1,7 @@
-module;
-
-#include <stdexcept>
-
 export module l3.vm:error;
 
 import :identifier;
+import std;
 
 export namespace l3::vm {
 
