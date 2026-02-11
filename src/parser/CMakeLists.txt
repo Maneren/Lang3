@@ -61,6 +61,6 @@ target_sources(${LIB_NAME} PUBLIC
     FILES ${PARSER_HEADER}
 )
 
-target_link_libraries(${LIB_NAME} PRIVATE ast)
+target_link_libraries(${LIB_NAME} PRIVATE ast source_location)
 
 set_compiler_and_linker_flags(${LIB_NAME})

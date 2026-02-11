@@ -3,12 +3,14 @@
 
 %code requires {
     import l3.ast;
+    import l3.source_location;
 
     namespace l3::lexer {
       class L3Lexer;
     }
 
     using namespace l3::ast;
+    using namespace l3::source_location;
 }
 
 %define api.namespace {l3::parser}
@@ -42,6 +44,19 @@
     #include <lexer/lexer.hpp>
 
     #define yylex lexer.lex
+
+    // Helper function to convert Bison location to SourceLocation
+    inline SourceLocation make_location(const l3::parser::location& loc) {
+        return SourceLocation{
+            *loc.begin.filename,
+            static_cast<size_t>(loc.begin.line),
+            static_cast<size_t>(loc.begin.column),
+            static_cast<size_t>(loc.end.line),
+            static_cast<size_t>(loc.end.column),
+            0, // start_offset - not tracked by Bison currently
+            0  // end_offset - not tracked by Bison currently
+        };
+    }
 }
 
 %right equal

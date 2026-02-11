@@ -43,3 +43,13 @@
                                                                                \
   constexpr auto *operator->() { return &(name)(); }                           \
   constexpr const auto *operator->() const { return &(name)(); }
+
+// Macro to add source location field to AST nodes
+#define DEFINE_LOCATION_FIELD()                                                \
+private:                                                                       \
+  location::Location location_;                                                \
+                                                                               \
+public:                                                                        \
+  [[nodiscard]] constexpr const location::Location &get_location() const {     \
+    return location_;                                                          \
+  }

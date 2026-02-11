@@ -7,18 +7,12 @@ add_library(${LIB_NAME} STATIC
   ${SOURCES}
 )
 
-target_sources(${LIB_NAME} INTERFACE
-  FILE_SET HEADERS
-  BASE_DIRS include
-  FILES include/ast/ast.hpp
-)
-
 target_sources(${LIB_NAME} PUBLIC
   FILE_SET CXX_MODULES
   FILES ${MODULES}
 )
 
-target_link_libraries(${LIB_NAME} PRIVATE utils source_location)
+target_link_libraries(${LIB_NAME} PRIVATE utils)
 target_precompile_headers(${LIB_NAME} REUSE_FROM utils)
 
 set_compiler_and_linker_flags(${LIB_NAME})
