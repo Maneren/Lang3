@@ -9,7 +9,6 @@ void L3Lexer::update_location() {
   for (; *s != '\0'; s++) {
     if (*s == '\n') {
       yylloc->lines();
-      yylloc->end.column = 1;
     } else {
       yylloc->columns();
     }

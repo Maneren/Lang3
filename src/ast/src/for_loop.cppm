@@ -4,6 +4,7 @@ import :block;
 import :identifier;
 import :expression;
 import :mutability;
+import l3.location;
 
 export namespace l3::ast {
 
@@ -13,13 +14,16 @@ class ForLoop {
   Block body;
   Mutability mutability = Mutability::Immutable;
 
+  DEFINE_LOCATION_FIELD()
+
 public:
-  ForLoop();
+  ForLoop(location::Location location = {});
   ForLoop(
       Identifier &&variable,
       Expression &&collection,
       Block &&body,
-      Mutability mutability
+      Mutability mutability,
+      location::Location location = {}
   );
 
   ForLoop(const ForLoop &) = delete;

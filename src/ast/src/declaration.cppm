@@ -3,6 +3,7 @@ export module l3.ast:declaration;
 import :expression;
 import :mutability;
 import :name_list;
+import l3.location;
 
 export namespace l3::ast {
 
@@ -11,12 +12,15 @@ class Declaration {
   std::optional<Expression> expression;
   Mutability mutability = Mutability::Immutable;
 
+  DEFINE_LOCATION_FIELD()
+
 public:
-  Declaration();
+  Declaration(location::Location location = {});
   Declaration(
       NameList &&names,
       std::optional<Expression> &&expression,
-      Mutability mutability
+      Mutability mutability,
+      location::Location location = {}
   );
 
   DEFINE_ACCESSOR_X(names);

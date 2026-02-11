@@ -3,22 +3,21 @@
 
 %code requires {
     import l3.ast;
-    import l3.source_location;
+    import l3.location;
 
     namespace l3::lexer {
       class L3Lexer;
     }
 
     using namespace l3::ast;
-    using namespace l3::source_location;
 }
 
 %define api.namespace {l3::parser}
 %define api.parser.class {L3Parser}
 %define api.value.type variant
+%define api.location.type {location::Location}
 
 %locations
-%define api.location.file none
 
 %define parse.error detailed
 %define parse.trace
@@ -37,26 +36,13 @@
         set_debug_level(debug);
     #endif
 
-    yyla.location.initialize(&filename, 1, 1);
+    @$.initialize(filename, 1, 1);
 };
 
 %code {
     #include <lexer/lexer.hpp>
 
     #define yylex lexer.lex
-
-    // Helper function to convert Bison location to SourceLocation
-    inline SourceLocation make_location(const l3::parser::location& loc) {
-        return SourceLocation{
-            *loc.begin.filename,
-            static_cast<size_t>(loc.begin.line),
-            static_cast<size_t>(loc.begin.column),
-            static_cast<size_t>(loc.end.line),
-            static_cast<size_t>(loc.end.column),
-            0, // start_offset - not tracked by Bison currently
-            0  // end_offset - not tracked by Bison currently
-        };
-    }
 }
 
 %right equal
@@ -125,24 +111,24 @@
 %%
 
 // Literals
-LITERAL: nil               { $$ = { Nil {} }; }
-       | _true             { $$ = { Boolean { true } }; }
-       | _false            { $$ = { Boolean { false } }; }
-       | number            { $$ = { Number { $1 } }; }
-       | number dot        { $$ = { Float { $1 } }; }
-       | number dot number { $$ = { Float { $1, $3 } }; }
-       | string            { $$ = { String { $1 } }; }
+LITERAL: nil               { $$ = { Nil { @$ } }; }
+       | _true             { $$ = { Boolean { true, @$ } }; }
+       | _false            { $$ = { Boolean { false, @$ } }; }
+       | number            { $$ = { Number { $1, @$ } }; }
+       | number dot        { $$ = { Float { $1, @$ } }; }
+       | number dot number { $$ = { Float { $1, $3, @$ } }; }
+       | string            { $$ = { String { $1, @$ } }; }
        | ARRAY             { $$ = { std::move($1) }; }
 
-ARRAY: lbracket EXPRESSION_LIST rbracket { $$ = { std::move($2) }; }
+ARRAY: lbracket EXPRESSION_LIST rbracket { $$ = { std::move($2), @$ }; }
 
 // Identifiers and Variables
-IDENTIFIER: id { $$ = { std::move($1) }; }
+IDENTIFIER: id { $$ = { std::move($1), @$ }; }
 
 INDEX: lbracket PRIMARY_EXPRESSION rbracket { $$ = { std::move($2) }; }
 
 VAR: IDENTIFIER { $$ = { std::move($1) }; }
-   | VAR INDEX  { $$ = { IndexExpression { std::move($1), std::move($2) } }; }
+   | VAR INDEX  { $$ = { IndexExpression { std::move($1), std::move($2), @$ } }; }
 
 NAME_LIST: NAME_LIST comma IDENTIFIER
            { $$ = std::move($1.with_name(std::move($3))); }
@@ -154,20 +140,20 @@ MULTIPLE_NAME_LIST: NAME_LIST comma IDENTIFIER
 
 // Expressions
 UNARY: minus ATOMIC_EXPRESSION
-       { $$ = { UnaryOperator::Minus, std::move($2) }; }
+       { $$ = { UnaryOperator::Minus, std::move($2), @$ }; }
      | _not ATOMIC_EXPRESSION
-       { $$ = { UnaryOperator::Not, std::move($2) }; }
+       { $$ = { UnaryOperator::Not, std::move($2), @$ }; }
      | plus ATOMIC_EXPRESSION
-       { $$ = { UnaryOperator::Plus, std::move($2) }; }
+       { $$ = { UnaryOperator::Plus, std::move($2), @$ }; }
 
 BINARY: ATOMIC_EXPRESSION plus ATOMIC_EXPRESSION
-        { $$ = { std::move($1), BinaryOperator::Plus, std::move($3) }; }
+        { $$ = { std::move($1), BinaryOperator::Plus, std::move($3), @$ }; }
       | ATOMIC_EXPRESSION minus ATOMIC_EXPRESSION
-        { $$ = { std::move($1), BinaryOperator::Minus, std::move($3) }; }
+        { $$ = { std::move($1), BinaryOperator::Minus, std::move($3), @$ }; }
       | ATOMIC_EXPRESSION mul ATOMIC_EXPRESSION
-        { $$ = { std::move($1), BinaryOperator::Multiply, std::move($3) }; }
+        { $$ = { std::move($1), BinaryOperator::Multiply, std::move($3), @$ }; }
       | ATOMIC_EXPRESSION div ATOMIC_EXPRESSION
-        { $$ = { std::move($1), BinaryOperator::Divide, std::move($3) }; }
+        { $$ = { std::move($1), BinaryOperator::Divide, std::move($3), @$ }; }
 
 COMPARISON_OP: equal_equal    { $$ = ComparisonOperator::Equal; }
              | not_equal      { $$ = ComparisonOperator::NotEqual; }
@@ -190,12 +176,12 @@ COMPARISON: COMPARISON COMPARISON_OP ATOMIC_EXPRESSION
               }
               $$ = std::move($1); }
           | ATOMIC_EXPRESSION COMPARISON_OP ATOMIC_EXPRESSION
-            { $$ = { std::move($1), $2, std::move($3) }; }
+            { $$ = { std::move($1), $2, std::move($3), @$ }; }
 
 LOGICAL: EXPRESSION _and EXPRESSION
-         { $$ = { std::move($1), LogicalOperator::And, std::move($3) }; }
+         { $$ = { std::move($1), LogicalOperator::And, std::move($3), @$ }; }
        | EXPRESSION _or EXPRESSION
-         { $$ = { std::move($1), LogicalOperator::Or, std::move($3) }; }
+         { $$ = { std::move($1), LogicalOperator::Or, std::move($3), @$ }; }
 
 PREFIX_EXPRESSION: FUNCTION_CALL                 { $$ = { std::move($1) }; }
                  | VAR                           { $$ = { std::move($1) }; }
@@ -221,38 +207,38 @@ EXPRESSION_LIST: PRIMARY_EXPRESSION comma EXPRESSION_LIST
 PARAMETERS: lparen NAME_LIST rparen { $$ = std::move($2); }
           | lparen rparen           { $$ = {}; }
 
-FUNCTION_BODY: PARAMETERS BLOCK end { $$ = { std::move($1), std::move($2) }; }
+FUNCTION_BODY: PARAMETERS BLOCK end { $$ = { std::move($1), std::move($2), @$ }; }
 
-ANONYMOUS_FUNCTION: function FUNCTION_BODY { $$ = { std::move($2) }; }
+ANONYMOUS_FUNCTION: function FUNCTION_BODY { $$ = { std::move($2), @$ }; }
 
-FUNCTION_CALL: IDENTIFIER ARGUMENTS { $$ = { std::move($1), std::move($2) }; }
+FUNCTION_CALL: IDENTIFIER ARGUMENTS { $$ = { std::move($1), std::move($2), @$ }; }
 
 FUNCTION_DEFINITION: function IDENTIFIER FUNCTION_BODY
-                     { $$ = { std::move($2), std::move($3) }; }
+                     { $$ = { std::move($2), std::move($3), @$ }; }
 
 ARGUMENTS: lparen EXPRESSION_LIST rparen { $$ = std::move($2); }
 
 // Control Flow
-IF_BASE: _if EXPRESSION then BLOCK { $$ = { std::move($2), std::move($4) }; }
+IF_BASE: _if EXPRESSION then BLOCK { $$ = { std::move($2), std::move($4), @$ }; }
 
 IF_ELSE: elif EXPRESSION then BLOCK IF_ELSE
-         { $$ = std::move($5.with_if({ std::move($2), std::move($4) })); }
+         { $$ = std::move($5.with_if({ std::move($2), std::move($4), @$ })); }
        | %empty {}
 
 IF_STATEMENT: IF_BASE IF_ELSE end
-              { $$ = { std::move($1), std::move($2) }; }
+              { $$ = { std::move($1), std::move($2), @$ }; }
             | IF_BASE IF_ELSE _else BLOCK end
-              { $$ = { std::move($1), std::move($2), std::move($4) }; }
+              { $$ = { std::move($1), std::move($2), std::move($4), @$ }; }
 
 IF_EXPRESSION: IF_BASE IF_ELSE _else BLOCK end
-               { $$ = { std::move($1), std::move($2), std::move($4) }; }
+               { $$ = { std::move($1), std::move($2), std::move($4), @$ }; }
 
 // Loops
 WHILE: _while EXPRESSION _do BLOCK end
-       { $$ = { std::move($2), std::move($4) }; }
+       { $$ = { std::move($2), std::move($4), @$ }; }
 
 FOR: _for MUTABILITY IDENTIFIER in EXPRESSION _do BLOCK end
-     { $$ = { std::move($3), std::move($5), std::move($7), std::move($2) }; }
+     { $$ = { std::move($3), std::move($5), std::move($7), std::move($2), @$ }; }
 
 RANGE_OPERATOR: dot_dot        { $$ = RangeOperator::Exclusive; }
               | dot_dot_equal  { $$ = RangeOperator::Inclusive; }
@@ -268,7 +254,8 @@ RANGE_FOR: _for MUTABILITY IDENTIFIER in ATOMIC_EXPRESSION RANGE_OPERATOR ATOMIC
               $6,            // range operator
               std::move($7), // end
               std::move($8), // step
-              std::move($10) // block
+              std::move($10), // block
+              @$
              }; }
 
 // Assignments and Declarations
@@ -281,9 +268,9 @@ ASSIGNMENT_OPERATOR: plus_equal  { $$ = AssignmentOperator::Plus; }
                    | equal       { $$ = AssignmentOperator::Assign; }
 
 ASSIGNMENT: VAR ASSIGNMENT_OPERATOR PRIMARY_EXPRESSION
-            { $$ = OperatorAssignment { std::move($1), $2, std::move($3) }; }
+            { $$ = OperatorAssignment { std::move($1), $2, std::move($3), @$ }; }
           | MULTIPLE_NAME_LIST equal PRIMARY_EXPRESSION
-            { $$ = NameAssignment { std::move($1), std::move($3) }; }
+            { $$ = NameAssignment { std::move($1), std::move($3), @$ }; }
 
 INITIALIZER: equal PRIMARY_EXPRESSION { $$ = std::move($2); }
            | %empty                   { $$ = std::nullopt; }
@@ -292,15 +279,15 @@ MUTABILITY: mut     { $$ = Mutability::Mutable; }
           | %empty  { $$ = Mutability::Immutable; }
 
 DECLARATION: let MUTABILITY NAME_LIST INITIALIZER
-             { $$ = { std::move($3), std::move($4), std::move($2) }; }
+             { $$ = { std::move($3), std::move($4), std::move($2), @$ }; }
 
 // Control Statements
-RETURN: _return PRIMARY_EXPRESSION { $$ = { std::move($2) }; }
-      | _return                    {}
+RETURN: _return PRIMARY_EXPRESSION { $$ = { std::move($2), @$ }; }
+      | _return                    { $$ = { @$ }; }
 
 LAST_STATEMENT: RETURN    { $$ = { std::move($1) }; }
-              | _continue { $$ = { ContinueStatement {} }; }
-              | _break    { $$ = { BreakStatement {} }; }
+              | _continue { $$ = { ContinueStatement { @$ } }; }
+              | _break    { $$ = { BreakStatement { @$ } }; }
 
 // Statements and Blocks
 STATEMENT: ASSIGNMENT           { $$ = { std::move($1) }; }

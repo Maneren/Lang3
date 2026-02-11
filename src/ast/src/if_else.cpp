@@ -5,9 +5,11 @@ import :expression;
 
 namespace l3::ast {
 
-IfBase::IfBase(Expression &&condition, Block &&block)
+IfBase::IfBase(
+    Expression &&condition, Block &&block, location::Location location
+)
     : condition(std::make_unique<Expression>(std::move(condition))),
-      block(std::move(block)) {}
+      block(std::move(block)), location_(std::move(location)) {}
 
 ElseIfList &ElseIfList::with_if(IfBase &&if_base) {
   inner.push_back(std::move(if_base));
@@ -15,29 +17,43 @@ ElseIfList &ElseIfList::with_if(IfBase &&if_base) {
 }
 
 IfElseBase::~IfElseBase() = default;
-IfElseBase::IfElseBase(IfBase &&base_if) : base_if(std::move(base_if)) {};
-IfElseBase::IfElseBase(IfBase &&base_if, ElseIfList &&elseif)
-    : base_if(std::move(base_if)), elseif(std::move(elseif)) {};
-
-IfExpression::IfExpression(IfBase &&base_if, Block &&else_block)
-    : IfElseBase(std::move(base_if)), else_block(std::move(else_block)) {}
-IfExpression::IfExpression(
-    IfBase &&base_if, ElseIfList &&elseif, Block &&else_block
+IfElseBase::IfElseBase(IfBase &&base_if, location::Location location)
+    : base_if(std::move(base_if)), location_(std::move(location)) {};
+IfElseBase::IfElseBase(
+    IfBase &&base_if, ElseIfList &&elseif, location::Location location
 )
-    : IfElseBase(std::move(base_if), std::move(elseif)),
+    : base_if(std::move(base_if)), elseif(std::move(elseif)),
+      location_(std::move(location)) {};
+
+IfExpression::IfExpression(
+    IfBase &&base_if, Block &&else_block, location::Location location
+)
+    : IfElseBase(std::move(base_if), std::move(location)),
+      else_block(std::move(else_block)) {}
+IfExpression::IfExpression(
+    IfBase &&base_if,
+    ElseIfList &&elseif,
+    Block &&else_block,
+    location::Location location
+)
+    : IfElseBase(std::move(base_if), std::move(elseif), std::move(location)),
       else_block(std::move(else_block)) {}
 IfExpression::IfExpression(IfExpression &&) noexcept = default;
 IfExpression &IfExpression::operator=(IfExpression &&) noexcept = default;
 IfExpression::~IfExpression() = default;
 
 IfStatement::IfStatement(
-    IfBase &&base_if, ElseIfList &&elseif, Block &&else_block
+    IfBase &&base_if, ElseIfList &&elseif, location::Location location
 )
-    : IfElseBase(std::move(base_if), std::move(elseif)),
-      else_block(std::move(else_block)) {};
-IfStatement::IfStatement(IfBase &&base_if) : IfElseBase(std::move(base_if)) {}
-IfStatement::IfStatement(IfBase &&base_if, ElseIfList &&elseif)
-    : IfElseBase(std::move(base_if), std::move(elseif)) {}
+    : IfElseBase(std::move(base_if), std::move(elseif), std::move(location)) {};
+IfStatement::IfStatement(
+    IfBase &&base_if,
+    ElseIfList &&elseif,
+    Block &&else_block,
+    location::Location location
+)
+    : IfElseBase(std::move(base_if), std::move(elseif), std::move(location)),
+      else_block(std::move(else_block)) {}
 IfStatement::IfStatement(IfStatement &&) noexcept = default;
 IfStatement &IfStatement::operator=(IfStatement &&) noexcept = default;
 IfStatement::~IfStatement() = default;

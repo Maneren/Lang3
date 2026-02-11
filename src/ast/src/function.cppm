@@ -4,6 +4,7 @@ import utils;
 import :block;
 import :identifier;
 import :name_list;
+import l3.location;
 
 export namespace l3::ast {
 
@@ -13,9 +14,13 @@ class FunctionBody {
   NameList parameters;
   Block block;
 
+  DEFINE_LOCATION_FIELD()
+
 public:
-  FunctionBody();
-  FunctionBody(NameList &&parameters, Block &&block);
+  FunctionBody(location::Location location = {});
+  FunctionBody(
+      NameList &&parameters, Block &&block, location::Location location = {}
+  );
 
   [[nodiscard]] std::span<const Identifier> get_parameters() const {
     return parameters;
@@ -27,9 +32,13 @@ class NamedFunction {
   Identifier name;
   FunctionBody body;
 
+  DEFINE_LOCATION_FIELD()
+
 public:
-  NamedFunction();
-  NamedFunction(Identifier &&name, FunctionBody &&body);
+  NamedFunction(location::Location location = {});
+  NamedFunction(
+      Identifier &&name, FunctionBody &&body, location::Location location = {}
+  );
 
   DEFINE_ACCESSOR_X(name);
   DEFINE_ACCESSOR_X(body);
@@ -38,9 +47,11 @@ public:
 class AnonymousFunction {
   FunctionBody body;
 
+  DEFINE_LOCATION_FIELD()
+
 public:
-  AnonymousFunction();
-  AnonymousFunction(FunctionBody &&body);
+  AnonymousFunction(location::Location location = {});
+  AnonymousFunction(FunctionBody &&body, location::Location location = {});
 
   DEFINE_ACCESSOR_X(body);
 };

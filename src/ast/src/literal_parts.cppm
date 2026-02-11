@@ -1,16 +1,24 @@
 export module l3.ast:literal_parts;
 
 import std;
+import l3.location;
 
 export namespace l3::ast {
 
-struct Nil {};
+struct Nil {
+  DEFINE_LOCATION_FIELD()
+
+  constexpr Nil(location::Location location = {})
+      : location_(std::move(location)) {}
+};
 
 class Boolean {
   bool value;
 
+  DEFINE_LOCATION_FIELD()
+
 public:
-  Boolean(bool value);
+  Boolean(bool value, location::Location location = {});
 
   DEFINE_ACCESSOR_X(value);
 };
@@ -18,8 +26,10 @@ public:
 class Number {
   std::int64_t value;
 
+  DEFINE_LOCATION_FIELD()
+
 public:
-  Number(std::int64_t value);
+  Number(std::int64_t value, location::Location location = {});
 
   DEFINE_ACCESSOR_X(value);
 };
@@ -27,9 +37,15 @@ public:
 class Float {
   double value;
 
+  DEFINE_LOCATION_FIELD()
+
 public:
-  Float(std::int64_t integral);
-  Float(std::int64_t integral, std::int64_t fractional); // NOLINT
+  Float(std::int64_t integral, location::Location location = {});
+  Float(
+      std::int64_t integral,
+      std::int64_t fractional,
+      location::Location location = {}
+  ); // NOLINT
 
   DEFINE_ACCESSOR_X(value);
 };
@@ -37,8 +53,10 @@ public:
 class String {
   std::string value;
 
+  DEFINE_LOCATION_FIELD()
+
 public:
-  String(const std::string &literal);
+  String(const std::string &literal, location::Location location = {});
 
   DEFINE_ACCESSOR_X(value);
 };

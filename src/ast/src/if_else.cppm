@@ -3,6 +3,7 @@ export module l3.ast:if_else;
 import utils;
 
 import :block;
+import l3.location;
 
 export namespace l3::ast {
 
@@ -13,9 +14,13 @@ class IfBase {
   std::unique_ptr<Expression> condition;
   Block block;
 
+  DEFINE_LOCATION_FIELD()
+
 public:
   IfBase() = default;
-  IfBase(Expression &&condition, Block &&block);
+  IfBase(
+      Expression &&condition, Block &&block, location::Location location = {}
+  );
 
   DEFINE_PTR_ACCESSOR_X(condition)
   DEFINE_ACCESSOR_X(block)
@@ -41,6 +46,8 @@ class IfElseBase {
   IfBase base_if;
   ElseIfList elseif;
 
+  DEFINE_LOCATION_FIELD()
+
 public:
   IfElseBase() = default;
   IfElseBase(const IfElseBase &) = delete;
@@ -49,8 +56,10 @@ public:
   IfElseBase &operator=(IfElseBase &&) noexcept = default;
   virtual ~IfElseBase();
 
-  IfElseBase(IfBase &&base_if);
-  IfElseBase(IfBase &&base_if, ElseIfList &&elseif);
+  IfElseBase(IfBase &&base_if, location::Location location = {});
+  IfElseBase(
+      IfBase &&base_if, ElseIfList &&elseif, location::Location location = {}
+  );
 
   DEFINE_ACCESSOR_X(base_if);
   DEFINE_ACCESSOR_X(elseif);
@@ -67,8 +76,15 @@ public:
   IfExpression &operator=(IfExpression &&) noexcept;
   ~IfExpression() override;
 
-  IfExpression(IfBase &&base_if, Block &&else_block);
-  IfExpression(IfBase &&base_if, ElseIfList &&elseif, Block &&else_block);
+  IfExpression(
+      IfBase &&base_if, Block &&else_block, location::Location location = {}
+  );
+  IfExpression(
+      IfBase &&base_if,
+      ElseIfList &&elseif,
+      Block &&else_block,
+      location::Location location = {}
+  );
 
   IfExpression &&with_elseif(IfBase &&elseif);
 
@@ -86,9 +102,15 @@ public:
   IfStatement &operator=(IfStatement &&) noexcept;
   ~IfStatement() override;
 
-  IfStatement(IfBase &&base_if);
-  IfStatement(IfBase &&base_if, ElseIfList &&elseif);
-  IfStatement(IfBase &&base_if, ElseIfList &&elseif, Block &&else_block);
+  IfStatement(
+      IfBase &&base_if, ElseIfList &&elseif, location::Location location = {}
+  );
+  IfStatement(
+      IfBase &&base_if,
+      ElseIfList &&elseif,
+      Block &&else_block,
+      location::Location location = {}
+  );
 
   [[nodiscard]] utils::optional_cref<Block> get_else_block() const;
   [[nodiscard]] utils::optional_ref<Block> get_else_block_mut();

@@ -3,6 +3,7 @@ export module l3.ast:literal;
 import utils;
 export import :literal_parts;
 export import :array;
+import l3.location;
 
 char decode_escape(char c);
 
@@ -21,6 +22,8 @@ public:
   Literal(Array &&array);
 
   VISIT(inner)
+
+  [[nodiscard]] const location::Location &get_location() const;
 };
 
 } // namespace l3::ast

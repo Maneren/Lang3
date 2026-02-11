@@ -3,6 +3,7 @@ export module l3.ast:while_loop;
 import :block;
 import :expression;
 import std;
+import l3.location;
 
 export namespace l3::ast {
 
@@ -10,9 +11,13 @@ class While {
   Expression condition;
   Block body;
 
+  DEFINE_LOCATION_FIELD()
+
 public:
-  While();
-  While(Expression &&condition, Block &&block);
+  While(location::Location location = {});
+  While(
+      Expression &&condition, Block &&block, location::Location location = {}
+  );
 
   While(const While &) = delete;
   While(While &&) noexcept;

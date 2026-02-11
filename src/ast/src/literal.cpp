@@ -17,13 +17,20 @@ char decode_escape(char c) {
 
 namespace l3::ast {
 
-Boolean::Boolean(bool value) : value(value) {}
+Boolean::Boolean(bool value, location::Location location)
+    : value(value), location_(std::move(location)) {}
 
-Number::Number(std::int64_t value) : value(value) {}
+Number::Number(std::int64_t value, location::Location location)
+    : value(value), location_(std::move(location)) {}
 
-Float::Float(std::int64_t integral) : value(static_cast<double>(integral)) {}
-Float::Float(std::int64_t integral, std::int64_t fractional) // NOLINT
-    : value(static_cast<double>(integral)) {
+Float::Float(std::int64_t integral, location::Location location)
+    : value(static_cast<double>(integral)), location_(std::move(location)) {}
+Float::Float(
+    std::int64_t integral,
+    std::int64_t fractional,
+    location::Location location
+) // NOLINT
+    : value(static_cast<double>(integral)), location_(std::move(location)) {
 
   auto frac = static_cast<double>(fractional);
 
@@ -33,7 +40,8 @@ Float::Float(std::int64_t integral, std::int64_t fractional) // NOLINT
   value += frac;
 }
 
-String::String(const std::string &literal) {
+String::String(const std::string &literal, location::Location location)
+    : location_(std::move(location)) {
   using namespace std::ranges;
 
   value.reserve(literal.size());
@@ -59,5 +67,14 @@ Literal::Literal(Number num) : inner(num) {}
 Literal::Literal(Float num) : inner(num) {}
 Literal::Literal(String &&string) : inner(std::move(string)) {}
 Literal::Literal(Array &&array) : inner(std::move(array)) {}
+
+const location::Location &Literal::get_location() const {
+  return std::visit(
+      [](const auto &node) -> const location::Location & {
+        return node.get_location();
+      },
+      inner
+  );
+}
 
 } // namespace l3::ast

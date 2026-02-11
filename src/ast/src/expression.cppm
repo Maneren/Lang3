@@ -8,6 +8,7 @@ import :identifier;
 import :if_else;
 import :literal;
 import :variable;
+import l3.location;
 
 export namespace l3::ast {
 
@@ -39,6 +40,8 @@ public:
   Expression(Variable &&variable);
 
   VISIT(inner)
+
+  [[nodiscard]] const location::Location &get_location() const;
 };
 
 } // namespace l3::ast

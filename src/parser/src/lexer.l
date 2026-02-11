@@ -7,7 +7,7 @@
     #undef  YY_DECL
     #define YY_DECL int lexer::L3Lexer::lex( \
         parser::L3Parser::semantic_type *lval, \
-        parser::location *lloc)
+        parser::L3Parser::location_type *lloc)
 
     #define YY_USER_INIT yylval = lval; yylloc = lloc;
 

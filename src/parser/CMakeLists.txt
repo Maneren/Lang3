@@ -58,9 +58,9 @@ target_sources(${LIB_NAME} PUBLIC
   FILE_SET parser_header
     TYPE HEADERS
     BASE_DIRS ${GENERATED_INCLUDE}
-    FILES ${PARSER_HEADER}
+    FILES ${PARSER_HEADER} ${LOCATION_HEADER}
 )
 
-target_link_libraries(${LIB_NAME} PRIVATE ast source_location)
+target_link_libraries(${LIB_NAME} PRIVATE ast location)
 
 set_compiler_and_linker_flags(${LIB_NAME})

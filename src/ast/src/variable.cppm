@@ -2,6 +2,7 @@ export module l3.ast:variable;
 
 import :identifier;
 import std;
+import l3.location;
 
 export namespace l3::ast {
 
@@ -12,9 +13,13 @@ class IndexExpression {
   std::unique_ptr<Variable> base;
   std::unique_ptr<Expression> index;
 
+  DEFINE_LOCATION_FIELD()
+
 public:
-  IndexExpression();
-  IndexExpression(Variable &&base, Expression &&index);
+  IndexExpression(location::Location location = {});
+  IndexExpression(
+      Variable &&base, Expression &&index, location::Location location = {}
+  );
 
   IndexExpression(const IndexExpression &) = delete;
   IndexExpression(IndexExpression &&) noexcept;
@@ -35,6 +40,8 @@ public:
   Variable(IndexExpression &&ie);
 
   VISIT(inner);
+
+  [[nodiscard]] const location::Location &get_location() const;
 };
 
 } // namespace l3::ast

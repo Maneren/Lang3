@@ -6,6 +6,7 @@ import :identifier;
 import :mutability;
 export import :range_operator;
 import std;
+import l3.location;
 
 export namespace l3::ast {
 
@@ -20,8 +21,10 @@ class RangeForLoop {
   RangeOperator range_type = RangeOperator::Inclusive;
   Mutability mutability = Mutability::Immutable;
 
+  DEFINE_LOCATION_FIELD()
+
 public:
-  RangeForLoop();
+  RangeForLoop(location::Location location = {});
   RangeForLoop(
       Mutability mutability,
       Identifier &&variable,
@@ -29,7 +32,8 @@ public:
       RangeOperator range_type,
       Expression &&end,
       std::optional<Expression> &&step,
-      Block &&body
+      Block &&body,
+      location::Location location = {}
   );
 
   RangeForLoop(const RangeForLoop &) = delete;

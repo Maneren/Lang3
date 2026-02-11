@@ -4,25 +4,40 @@ import :expression;
 
 namespace l3::ast {
 
-UnaryExpression::UnaryExpression(UnaryOperator op, Expression &&expression)
-    : op(op), expression(std::make_unique<Expression>(std::move(expression))) {}
+UnaryExpression::UnaryExpression(
+    UnaryOperator op, Expression &&expression, location::Location location
+)
+    : op(op), expression(std::make_unique<Expression>(std::move(expression))),
+      location_(std::move(location)) {}
 
 BinaryExpression::BinaryExpression(
-    Expression &&lhs, BinaryOperator op, Expression &&rhs
+    Expression &&lhs,
+    BinaryOperator op,
+    Expression &&rhs,
+    location::Location location
 )
     : lhs(std::make_unique<Expression>(std::move(lhs))), op(op),
-      rhs(std::make_unique<Expression>(std::move(rhs))) {}
+      rhs(std::make_unique<Expression>(std::move(rhs))),
+      location_(std::move(location)) {}
 
 LogicalExpression::LogicalExpression(
-    Expression &&lhs, LogicalOperator op, Expression &&rhs
+    Expression &&lhs,
+    LogicalOperator op,
+    Expression &&rhs,
+    location::Location location
 )
     : lhs(std::make_unique<Expression>(std::move(lhs))), op(op),
-      rhs(std::make_unique<Expression>(std::move(rhs))) {}
+      rhs(std::make_unique<Expression>(std::move(rhs))),
+      location_(std::move(location)) {}
 
 Comparison::Comparison(
-    Expression &&left, ComparisonOperator op, Expression &&right
+    Expression &&left,
+    ComparisonOperator op,
+    Expression &&right,
+    location::Location location
 )
-    : start(std::make_unique<Expression>(std::move(left))), type(get_type(op)) {
+    : start(std::make_unique<Expression>(std::move(left))), type(get_type(op)),
+      location_(std::move(location)) {
   comparisons.emplace_back(op, std::move(right));
 }
 bool Comparison::add_comparison(ComparisonOperator op, Expression &&right) {
@@ -49,6 +64,15 @@ Expression::Expression(LogicalExpression &&expression)
 Expression::Expression(UnaryExpression &&expression)
     : inner(std::move(expression)) {}
 Expression::Expression(Variable &&variable) : inner(std::move(variable)) {}
+
+const location::Location &Expression::get_location() const {
+  return std::visit(
+      [](const auto &node) -> const location::Location & {
+        return node.get_location();
+      },
+      inner
+  );
+}
 
 ExpressionList::ExpressionList() = default;
 ExpressionList::ExpressionList(ExpressionList &&) noexcept = default;

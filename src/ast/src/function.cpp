@@ -4,16 +4,27 @@ module l3.ast;
 
 namespace l3::ast {
 
-FunctionBody::FunctionBody() = default;
-FunctionBody::FunctionBody(NameList &&parameters, Block &&block)
-    : parameters(std::move(parameters)), block(std::move(block)) {};
+FunctionBody::FunctionBody(location::Location location)
+    : location_(std::move(location)) {}
+FunctionBody::FunctionBody(
+    NameList &&parameters, Block &&block, location::Location location
+)
+    : parameters(std::move(parameters)), block(std::move(block)),
+      location_(std::move(location)) {};
 
-NamedFunction ::NamedFunction() = default;
-NamedFunction::NamedFunction(Identifier &&name, FunctionBody &&body)
-    : name(std::move(name)), body(std::move(body)) {}
+NamedFunction ::NamedFunction(location::Location location)
+    : location_(std::move(location)) {}
+NamedFunction::NamedFunction(
+    Identifier &&name, FunctionBody &&body, location::Location location
+)
+    : name(std::move(name)), body(std::move(body)),
+      location_(std::move(location)) {}
 
-AnonymousFunction::AnonymousFunction() = default;
-AnonymousFunction::AnonymousFunction(FunctionBody &&body)
-    : body(std::move(body)) {}
+AnonymousFunction::AnonymousFunction(location::Location location)
+    : location_(std::move(location)) {}
+AnonymousFunction::AnonymousFunction(
+    FunctionBody &&body, location::Location location
+)
+    : body(std::move(body)), location_(std::move(location)) {}
 
 } // namespace l3::ast

@@ -28,4 +28,13 @@ Statement::Statement(OperatorAssignment &&assignment)
 Statement::Statement(RangeForLoop &&loop) : inner(std::move(loop)) {}
 Statement::Statement(While &&loop) : inner(std::move(loop)) {}
 
+const location::Location &Statement::get_location() const {
+  return std::visit(
+      [](const auto &node) -> const location::Location & {
+        return node.get_location();
+      },
+      inner
+  );
+}
+
 } // namespace l3::ast

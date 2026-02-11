@@ -8,6 +8,7 @@ import :if_else;
 import :loop;
 import utils;
 import std;
+import l3.location;
 
 export namespace l3::ast {
 
@@ -44,6 +45,8 @@ public:
   Statement(While &&loop);
 
   VISIT(inner)
+
+  [[nodiscard]] const location::Location &get_location() const;
 };
 
 } // namespace l3::ast

@@ -2,21 +2,26 @@ export module l3.ast:identifier;
 
 import utils;
 import std;
+import l3.location;
 
 export namespace l3::ast {
 
 class Identifier {
   std::string name;
 
+  DEFINE_LOCATION_FIELD()
+
 public:
   Identifier();
-  Identifier(std::string &&name);
-  Identifier(std::string_view name);
+  Identifier(std::string &&name, location::Location location = {});
+  Identifier(std::string_view name, location::Location location = {});
 
   DEFINE_ACCESSOR_X(name);
 
-  [[nodiscard]] constexpr auto
-  operator<=>(const Identifier &other) const = default;
+  [[nodiscard]]
+  constexpr bool operator==(const Identifier &other) const {
+    return name == other.name;
+  }
 };
 
 } // namespace l3::ast

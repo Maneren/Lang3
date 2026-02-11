@@ -4,13 +4,15 @@ import std;
 
 namespace l3::ast {
 
-Declaration::Declaration() = default;
+Declaration::Declaration(location::Location location)
+    : location_(std::move(location)) {}
 Declaration::Declaration(
     NameList &&names,
     std::optional<Expression> &&expression,
-    Mutability mutability
+    Mutability mutability,
+    location::Location location
 )
     : names(std::move(names)), expression(std::move(expression)),
-      mutability(mutability) {}
+      mutability(mutability), location_(std::move(location)) {}
 
 } // namespace l3::ast

@@ -18,7 +18,7 @@ target_sources(${LIB_NAME} PUBLIC
   FILES ${MODULES}
 )
 
-target_link_libraries(${LIB_NAME} PRIVATE utils source_location)
+target_link_libraries(${LIB_NAME} PRIVATE utils PUBLIC location)
 target_precompile_headers(${LIB_NAME} REUSE_FROM utils)
 
 set_compiler_and_linker_flags(${LIB_NAME})
