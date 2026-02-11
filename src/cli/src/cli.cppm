@@ -37,7 +37,7 @@ class ParsingContext {
   using argument = std::string_view;
 
 public:
-  constexpr ParsingContext(std::span<const char *const> arguments)
+  constexpr ParsingContext(std::span<raw_argument> arguments)
       : arguments(arguments) {}
 
   [[nodiscard]] constexpr argument current() const { return arguments[i]; }
@@ -53,7 +53,7 @@ public:
   [[nodiscard]] constexpr bool empty() const { return i >= arguments.size(); }
 
 private:
-  std::span<const char *const> arguments;
+  std::span<raw_argument> arguments;
   std::size_t i = 0;
 };
 
