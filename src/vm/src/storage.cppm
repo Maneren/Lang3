@@ -1,8 +1,6 @@
-module;
-
-#include <forward_list>
-
 export module l3.vm:storage;
+
+import :chunk_list;
 
 export namespace l3::vm {
 
@@ -11,7 +9,7 @@ class Value;
 
 class GCStorage {
   bool debug;
-  std::forward_list<GCValue> backing_store;
+  ChunkedForwardList<GCValue> backing_store;
   size_t sweep_count = 0;
   size_t size = 0;
   size_t added_since_last_sweep = 0;
