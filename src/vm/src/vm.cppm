@@ -94,6 +94,7 @@ private:
 
   FlowControl flow_control = FlowControl::Normal;
   std::optional<RefValue> return_value = std::nullopt;
+  std::vector<CallStackFrame> call_stack;
 
   template <typename... Ts>
   void debug_print(std::format_string<Ts...> message, Ts &&...args) const {
@@ -101,6 +102,21 @@ private:
       std::println(std::cerr, message, std::forward<Ts>(args)...);
     }
   }
+
+  class CallStackGuard {
+    VM &vm; // NOLINT(cppcoreguidelines-avoid-const-or-ref-data-members)
+
+  public:
+    CallStackGuard(const CallStackGuard &) = delete;
+    CallStackGuard(CallStackGuard &&) = delete;
+    CallStackGuard &operator=(const CallStackGuard &) = delete;
+    CallStackGuard &operator=(CallStackGuard &&) = delete;
+
+    explicit CallStackGuard(VM &vm, CallStackFrame &&frame) : vm{vm} {
+      vm.call_stack.push_back(std::move(frame));
+    }
+    ~CallStackGuard() { vm.call_stack.pop_back(); }
+  };
 
   class ScopeStackOverlay {
     VM &vm; // NOLINT(cppcoreguidelines-avoid-const-or-ref-data-members)

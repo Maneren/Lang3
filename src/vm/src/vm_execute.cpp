@@ -91,7 +91,7 @@ void VM::execute(const ast::Program &program) {
     }
 
   } catch (const RuntimeError &error) {
-    std::println(std::cerr, "{}: {}", error.type(), error.what());
+    std::println(std::cerr, "{}", error.format_error());
   }
 }
 

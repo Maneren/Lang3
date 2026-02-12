@@ -284,14 +284,25 @@ RefValue VM::evaluate(const ast::FunctionCall &function_call) {
     debug_print("  {}", argument);
   }
 
-  const auto result = evaluate(function, arguments);
+  const auto call_stack_guard = CallStackGuard{
+      *this,
+      {.function_name = function_name, .location = function_call.get_location()}
+  };
 
-  switch (flow_control) {
-  case FlowControl::Break:
-  case FlowControl::Continue:
-    throw RuntimeError("Unexpected {} outside a loop", flow_control);
-  default:
-    break;
+  RefValue result = nil();
+  try {
+    result = evaluate(function, arguments);
+
+    switch (flow_control) {
+    case FlowControl::Break:
+    case FlowControl::Continue:
+      throw RuntimeError("Unexpected {} outside a loop", flow_control);
+    default:
+      break;
+    }
+  } catch (RuntimeError &error) {
+    error.set_stack_trace(call_stack);
+    throw;
   }
 
   debug_print("Result: {}", result);
@@ -315,7 +326,13 @@ RefValue &VM::evaluate_mut(const ast::Variable &variable) {
 }
 
 RefValue &VM::evaluate_mut(const ast::Identifier &identifier) {
-  return read_write_variable(identifier);
+  try {
+    debug_print("Reading variable {}", identifier.get_name());
+    return read_write_variable(identifier);
+  } catch (RuntimeError &error) {
+    error.set_location(identifier.get_location());
+    throw;
+  }
 }
 
 RefValue &VM::evaluate_mut(const ast::IndexExpression &index_expression) {
