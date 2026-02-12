@@ -147,7 +147,7 @@ export {
   template <>
   struct std::formatter<l3::vm::VM::FlowControl>
       : utils::static_formatter<l3::vm::VM::FlowControl> {
-    static auto format(auto obj, std::format_context &ctx) {
+    static constexpr auto format(auto obj, std::format_context &ctx) {
       switch (obj) {
         using namespace l3::vm;
       case VM::FlowControl::Normal:
