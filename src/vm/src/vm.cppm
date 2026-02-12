@@ -2,6 +2,7 @@ export module l3.vm;
 
 import utils;
 import :error;
+import :execution_state;
 import :function;
 import :identifier;
 import :ref_value;
@@ -9,6 +10,7 @@ import :scope;
 import :stack;
 import :storage;
 import :value;
+import l3.location;
 
 export namespace l3::vm {
 
@@ -79,21 +81,11 @@ private:
   bool evaluate_if_branch(const ast::IfBase &if_base);
 
   bool debug;
-  std::shared_ptr<ScopeStack> scopes;
-  std::vector<std::shared_ptr<ScopeStack>> unused_scopes;
+  ExecutionState state;
+  std::vector<ExecutionState> unused_states;
   Stack stack;
   GCStorage gc_storage;
 
-  enum class FlowControl : std::uint_fast8_t {
-    Normal,
-    Return,
-    Break,
-    Continue
-  };
-  friend std::formatter<FlowControl>;
-
-  FlowControl flow_control = FlowControl::Normal;
-  std::optional<RefValue> return_value = std::nullopt;
   std::vector<CallStackFrame> call_stack;
 
   template <typename... Ts>
@@ -103,62 +95,7 @@ private:
     }
   }
 
-  class CallStackGuard {
-    VM &vm; // NOLINT(cppcoreguidelines-avoid-const-or-ref-data-members)
-
-  public:
-    CallStackGuard(const CallStackGuard &) = delete;
-    CallStackGuard(CallStackGuard &&) = delete;
-    CallStackGuard &operator=(const CallStackGuard &) = delete;
-    CallStackGuard &operator=(CallStackGuard &&) = delete;
-
-    explicit CallStackGuard(VM &vm, CallStackFrame &&frame) : vm{vm} {
-      vm.call_stack.push_back(std::move(frame));
-    }
-    ~CallStackGuard() { vm.call_stack.pop_back(); }
-  };
-
-  class ScopeStackOverlay {
-    VM &vm; // NOLINT(cppcoreguidelines-avoid-const-or-ref-data-members)
-
-  public:
-    ScopeStackOverlay(const ScopeStackOverlay &) = delete;
-    ScopeStackOverlay(ScopeStackOverlay &&) = delete;
-    ScopeStackOverlay &operator=(const ScopeStackOverlay &) = delete;
-    ScopeStackOverlay &operator=(ScopeStackOverlay &&) = delete;
-
-    explicit ScopeStackOverlay(
-        VM &vm, std::shared_ptr<ScopeStack> overlay_scopes
-    )
-        : vm{vm} {
-      vm.unused_scopes.emplace_back(std::move(vm.scopes));
-      vm.scopes = std::move(overlay_scopes);
-    }
-    ~ScopeStackOverlay() {
-      vm.scopes = std::move(vm.unused_scopes.back());
-      vm.unused_scopes.pop_back();
-    }
-  };
+  friend class ExecutionState::Overlay;
 };
 
 } // namespace l3::vm
-
-export {
-  template <>
-  struct std::formatter<l3::vm::VM::FlowControl>
-      : utils::static_formatter<l3::vm::VM::FlowControl> {
-    static constexpr auto format(auto obj, std::format_context &ctx) {
-      switch (obj) {
-        using namespace l3::vm;
-      case VM::FlowControl::Normal:
-        return std::format_to(ctx.out(), "normal");
-      case VM::FlowControl::Break:
-        return std::format_to(ctx.out(), "break");
-      case VM::FlowControl::Continue:
-        return std::format_to(ctx.out(), "continue");
-      case VM::FlowControl::Return:
-        return std::format_to(ctx.out(), "return");
-      }
-    }
-  };
-}

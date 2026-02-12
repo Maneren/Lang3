@@ -4,6 +4,7 @@ import utils;
 import l3.ast;
 import :formatting;
 import :variable;
+import :loop_guard;
 
 namespace l3::vm {
 
@@ -17,31 +18,36 @@ void VM::execute(const ast::OperatorAssignment &assignment) {
   debug_print("  LHS: {}", lhs);
   debug_print("  RHS: {}", rhs);
 
-  switch (assignment.get_operator()) {
-  case ast::AssignmentOperator::Assign:
-    lhs = rhs;
-    break;
-  case ast::AssignmentOperator::Plus:
-    lhs->add_assign(*rhs);
-    break;
-  case ast::AssignmentOperator::Minus:
-    lhs = store_value(lhs->sub(*rhs));
-    break;
-  case ast::AssignmentOperator::Multiply:
-    lhs->mul_assign(*rhs);
-    break;
-  case ast::AssignmentOperator::Divide:
-    lhs = store_value(lhs->div(*rhs));
-    break;
-  case ast::AssignmentOperator::Modulo:
-    lhs = store_value(lhs->mod(*rhs));
-    break;
-  default:
-    throw std::runtime_error(
-        std::format("not implemented: {}", assignment.get_operator())
-    );
+  try {
+    switch (assignment.get_operator()) {
+    case ast::AssignmentOperator::Assign:
+      lhs = rhs;
+      break;
+    case ast::AssignmentOperator::Plus:
+      lhs->add_assign(*rhs);
+      break;
+    case ast::AssignmentOperator::Minus:
+      lhs = store_value(lhs->sub(*rhs));
+      break;
+    case ast::AssignmentOperator::Multiply:
+      lhs->mul_assign(*rhs);
+      break;
+    case ast::AssignmentOperator::Divide:
+      lhs = store_value(lhs->div(*rhs));
+      break;
+    case ast::AssignmentOperator::Modulo:
+      lhs = store_value(lhs->mod(*rhs));
+      break;
+    default:
+      throw std::runtime_error(
+          std::format("not implemented: {}", assignment.get_operator())
+      );
+    }
+    debug_print("Assigned: {}", lhs);
+  } catch (RuntimeError &error) {
+    error.set_location(assignment.get_location());
+    throw;
   }
-  debug_print("Assigned: {}", lhs);
 }
 
 bool VM::execute(const ast::ElseIfList &elseif_list) {
@@ -83,13 +89,6 @@ void VM::execute(const ast::Statement &statement) {
 void VM::execute(const ast::Program &program) {
   try {
     execute(static_cast<const ast::Block &>(program));
-
-    if (flow_control != FlowControl::Normal) {
-      throw RuntimeError(
-          "Return, break or continue from top-level code is not allowed"
-      );
-    }
-
   } catch (const RuntimeError &error) {
     std::println(std::cerr, "{}", error.format_error());
   }
@@ -98,11 +97,11 @@ void VM::execute(const ast::Program &program) {
 void VM::execute(const ast::Block &block) {
   debug_print("Evaluating block");
   const auto frame_guard = stack.with_frame();
-  const auto scope_guard = scopes->with_frame();
+  const auto scope_guard = state.scopes->with_frame();
   for (const auto &statement : block.get_statements()) {
     execute(statement);
 
-    if (flow_control != FlowControl::Normal) {
+    if (state.flow_control != FlowControl::Normal) {
       return;
     }
   }
@@ -120,7 +119,7 @@ void VM::execute(const ast::NamedFunction &named_function) {
   declare_variable(
       name,
       Mutability::Immutable,
-      store_value(Function{L3Function{scopes, named_function}})
+      store_value(Function{L3Function{state.scopes, named_function}})
   );
 
   debug_print("Declared function {}", name.get_name());
@@ -130,19 +129,35 @@ void VM::execute(const ast::LastStatement &last_statement) {
   debug_print("Evaluating last statement");
   last_statement.visit(
       [this](const ast::ReturnStatement &return_statement) {
-        return_value = return_statement.get_expression()
-                           .transform([this](const auto &expression) {
-                             return evaluate(expression);
-                           })
-                           .value_or(VM::nil());
-        flow_control = FlowControl::Return;
-        debug_print("Returning {}", *return_value);
+        if (!state.in_function) {
+          throw RuntimeError(
+              return_statement.get_location(),
+              "return statement outside of function"
+          );
+        }
+        state.return_value = return_statement.get_expression()
+                                 .transform([this](const auto &expression) {
+                                   return evaluate(expression);
+                                 })
+                                 .value_or(VM::nil());
+        state.flow_control = FlowControl::Return;
+        debug_print("Returning {}", *state.return_value);
       },
-      [this](const ast::BreakStatement & /*expression*/) {
-        flow_control = FlowControl::Break;
+      [this](const ast::BreakStatement &break_stmt) {
+        if (!state.in_loop) {
+          throw RuntimeError(
+              break_stmt.get_location(), "break statement outside of loop"
+          );
+        }
+        state.flow_control = FlowControl::Break;
       },
-      [this](const ast::ContinueStatement & /*expression*/) {
-        flow_control = FlowControl::Continue;
+      [this](const ast::ContinueStatement &continue_stmt) {
+        if (!state.in_loop) {
+          throw RuntimeError(
+              continue_stmt.get_location(), "continue statement outside of loop"
+          );
+        }
+        state.flow_control = FlowControl::Continue;
       }
   );
 }
@@ -154,6 +169,7 @@ void VM::execute(const ast::Declaration &declaration) {
   const auto mutability = declaration.get_mutability();
 
   const auto &expr_opt = declaration.get_expression();
+
   if (!expr_opt) {
     // No initializer, assign nil to all variables
     for (const auto &name : names) {
@@ -172,12 +188,16 @@ void VM::execute(const ast::Declaration &declaration) {
 
   const auto value_vector_opt = value->as_vector();
   if (!value_vector_opt) {
-    throw ValueError("Destructuring declaration only works with vectors");
+    throw ValueError(
+        "Destructuring declaration only works with vectors",
+        declaration.get_location()
+    );
   }
   const auto &value_vector = value_vector_opt->get();
 
   if (value_vector.size() != names.size()) {
     throw ValueError(
+        expr_opt->get_location(),
         "Destructuring declaration expected {} values but got {}",
         names.size(),
         value_vector.size()
@@ -192,6 +212,8 @@ void VM::execute(const ast::Declaration &declaration) {
 void VM::execute(const ast::NameAssignment &assignment) {
   const auto &names = assignment.get_names();
   const auto value = evaluate(assignment.get_expression());
+  const auto &location = assignment.get_location();
+
   debug_print(
       "Executing name assignment {} = {}",
       std::views::transform(names, &ast::Identifier::get_name) |
@@ -214,13 +236,16 @@ void VM::execute(const ast::NameAssignment &assignment) {
   const auto value_vector_opt = value->as_vector();
 
   if (!value_vector_opt) {
-    throw ValueError("Destructuring assignment only works with vectors");
+    throw ValueError(
+        "Destructuring assignment only works with vectors", location
+    );
   }
 
   const auto &value_vector = value_vector_opt->get();
 
   if (value_vector.size() != variables.size()) {
     throw ValueError(
+        location,
         "Destructuring assignment expected {} names but got {}",
         variables.size(),
         value_vector.size()
@@ -234,21 +259,22 @@ void VM::execute(const ast::NameAssignment &assignment) {
 }
 
 void VM::execute(const ast::While &while_loop) {
+  const auto loop_guard = LoopGuard{this->state};
   const auto &condition = while_loop.get_condition();
   const auto &body = while_loop.get_body();
 
   while (evaluate(condition)->is_truthy()) {
     execute(body);
 
-    switch (flow_control) {
+    switch (state.flow_control) {
     case FlowControl::Normal:
       break;
     case FlowControl::Continue:
-      flow_control = FlowControl::Normal;
+      state.flow_control = FlowControl::Normal;
       debug_print("Continue in a while loop");
       break;
     case FlowControl::Break:
-      flow_control = FlowControl::Normal;
+      state.flow_control = FlowControl::Normal;
       debug_print("Break in a while loop");
       return;
     default:
@@ -258,12 +284,13 @@ void VM::execute(const ast::While &while_loop) {
 }
 
 void VM::execute(const ast::ForLoop &for_loop) {
+  const auto loop_guard = LoopGuard{this->state};
   const auto &variable = for_loop.get_variable();
   const auto &collection = for_loop.get_collection();
   const auto &body = for_loop.get_body();
   const auto mutability = for_loop.get_mutability();
 
-  const auto scope_guard = scopes->with_frame();
+  const auto scope_guard = state.scopes->with_frame();
   const auto frame_guard = stack.with_frame();
   auto &value = declare_variable(variable, mutability);
 
@@ -271,15 +298,15 @@ void VM::execute(const ast::ForLoop &for_loop) {
     *value = item;
     execute(body);
 
-    switch (flow_control) {
+    switch (state.flow_control) {
     case FlowControl::Normal:
       return true;
     case FlowControl::Continue:
-      flow_control = FlowControl::Normal;
+      state.flow_control = FlowControl::Normal;
       debug_print("Continue in a for loop");
       return true;
     case FlowControl::Break:
-      flow_control = FlowControl::Normal;
+      state.flow_control = FlowControl::Normal;
       debug_print("Break in a for loop");
       return false;
     default:
@@ -309,11 +336,14 @@ void VM::execute(const ast::ForLoop &for_loop) {
   }
 
   throw TypeError(
-      "cannot iterate over value of type '{}'", collection_value->type_name()
+      for_loop.get_location(),
+      "cannot iterate over value of type '{}'",
+      collection_value->type_name()
   );
 }
 
 void VM::execute(const ast::RangeForLoop &range_for_loop) {
+  const auto loop_guard = LoopGuard{this->state};
   const auto &variable = range_for_loop.get_variable();
   const auto &start_expr = range_for_loop.get_start();
   const auto &end_expr = range_for_loop.get_end();
@@ -328,7 +358,10 @@ void VM::execute(const ast::RangeForLoop &range_for_loop) {
       evaluate(end_expr)->as_primitive().and_then(&Primitive::as_integer);
 
   if (!start_value || !end_value) {
-    throw TypeError("range bounds must be integers");
+    throw TypeError(
+        "range bounds must be integers",
+        !start_value ? start_expr.get_location() : end_expr.get_location()
+    );
   }
 
   const std::int64_t start = *start_value;
@@ -340,12 +373,16 @@ void VM::execute(const ast::RangeForLoop &range_for_loop) {
         evaluate(*step_expr)->as_primitive().and_then(&Primitive::as_integer);
 
     if (!step_value) {
-      throw TypeError("range step must be an integer");
+      throw TypeError(
+          "range step must be an integer", step_expr->get_location()
+      );
     }
 
     step = *step_value;
     if (step == 0) {
-      throw RuntimeError("range step cannot be zero");
+      throw RuntimeError(
+          "range step cannot be zero", step_expr->get_location()
+      );
     }
   }
 
@@ -353,7 +390,7 @@ void VM::execute(const ast::RangeForLoop &range_for_loop) {
     end = (step > 0) ? end + 1 : end - 1;
   }
 
-  const auto scope_guard = scopes->with_frame();
+  const auto scope_guard = state.scopes->with_frame();
   const auto frame_guard = stack.with_frame();
   auto &value = declare_variable(variable, mutability);
 
@@ -361,15 +398,15 @@ void VM::execute(const ast::RangeForLoop &range_for_loop) {
     *value = store_value(Primitive{i});
     execute(body);
 
-    switch (flow_control) {
+    switch (state.flow_control) {
     case FlowControl::Normal:
       return true;
     case FlowControl::Continue:
-      flow_control = FlowControl::Normal;
+      state.flow_control = FlowControl::Normal;
       debug_print("Continue in a range for loop");
       return true;
     case FlowControl::Break:
-      flow_control = FlowControl::Normal;
+      state.flow_control = FlowControl::Normal;
       debug_print("Break in a range for loop");
       return false;
     default:

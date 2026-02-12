@@ -12,7 +12,7 @@ constexpr std::size_t GC_OBJECT_TRIGGER_TRESHOLD = 10000;
 
 RefValue VM::read_variable(const Identifier &id) {
   debug_print("Reading variable {}", id.get_name());
-  if (auto value = scopes->read_variable(id)) {
+  if (auto value = state.scopes->read_variable(id)) {
     return *value;
   }
   if (auto value = Scope::get_builtin(id)) {
@@ -23,7 +23,7 @@ RefValue VM::read_variable(const Identifier &id) {
 
 RefValue &VM::read_write_variable(const Identifier &id) {
   debug_print("Writing variable {}", id.get_name());
-  if (auto value = scopes->read_variable_mut(id)) {
+  if (auto value = state.scopes->read_variable_mut(id)) {
     return *value;
   }
   if (auto value = Scope::get_builtin(id)) {
@@ -33,8 +33,8 @@ RefValue &VM::read_write_variable(const Identifier &id) {
 }
 
 VM::VM(bool debug)
-    : debug{debug}, scopes{std::make_shared<ScopeStack>()}, stack{debug},
-      gc_storage{debug} {}
+    : debug{debug}, state{std::make_shared<ScopeStack>()}, stack{debug},
+      gc_storage{} {}
 
 std::size_t VM::run_gc() {
   const auto since_last_sweep = gc_storage.get_added_since_last_sweep();
@@ -44,10 +44,10 @@ std::size_t VM::run_gc() {
   }
 
   debug_print("[GC] Running");
-  scopes->mark_gc();
+  state.scopes->mark_gc();
   stack.mark_gc();
-  if (return_value) {
-    return_value->get_gc_mut().mark();
+  if (state.return_value) {
+    state.return_value->get_gc_mut().mark();
   }
   auto erased = gc_storage.sweep();
   if (debug) {
@@ -59,7 +59,7 @@ std::size_t VM::run_gc() {
       debug_print("  {}", frame.size());
     }
     debug_print("Scopes:");
-    for (const auto &scope : scopes->get_scopes()) {
+    for (const auto &scope : state.scopes->get_scopes()) {
       debug_print("  {}", scope->get_variables().size());
     }
   }
@@ -72,7 +72,12 @@ Variable &VM::declare_variable(
   debug_print(
       "Declaring {} variable {} = {}", mutability, id.get_name(), ref_value
   );
-  return scopes->top().declare_variable(id, ref_value, mutability);
+  try {
+    return state.scopes->top().declare_variable(id, ref_value, mutability);
+  } catch (NameError &error) {
+    error.set_location(id.get_location());
+    throw;
+  }
 }
 
 RefValue VM::store_value(Value &&value) {

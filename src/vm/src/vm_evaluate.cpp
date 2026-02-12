@@ -10,15 +10,20 @@ namespace l3::vm {
 RefValue VM::evaluate(const ast::UnaryExpression &unary) {
   debug_print("Evaluating unary expression {}", unary.get_op());
   const auto argument = evaluate(unary.get_expression());
-  switch (unary.get_op()) {
-  case ast::UnaryOperator::Minus:
-    return store_value(argument->negative());
-  case ast::UnaryOperator::Plus:
-    return argument;
-  case ast::UnaryOperator::Not:
-    return store_value(argument->not_op());
+  try {
+    switch (unary.get_op()) {
+    case ast::UnaryOperator::Minus:
+      return store_value(argument->negative());
+    case ast::UnaryOperator::Plus:
+      return argument;
+    case ast::UnaryOperator::Not:
+      return store_value(argument->not_op());
+    }
+    throw std::runtime_error("unreachable");
+  } catch (RuntimeError &error) {
+    error.set_location(unary.get_location());
+    throw;
   }
-  throw std::runtime_error("unreachable");
 }
 
 RefValue VM::evaluate(const ast::BinaryExpression &binary) {
@@ -29,21 +34,26 @@ RefValue VM::evaluate(const ast::BinaryExpression &binary) {
   debug_print("  Left: {}", left);
   debug_print("  Right: {}", right);
 
-  switch (binary.get_op()) {
-  case ast::BinaryOperator::Plus:
-    return store_value(left.add(right));
-  case ast::BinaryOperator::Minus:
-    return store_value(left.sub(right));
-  case ast::BinaryOperator::Multiply:
-    return store_value(left.mul(right));
-  case ast::BinaryOperator::Divide:
-    return store_value(left.div(right));
-  case ast::BinaryOperator::Modulo:
-    return store_value(left.mod(right));
-  default:
-    throw std::runtime_error(
-        std::format("not implemented: {}", binary.get_op())
-    );
+  try {
+    switch (binary.get_op()) {
+    case ast::BinaryOperator::Plus:
+      return store_value(left.add(right));
+    case ast::BinaryOperator::Minus:
+      return store_value(left.sub(right));
+    case ast::BinaryOperator::Multiply:
+      return store_value(left.mul(right));
+    case ast::BinaryOperator::Divide:
+      return store_value(left.div(right));
+    case ast::BinaryOperator::Modulo:
+      return store_value(left.mod(right));
+    default:
+      throw std::runtime_error(
+          std::format("not implemented: {}", binary.get_op())
+      );
+    }
+  } catch (RuntimeError &error) {
+    error.set_location(binary.get_location());
+    throw;
   }
 }
 
@@ -146,7 +156,12 @@ RefValue VM::evaluate(const ast::Comparison &chained) {
 }
 
 RefValue VM::evaluate(const ast::Identifier &identifier) {
-  return read_variable(identifier);
+  try {
+    return read_variable(identifier);
+  } catch (RuntimeError &error) {
+    error.set_location(identifier.get_location());
+    throw;
+  }
 }
 
 RefValue VM::evaluate(const ast::Variable &variable) {
@@ -238,15 +253,18 @@ RefValue VM::evaluate(const L3Function &function, L3Args arguments) {
   }
   debug_print("Evaluating function body");
 
-  const auto overlay = ScopeStackOverlay{*this, captures};
-  const auto scope_guard = scopes->with_frame(std::move(argument_scope));
+  ExecutionState function_state{captures};
+  function_state.in_function = true;
+  const auto overlay =
+      ExecutionState::Overlay{*this, std::move(function_state)};
+  const auto scope_guard = state.scopes->with_frame(std::move(argument_scope));
 
   execute(body.get_block());
 
-  if (flow_control == FlowControl::Return) {
-    auto value = *return_value;
-    return_value = std::nullopt;
-    flow_control = FlowControl::Normal;
+  if (state.flow_control == FlowControl::Return) {
+    auto value = *state.return_value;
+    state.return_value = std::nullopt;
+    state.flow_control = FlowControl::Normal;
     debug_print("Returning from function: {}", value);
     return stack.push_value(value);
   }
@@ -285,21 +303,13 @@ RefValue VM::evaluate(const ast::FunctionCall &function_call) {
   }
 
   const auto call_stack_guard = CallStackGuard{
-      *this,
+      this->call_stack,
       {.function_name = function_name, .location = function_call.get_location()}
   };
 
   RefValue result = nil();
   try {
     result = evaluate(function, arguments);
-
-    switch (flow_control) {
-    case FlowControl::Break:
-    case FlowControl::Continue:
-      throw RuntimeError("Unexpected {} outside a loop", flow_control);
-    default:
-      break;
-    }
   } catch (RuntimeError &error) {
     error.set_stack_trace(call_stack);
     throw;
@@ -310,13 +320,18 @@ RefValue VM::evaluate(const ast::FunctionCall &function_call) {
 }
 
 RefValue VM::evaluate(const ast::AnonymousFunction &anonymous) {
-  return store_value(Function{L3Function{scopes, anonymous}});
+  return store_value(Function{L3Function{state.scopes, anonymous}});
 }
 
 RefValue VM::evaluate(const ast::IndexExpression &index_expression) {
   auto base = evaluate(index_expression.get_base());
   auto index = evaluate(index_expression.get_index());
-  return store_new_value(base->index(*index));
+  try {
+    return store_new_value(base->index(*index));
+  } catch (RuntimeError &error) {
+    error.set_location(index_expression.get_location());
+    throw;
+  }
 }
 
 RefValue &VM::evaluate_mut(const ast::Variable &variable) {
@@ -338,7 +353,12 @@ RefValue &VM::evaluate_mut(const ast::Identifier &identifier) {
 RefValue &VM::evaluate_mut(const ast::IndexExpression &index_expression) {
   auto base = evaluate_mut(index_expression.get_base());
   auto index = evaluate(index_expression.get_index());
-  return base->index_mut(*index);
+  try {
+    return base->index_mut(*index);
+  } catch (RuntimeError &error) {
+    error.set_location(index_expression.get_location());
+    throw;
+  }
 }
 
 bool VM::evaluate_if_branch(const ast::IfBase &if_base) {
@@ -358,25 +378,27 @@ bool VM::evaluate_if_branch(const ast::IfBase &if_base) {
 RefValue VM::evaluate(const ast::IfExpression &if_expr) {
   execute(static_cast<const ast::IfElseBase &>(if_expr));
 
-  if (flow_control == FlowControl::Return) {
-    auto value = *return_value;
-    return_value = std::nullopt;
-    flow_control = FlowControl::Normal;
+  if (state.flow_control == FlowControl::Return) {
+    auto value = *state.return_value;
+    state.return_value = std::nullopt;
+    state.flow_control = FlowControl::Normal;
     debug_print("Returning from if expression: {}", value);
     return value;
   }
 
   execute(if_expr.get_else_block());
 
-  if (flow_control == FlowControl::Return) {
-    auto value = *return_value;
-    return_value = std::nullopt;
-    flow_control = FlowControl::Normal;
+  if (state.flow_control == FlowControl::Return) {
+    auto value = *state.return_value;
+    state.return_value = std::nullopt;
+    state.flow_control = FlowControl::Normal;
     debug_print("Returning from if expression: {}", value);
     return value;
   }
 
-  throw RuntimeError("if expression did not return a value");
+  throw RuntimeError(
+      "if expression did not return a value", if_expr.get_location()
+  );
 }
 
 } // namespace l3::vm
