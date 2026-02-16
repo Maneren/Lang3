@@ -26,4 +26,4 @@ Documentation:
   CommentFormat: Doxygen
 Diagnostics:
   UnusedIncludes: Strict
-  MissingIncludes: true
+  MissingIncludes: Strict
