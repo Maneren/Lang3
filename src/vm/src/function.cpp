@@ -6,14 +6,15 @@ import :variable;
 namespace l3::vm {
 
 L3Function::L3Function(
-    std::shared_ptr<ScopeStack> captures, const ast::AnonymousFunction &function
+    ScopeStack &&captures, const ast::AnonymousFunction &function
 )
-    : captures{std::move(captures)}, body{function.get_body()} {}
+    : captures{std::make_shared<ScopeStack>(std::move(captures))},
+      body{function.get_body()} {}
 L3Function::L3Function(
-    std::shared_ptr<ScopeStack> captures, const ast::NamedFunction &function
+    ScopeStack &&captures, const ast::NamedFunction &function
 )
-    : captures{std::move(captures)}, body{function.get_body()},
-      name{function.get_name()} {}
+    : captures{std::make_shared<ScopeStack>(std::move(captures))},
+      body{function.get_body()}, name{function.get_name()} {}
 
 L3Function::L3Function(
     std::shared_ptr<ScopeStack> captures,

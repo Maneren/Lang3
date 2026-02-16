@@ -193,7 +193,6 @@ Ref VM::evaluate(const ast::Literal &literal) {
 }
 
 Ref VM::evaluate(const ast::Expression &expression) {
-  debug_print("Evaluating expression");
   return expression.visit([this](const auto &expression) {
     auto result = evaluate(expression);
     debug_print("Expression result: {}", result.get());
@@ -320,7 +319,9 @@ Ref VM::evaluate(const ast::FunctionCall &function_call) {
 }
 
 Ref VM::evaluate(const ast::AnonymousFunction &anonymous) {
-  return store_value(Function{L3Function{state.scopes, anonymous}});
+  return store_value(
+      Function{L3Function{state.scopes->clone(*this), anonymous}}
+  );
 }
 
 Ref VM::evaluate(const ast::IndexExpression &index_expression) {

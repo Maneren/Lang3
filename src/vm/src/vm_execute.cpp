@@ -119,7 +119,9 @@ void VM::execute(const ast::NamedFunction &named_function) {
   declare_variable(
       name,
       Mutability::Immutable,
-      store_value(Function{L3Function{state.scopes, named_function}})
+      store_value(
+          Function{L3Function{state.scopes->clone(*this), named_function}}
+      )
   );
 
   debug_print("Declared function {}", name.get_name());

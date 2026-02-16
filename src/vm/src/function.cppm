@@ -24,13 +24,8 @@ public:
   L3Function(L3Function &&) = default;
   L3Function &operator=(const L3Function &) = delete;
   L3Function &operator=(L3Function &&) = default;
-  L3Function(
-      std::shared_ptr<ScopeStack> captures, const ast::NamedFunction &function
-  );
-  L3Function(
-      std::shared_ptr<ScopeStack> captures,
-      const ast::AnonymousFunction &function
-  );
+  L3Function(ScopeStack &&captures, const ast::NamedFunction &function);
+  L3Function(ScopeStack &&captures, const ast::AnonymousFunction &function);
   L3Function(
       std::shared_ptr<ScopeStack> captures,
       Scope &&curried,
@@ -82,6 +77,21 @@ class Function {
 public:
   Function(L3Function &&function);
   Function(BuiltinFunction &&function);
+
+  [[nodiscard]] utils::optional_ref<L3Function> as_mut_l3_function() {
+    if (auto *l3_function = std::get_if<L3Function>(&inner)) {
+      return *l3_function;
+    }
+    return std::nullopt;
+  }
+
+  [[nodiscard]] utils::optional_cref<BuiltinFunction>
+  as_builtin_function() const {
+    if (auto *builtin_function = std::get_if<BuiltinFunction>(&inner)) {
+      return *builtin_function;
+    }
+    return std::nullopt;
+  }
 
   VISIT(inner);
 };

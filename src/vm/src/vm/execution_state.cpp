@@ -1,5 +1,7 @@
 module l3.vm;
 
+import utils;
+
 namespace l3::vm {
 
 ExecutionState::Overlay::Overlay(VM &vm, ExecutionState overlay_state)

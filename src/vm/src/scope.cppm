@@ -60,8 +60,9 @@ public:
   [[nodiscard]]
   utils::optional_ref<Ref> read_variable_mut(const Identifier &id);
 
-  void pop_back();
-  void push_back(std::shared_ptr<Scope> &&scope);
+  Variable &
+  declare_variable(const Identifier &id, Ref ref_value, Mutability mutability);
+
   [[nodiscard]] std::size_t size() const;
 
   void mark_gc();

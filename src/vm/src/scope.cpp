@@ -105,23 +105,19 @@ ScopeStack ScopeStack::clone(VM &vm) const {
   ScopeStack cloned;
   cloned.scopes.reserve(size());
   for (const auto &scope : scopes) {
-    cloned.push_back(std::make_shared<Scope>(scope->clone(vm)));
+    cloned.scopes.push_back(std::make_shared<Scope>(scope->clone(vm)));
   }
   return cloned;
 }
 ScopeStack::FrameGuard::FrameGuard(ScopeStack &scope_stack)
     : scope_stack{scope_stack} {
-  scope_stack.push_back(std::make_shared<Scope>());
+  scope_stack.scopes.push_back(std::make_shared<Scope>());
 }
 ScopeStack::FrameGuard::FrameGuard(ScopeStack &scope_stack, Scope &&scope)
     : scope_stack{scope_stack} {
-  scope_stack.push_back(std::make_shared<Scope>(std::move(scope)));
+  scope_stack.scopes.push_back(std::make_shared<Scope>(std::move(scope)));
 }
 ScopeStack::FrameGuard::~FrameGuard() { scope_stack.scopes.pop_back(); }
-void ScopeStack::pop_back() { scopes.pop_back(); }
-void ScopeStack::push_back(std::shared_ptr<Scope> &&scope) {
-  scopes.push_back(std::move(scope));
-}
 
 const Scope &ScopeStack::top() const { return *scopes.back(); }
 Scope &ScopeStack::top() { return *scopes.back(); }
@@ -153,6 +149,12 @@ utils::optional_ref<Ref> ScopeStack::read_variable_mut(const Identifier &id) {
     }
   }
   return std::nullopt;
+}
+
+Variable &ScopeStack::declare_variable(
+    const Identifier &id, Ref ref, Mutability mutability
+) {
+  return top().declare_variable(id, ref, mutability);
 }
 
 void ScopeStack::mark_gc() {

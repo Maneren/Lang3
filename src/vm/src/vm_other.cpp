@@ -48,6 +48,9 @@ std::size_t VM::run_gc() {
   if (state.return_value) {
     state.return_value->get_gc_mut().mark();
   }
+  for (const auto &state : unused_states) {
+    state.scopes->mark_gc();
+  }
   auto erased = gc_storage.sweep();
   if (debug) {
     debug_print(
@@ -72,7 +75,7 @@ Variable &VM::declare_variable(
       "Declaring {} variable {} = {}", mutability, id.get_name(), ref_value
   );
   try {
-    return state.scopes->top().declare_variable(id, ref_value, mutability);
+    return state.scopes->declare_variable(id, ref_value, mutability);
   } catch (NameError &error) {
     error.set_location(id.get_location());
     throw;
@@ -81,10 +84,11 @@ Variable &VM::declare_variable(
 
 Ref VM::store_value(Value &&value) {
   if (auto boolean = value.as_primitive().and_then(&Primitive::as_bool)) {
-    if (*boolean) {
-      return _true();
-    }
-    return _false();
+    return *boolean ? _true() : _false();
+  }
+
+  if (value.is_nil()) {
+    return nil();
   }
 
   auto ref_value = Ref{gc_storage.emplace(std::move(value))};
