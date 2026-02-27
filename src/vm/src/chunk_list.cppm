@@ -40,6 +40,9 @@ template <typename T, std::size_t ChunkSize> class ChunkedAllocator {
     }
 
     void deallocate(T *ptr) {
+      // This is fine, as long as the pointer is located in this chunk, since
+      // the T* was created from an Inner* in the allocate function.
+      // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
       auto *slot = reinterpret_cast<Inner *>(ptr);
       slot->next = free_list;
       free_list = slot;
@@ -136,7 +139,7 @@ public:
       return;
     }
 
-    for (auto &chunk : std::views::reverse(chunks_)) {
+    for (auto &chunk : chunks_) {
       if (chunk->contains(ptr)) {
         chunk->deallocate(ptr);
         static thread_local std::size_t cleanup_counter = 0;

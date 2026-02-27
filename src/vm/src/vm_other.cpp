@@ -33,8 +33,7 @@ Ref &VM::read_write_variable(const Identifier &id) {
 }
 
 VM::VM(bool debug)
-    : debug{debug}, state{std::make_shared<ScopeStack>()}, stack{debug},
-      gc_storage{} {}
+    : debug{debug}, state{std::make_shared<ScopeStack>()}, stack{debug} {}
 
 std::size_t VM::run_gc() {
   const auto since_last_sweep = gc_storage.get_added_since_last_sweep();

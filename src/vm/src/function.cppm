@@ -51,7 +51,7 @@ public:
     }
     return anonymous_function_name;
   }
-  [[nodiscard]] const utils::optional_cref<Scope> get_curried() const {
+  [[nodiscard]] utils::optional_cref<Scope> get_curried() const {
     return curried;
   }
 

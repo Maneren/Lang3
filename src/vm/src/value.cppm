@@ -48,7 +48,7 @@ public:
   ~Value() = default;
 
   Value(Nil /*unused*/);
-  Value(Primitive &&primitive);
+  Value(Primitive primitive);
   Value(Function &&function);
   Value(vector_type &&vector);
   Value(string_type &&string);

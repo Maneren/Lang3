@@ -206,7 +206,7 @@ bool Value::is_truthy() const {
 
 Value::Value() : inner{Nil{}} {}
 Value::Value(Nil /*unused*/) : inner{Nil{}} {}
-Value::Value(Primitive &&primitive) : inner{std::move(primitive)} {}
+Value::Value(Primitive primitive) : inner{primitive} {}
 Value::Value(Function &&function)
     : inner{std::make_unique<Function>(std::move(function))} {}
 Value::Value(vector_type &&vector) : inner{std::move(vector)} {}

@@ -23,9 +23,9 @@ public:
   CallStackGuard &operator=(const CallStackGuard &) = delete;
   CallStackGuard &operator=(CallStackGuard &&) = delete;
 
-  explicit CallStackGuard(CallStack &call_stack, CallStackFrame &&frame)
+  explicit CallStackGuard(CallStack &call_stack, CallStackFrame frame)
       : call_stack{call_stack} {
-    call_stack.push_back(std::move(frame));
+    call_stack.push_back(frame);
   }
   ~CallStackGuard() { call_stack.pop_back(); }
 };

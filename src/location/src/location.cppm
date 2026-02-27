@@ -25,7 +25,7 @@ struct Position {
   }
 
   void lines(counter_type count = 1) {
-    if (count) {
+    if (count != 0) {
       column = 1;
       line = add_(line, count, 1);
     }

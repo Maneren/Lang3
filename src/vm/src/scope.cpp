@@ -90,7 +90,7 @@ Scope Scope::clone(VM &vm) const {
     const auto value_ref = var.get();
     const auto cloned_value = value_ref->as_primitive()
                                   .transform([&vm](Primitive primitive) -> Ref {
-                                    return vm.store_value(std::move(primitive));
+                                    return vm.store_value(primitive);
                                   })
                                   .value_or(value_ref);
 
