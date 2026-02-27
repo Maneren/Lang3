@@ -20,18 +20,18 @@ public:
 
   void execute(const ast::Program &program);
 
-  [[nodiscard]] RefValue evaluate(const Function &function, L3Args arguments);
+  [[nodiscard]] Ref evaluate(const Function &function, L3Args arguments);
 
-  RefValue store_value(Value &&value);
-  RefValue store_new_value(NewValue &&value);
+  Ref store_value(Value &&value);
+  Ref store_new_value(NewValue &&value);
   Variable &declare_variable(
       const Identifier &id,
       Mutability mutability,
-      RefValue ref_value = RefValue{GCStorage::nil()}
+      Ref ref_value = Ref{GCStorage::nil()}
   );
-  static RefValue nil();
-  static RefValue _true();
-  static RefValue _false();
+  static Ref nil();
+  static Ref _true();
+  static Ref _false();
 
   std::size_t run_gc();
 
@@ -51,32 +51,30 @@ private:
   void execute(const ast::ForLoop &for_loop);
   void execute(const ast::RangeForLoop &range_for_loop);
 
-  [[nodiscard]] RefValue evaluate(const ast::Expression &expression);
-  [[nodiscard]] RefValue evaluate(const ast::Literal &literal);
-  [[nodiscard]] RefValue evaluate(const ast::Variable &variable);
-  [[nodiscard]] RefValue evaluate(const ast::UnaryExpression &unary);
-  [[nodiscard]] RefValue evaluate(const ast::BinaryExpression &binary);
-  [[nodiscard]] RefValue evaluate(const ast::LogicalExpression &logical);
-  [[nodiscard]] RefValue evaluate(const ast::Comparison &chained);
-  [[nodiscard]] RefValue evaluate(const ast::IndexExpression &index_expression);
-  [[nodiscard]] RefValue evaluate(const ast::AnonymousFunction &anonymous);
-  [[nodiscard]] RefValue evaluate(const ast::FunctionCall &function_call);
-  [[nodiscard]] RefValue evaluate(const ast::IfExpression &if_expr);
-  [[nodiscard]] RefValue evaluate(const ast::Identifier &identifier);
+  [[nodiscard]] Ref evaluate(const ast::Expression &expression);
+  [[nodiscard]] Ref evaluate(const ast::Literal &literal);
+  [[nodiscard]] Ref evaluate(const ast::Variable &variable);
+  [[nodiscard]] Ref evaluate(const ast::UnaryExpression &unary);
+  [[nodiscard]] Ref evaluate(const ast::BinaryExpression &binary);
+  [[nodiscard]] Ref evaluate(const ast::LogicalExpression &logical);
+  [[nodiscard]] Ref evaluate(const ast::Comparison &chained);
+  [[nodiscard]] Ref evaluate(const ast::IndexExpression &index_expression);
+  [[nodiscard]] Ref evaluate(const ast::AnonymousFunction &anonymous);
+  [[nodiscard]] Ref evaluate(const ast::FunctionCall &function_call);
+  [[nodiscard]] Ref evaluate(const ast::IfExpression &if_expr);
+  [[nodiscard]] Ref evaluate(const ast::Identifier &identifier);
 
-  std::vector<RefValue> evaluate(const ast::ExpressionList &expressions);
+  std::vector<Ref> evaluate(const ast::ExpressionList &expressions);
 
-  [[nodiscard]] RefValue evaluate(const L3Function &function, L3Args arguments);
-  [[nodiscard]] RefValue
-  evaluate(const BuiltinFunction &function, L3Args arguments);
+  [[nodiscard]] Ref evaluate(const L3Function &function, L3Args arguments);
+  [[nodiscard]] Ref evaluate(const BuiltinFunction &function, L3Args arguments);
 
-  [[nodiscard]] RefValue &evaluate_mut(const ast::Variable &variable);
-  [[nodiscard]] RefValue &evaluate_mut(const ast::Identifier &identifier);
-  [[nodiscard]] RefValue &
-  evaluate_mut(const ast::IndexExpression &index_expression);
+  [[nodiscard]] Ref &evaluate_mut(const ast::Variable &variable);
+  [[nodiscard]] Ref &evaluate_mut(const ast::Identifier &identifier);
+  [[nodiscard]] Ref &evaluate_mut(const ast::IndexExpression &index_expression);
 
-  [[nodiscard]] RefValue read_variable(const Identifier &id);
-  [[nodiscard]] RefValue &read_write_variable(const Identifier &id);
+  [[nodiscard]] Ref read_variable(const Identifier &id);
+  [[nodiscard]] Ref &read_write_variable(const Identifier &id);
 
   bool evaluate_if_branch(const ast::IfBase &if_base);
 
@@ -87,6 +85,8 @@ private:
   GCStorage gc_storage;
 
   std::vector<CallStackFrame> call_stack;
+  FlowControl flow_control = FlowControl::Normal;
+  std::optional<Ref> return_value = std::nullopt;
 
   template <typename... Ts>
   void debug_print(std::format_string<Ts...> message, Ts &&...args) const {

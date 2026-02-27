@@ -98,8 +98,7 @@ export {
   };
 
   template <>
-  struct std::formatter<l3::vm::RefValue>
-      : utils::static_formatter<l3::vm::RefValue> {
+  struct std::formatter<l3::vm::Ref> : utils::static_formatter<l3::vm::Ref> {
     static constexpr auto format(const auto &value, std::format_context &ctx) {
       return std::format_to(ctx.out(), "{}", *value);
     }

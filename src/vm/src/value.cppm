@@ -21,9 +21,9 @@ struct Nil {
   };
 };
 
-using L3Args = std::span<const RefValue>;
+using L3Args = std::span<const Ref>;
 
-using NewValue = std::variant<RefValue, Value>;
+using NewValue = std::variant<Ref, Value>;
 
 struct Slice {
   std::optional<std::int64_t> start, end;
@@ -32,7 +32,7 @@ struct Slice {
 class Value {
 public:
   using function_type = std::unique_ptr<Function>;
-  using vector_type = std::vector<RefValue>;
+  using vector_type = std::vector<Ref>;
   using string_type = std::string;
 
 private:
@@ -86,8 +86,8 @@ public:
   [[nodiscard]] NewValue index(const Value &index) const;
   [[nodiscard]] NewValue index(std::size_t index) const;
 
-  [[nodiscard]] RefValue &index_mut(const Value &index);
-  [[nodiscard]] RefValue &index_mut(std::size_t index);
+  [[nodiscard]] Ref &index_mut(const Value &index);
+  [[nodiscard]] Ref &index_mut(std::size_t index);
 
   [[nodiscard]] Value slice(Slice slice) const;
 

@@ -5,8 +5,8 @@ import :value;
 
 namespace l3::vm {
 
-RefValue::RefValue(GCValue &gc_value) : gc_value{gc_value} {}
-const Value &RefValue::get() const { return get_gc().get_value(); }
-Value &RefValue::get() { return get_gc_mut().get_value_mut(); }
+Ref::Ref(GCValue &gc_value) : gc_value{gc_value} {}
+const Value &Ref::get() const { return get_gc().get_value(); }
+Value &Ref::get() { return get_gc_mut().get_value_mut(); }
 
 } // namespace l3::vm

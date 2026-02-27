@@ -11,7 +11,7 @@ export namespace l3::vm {
 class VM;
 class Value;
 
-using L3Args = std::span<const RefValue>;
+using L3Args = std::span<const Ref>;
 
 class L3Function {
   std::shared_ptr<ScopeStack> captures;
@@ -61,7 +61,7 @@ private:
 
 class BuiltinFunction {
 public:
-  using Body = RefValue (*)(VM &vm, L3Args args);
+  using Body = Ref (*)(VM &vm, L3Args args);
 
 private:
   Identifier name;
@@ -70,7 +70,7 @@ private:
 public:
   BuiltinFunction(Identifier &&name, Body body);
 
-  RefValue invoke(VM &vm, L3Args args) const { return body(vm, args); }
+  Ref invoke(VM &vm, L3Args args) const { return body(vm, args); }
 
   DEFINE_ACCESSOR_X(name);
   DEFINE_ACCESSOR_X(body);

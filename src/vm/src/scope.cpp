@@ -26,7 +26,7 @@ utils::optional_ref<Variable> Scope::get_variable_mut(const Identifier &id) {
 }
 
 Variable &Scope::declare_variable(
-    const Identifier &id, RefValue ref_value, Mutability mutability
+    const Identifier &id, Ref ref_value, Mutability mutability
 ) {
   if (get_variable(id)) {
     throw NameError("variable '{}' already declared", id.get_name());
@@ -60,10 +60,10 @@ Scope::BuiltinsMap create_builtins() {
 
 Scope::BuiltinsMap Scope::builtins = create_builtins();
 
-std::optional<RefValue> Scope::get_builtin(const Identifier &id) {
+std::optional<Ref> Scope::get_builtin(const Identifier &id) {
   for (auto &[name, ref] : builtins) {
     if (name == id) {
-      return RefValue{ref};
+      return Ref{ref};
     }
   }
   return std::nullopt;
@@ -88,12 +88,11 @@ Scope Scope::clone(VM &vm) const {
   cloned.variables.reserve(size());
   for (const auto &[name, var] : variables) {
     const auto value_ref = var.get();
-    const auto cloned_value =
-        value_ref->as_primitive()
-            .transform([&vm](Primitive primitive) -> RefValue {
-              return vm.store_value(std::move(primitive));
-            })
-            .value_or(value_ref);
+    const auto cloned_value = value_ref->as_primitive()
+                                  .transform([&vm](Primitive primitive) -> Ref {
+                                    return vm.store_value(std::move(primitive));
+                                  })
+                                  .value_or(value_ref);
 
     cloned.variables.emplace_back(
         name, Variable{cloned_value, var.get_mutability()}
@@ -134,7 +133,7 @@ ScopeStack::FrameGuard ScopeStack::with_frame(Scope &&scope) {
 }
 
 [[nodiscard]]
-std::optional<RefValue> ScopeStack::read_variable(const Identifier &id) const {
+std::optional<Ref> ScopeStack::read_variable(const Identifier &id) const {
   for (const auto &scope : std::views::reverse(scopes)) {
     if (auto variable = scope->get_variable(id)) {
       return *variable->get();
@@ -144,8 +143,7 @@ std::optional<RefValue> ScopeStack::read_variable(const Identifier &id) const {
 }
 
 [[nodiscard]]
-utils::optional_ref<RefValue>
-ScopeStack::read_variable_mut(const Identifier &id) {
+utils::optional_ref<Ref> ScopeStack::read_variable_mut(const Identifier &id) {
   for (auto &scope : std::views::reverse(scopes)) {
     if (auto variable = scope->get_variable_mut(id)) {
       if (variable->get().is_const()) {

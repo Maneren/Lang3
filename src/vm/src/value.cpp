@@ -267,18 +267,18 @@ NewValue Value::index(std::size_t index) const {
   );
 }
 
-RefValue &Value::index_mut(const Value &index) {
+Ref &Value::index_mut(const Value &index) {
   return index_mut(value_to_index(index));
 }
-RefValue &Value::index_mut(std::size_t index) {
+Ref &Value::index_mut(std::size_t index) {
   return visit(
-      [&index](vector_type &values) -> RefValue & {
+      [&index](vector_type &values) -> Ref & {
         if (index >= values.size()) {
           throw ValueError("index out of bounds");
         }
         return values[index];
       },
-      [this](const auto & /*value*/) -> RefValue & {
+      [this](const auto & /*value*/) -> Ref & {
         throw TypeError("cannot mutaly index a {} value", type_name());
       }
   );

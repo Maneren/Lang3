@@ -13,7 +13,7 @@ class VM;
 struct ExecutionState {
   std::shared_ptr<ScopeStack> scopes;
   FlowControl flow_control = FlowControl::Normal;
-  std::optional<RefValue> return_value = std::nullopt;
+  std::optional<Ref> return_value = std::nullopt;
   bool in_function = false;
   bool in_loop = false;
 

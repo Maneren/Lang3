@@ -19,18 +19,18 @@ void format_args(const std::output_iterator<char> auto &out, L3Args args) {
   }
 }
 
-RefValue builtin_print(VM & /*vm*/, L3Args args) {
+Ref builtin_print(VM & /*vm*/, L3Args args) {
   format_args(std::ostream_iterator<char>(std::cout), args);
   return VM::nil();
 }
 
-RefValue builtin_println(VM &vm, L3Args args) {
+Ref builtin_println(VM &vm, L3Args args) {
   builtin_print(vm, args);
   std::print("\n");
   return VM::nil();
 }
 
-RefValue builtin_trigger_gc(VM &vm, L3Args args) {
+Ref builtin_trigger_gc(VM &vm, L3Args args) {
   if (!args.empty()) {
     throw RuntimeError("trigger_gc() takes no arguments");
   }
@@ -38,7 +38,7 @@ RefValue builtin_trigger_gc(VM &vm, L3Args args) {
   return VM::nil();
 }
 
-RefValue builtin_assert(VM & /*vm*/, L3Args args) {
+Ref builtin_assert(VM & /*vm*/, L3Args args) {
   if (args[0]->is_truthy()) {
     return VM::nil();
   }
@@ -47,13 +47,13 @@ RefValue builtin_assert(VM & /*vm*/, L3Args args) {
   throw RuntimeError("{}", result);
 }
 
-RefValue builtin_error(VM & /*vm*/, L3Args args) {
+Ref builtin_error(VM & /*vm*/, L3Args args) {
   std::string result;
   format_args(std::back_inserter(result), args);
   throw RuntimeError("{}", result);
 }
 
-RefValue builtin_input(VM &vm, L3Args args) {
+Ref builtin_input(VM &vm, L3Args args) {
   if (!args.empty()) {
     builtin_print(vm, args);
   }
@@ -62,7 +62,7 @@ RefValue builtin_input(VM &vm, L3Args args) {
   return vm.store_value({std::move(input)});
 }
 
-RefValue builtin_int(VM &vm, L3Args args) {
+Ref builtin_int(VM &vm, L3Args args) {
   if (args.empty()) {
     throw RuntimeError("int() takes at least one arguments");
   }
@@ -109,7 +109,7 @@ RefValue builtin_int(VM &vm, L3Args args) {
   return vm.store_value(Primitive{value});
 }
 
-RefValue builtin_str(VM &vm, L3Args args) {
+Ref builtin_str(VM &vm, L3Args args) {
   if (args.size() != 1) {
     throw RuntimeError("str() takes one arguments");
   }
@@ -120,7 +120,7 @@ RefValue builtin_str(VM &vm, L3Args args) {
   return vm.store_value({std::move(result)});
 }
 
-RefValue builtin_head(VM &vm, L3Args args) {
+Ref builtin_head(VM &vm, L3Args args) {
   if (args.empty()) {
     throw RuntimeError("head() takes at least one arguments");
   }
@@ -157,7 +157,7 @@ RefValue builtin_head(VM &vm, L3Args args) {
   throw TypeError("head() takes only vector and string values");
 }
 
-RefValue builtin_tail(VM &vm, L3Args args) {
+Ref builtin_tail(VM &vm, L3Args args) {
   if (args.empty()) {
     throw RuntimeError("tail() takes at least one arguments");
   }
@@ -194,23 +194,23 @@ RefValue builtin_tail(VM &vm, L3Args args) {
   throw TypeError("tail() takes only vector and string values");
 }
 
-RefValue builtin_len(VM &vm, L3Args args) {
+Ref builtin_len(VM &vm, L3Args args) {
   if (args.size() != 1) {
     throw RuntimeError("len() takes exactly one arguments");
   }
   return args[0]->visit(
-      [&vm](const ValueContainer auto &container) -> RefValue {
+      [&vm](const ValueContainer auto &container) -> Ref {
         return vm.store_value(
             {Primitive{static_cast<std::int64_t>(container.size())}}
         );
       },
-      [](const auto &) -> RefValue {
+      [](const auto &) -> Ref {
         throw TypeError("len() does not support {} values");
       }
   );
 }
 
-RefValue builtin_drop(VM &vm, L3Args args) {
+Ref builtin_drop(VM &vm, L3Args args) {
   if (args.size() != 2) {
     throw RuntimeError("drop() takes two arguments");
   }
@@ -226,7 +226,7 @@ RefValue builtin_drop(VM &vm, L3Args args) {
   );
 }
 
-RefValue builtin_take(VM &vm, L3Args args) {
+Ref builtin_take(VM &vm, L3Args args) {
   if (args.size() != 2) {
     throw RuntimeError("take() takes two arguments");
   }
@@ -242,7 +242,7 @@ RefValue builtin_take(VM &vm, L3Args args) {
   );
 }
 
-RefValue builtin_slice(VM &vm, L3Args args) {
+Ref builtin_slice(VM &vm, L3Args args) {
   if (args.size() != 3) {
     throw RuntimeError("slice() takes three arguments");
   }
@@ -258,7 +258,7 @@ RefValue builtin_slice(VM &vm, L3Args args) {
   return vm.store_value(args[0]->slice(Slice{.start = start, .end = end}));
 }
 
-RefValue builtin_random(VM &vm, L3Args args) {
+Ref builtin_random(VM &vm, L3Args args) {
   static std::random_device rd;
   static std::mt19937 gen(rd());
 
@@ -289,7 +289,7 @@ RefValue builtin_random(VM &vm, L3Args args) {
   return vm.store_value(Value{Primitive{distribution(gen)}});
 }
 
-RefValue builtin_sleep(VM & /*vm*/, L3Args args) {
+Ref builtin_sleep(VM & /*vm*/, L3Args args) {
   if (args.size() != 1) {
     throw RuntimeError("sleep() takes one argument");
   }
@@ -302,7 +302,7 @@ RefValue builtin_sleep(VM & /*vm*/, L3Args args) {
   return VM::nil();
 }
 
-RefValue builtin_map(VM &vm, L3Args args) {
+Ref builtin_map(VM &vm, L3Args args) {
   if (args.size() != 2) {
     throw TypeError("map() takes exactly 2 arguments");
   }
@@ -328,7 +328,7 @@ RefValue builtin_map(VM &vm, L3Args args) {
   return vm.store_value(std::move(result));
 }
 
-RefValue builtin_filter(VM &vm, L3Args args) {
+Ref builtin_filter(VM &vm, L3Args args) {
   if (args.size() != 2) {
     throw TypeError("filter() takes exactly 2 arguments");
   }
@@ -355,7 +355,7 @@ RefValue builtin_filter(VM &vm, L3Args args) {
   return vm.store_value(std::move(result));
 }
 
-RefValue builtin_sum(VM & /*vm*/, L3Args args) {
+Ref builtin_sum(VM & /*vm*/, L3Args args) {
   if (args.size() != 1) {
     throw TypeError("sum() takes exactly 1 argument");
   }
@@ -370,7 +370,7 @@ RefValue builtin_sum(VM & /*vm*/, L3Args args) {
     throw TypeError("sum() cannot be applied to an empty vector");
   }
 
-  RefValue total = list.front();
+  Ref total = list.front();
   for (auto item : list | std::views::drop(1)) {
     total->add_assign(*item);
   }
@@ -378,7 +378,7 @@ RefValue builtin_sum(VM & /*vm*/, L3Args args) {
   return total;
 }
 
-RefValue builtin_all(VM & /*vm*/, L3Args args) {
+Ref builtin_all(VM & /*vm*/, L3Args args) {
   if (args.size() != 1) {
     throw TypeError("all() takes exactly 1 argument");
   }
@@ -398,7 +398,7 @@ RefValue builtin_all(VM & /*vm*/, L3Args args) {
   return VM::_true();
 }
 
-RefValue builtin_any(VM & /*vm*/, L3Args args) {
+Ref builtin_any(VM & /*vm*/, L3Args args) {
   if (args.size() != 1) {
     throw TypeError("any() takes exactly 1 argument");
   }
@@ -418,7 +418,7 @@ RefValue builtin_any(VM & /*vm*/, L3Args args) {
   return VM::_false();
 }
 
-RefValue builtin_count(VM &vm, L3Args args) {
+Ref builtin_count(VM &vm, L3Args args) {
   if (args.size() != 2) {
     throw TypeError("count() takes exactly 2 arguments");
   }
@@ -445,14 +445,14 @@ RefValue builtin_count(VM &vm, L3Args args) {
   return vm.store_value(Primitive{count});
 }
 
-RefValue builtin_identity(VM & /*vm*/, L3Args args) {
+Ref builtin_identity(VM & /*vm*/, L3Args args) {
   if (args.size() != 1) {
     throw TypeError("id() takes exactly 1 argument");
   }
   return args[0];
 }
 
-RefValue builtin_range(VM &vm, L3Args args) {
+Ref builtin_range(VM &vm, L3Args args) {
   std::int64_t start = 0;
   std::int64_t end = 0;
   std::int64_t step = 1;

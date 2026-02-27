@@ -7,21 +7,21 @@ import :mutability;
 export namespace l3::vm {
 
 class Variable {
-  RefValue ref_value;
+  Ref ref_value;
   Mutability mutability;
 
 public:
   Variable() = delete;
-  Variable(RefValue ref_value, Mutability mutability);
+  Variable(Ref ref_value, Mutability mutability);
 
-  [[nodiscard]] const RefValue &get() const { return ref_value; }
-  [[nodiscard]] RefValue &get() { return ref_value; }
+  [[nodiscard]] const Ref &get() const { return ref_value; }
+  [[nodiscard]] Ref &get() { return ref_value; }
 
-  [[nodiscard]] RefValue &operator*() { return get(); }
-  [[nodiscard]] const RefValue &operator*() const { return get(); }
+  [[nodiscard]] Ref &operator*() { return get(); }
+  [[nodiscard]] const Ref &operator*() const { return get(); }
 
-  RefValue *operator->() { return &get(); }
-  const RefValue *operator->() const { return &get(); }
+  Ref *operator->() { return &get(); }
+  const Ref *operator->() const { return &get(); }
 
   DEFINE_VALUE_ACCESSOR_X(mutability);
 

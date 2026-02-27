@@ -11,7 +11,7 @@ export namespace l3::vm {
 class VM;
 class GCValue;
 class Variable;
-class RefValue;
+class Ref;
 
 class Scope {
 public:
@@ -26,9 +26,8 @@ public:
   Scope();
   Scope(VariableMap &&variables);
 
-  Variable &declare_variable(
-      const Identifier &id, RefValue ref_value, Mutability mutability
-  );
+  Variable &
+  declare_variable(const Identifier &id, Ref ref_value, Mutability mutability);
 
   [[nodiscard]] utils::optional_cref<Variable>
   get_variable(const Identifier &id) const;
@@ -42,7 +41,7 @@ public:
 
   void mark_gc();
 
-  static std::optional<RefValue> get_builtin(const Identifier &id);
+  static std::optional<Ref> get_builtin(const Identifier &id);
 
   [[nodiscard]] Scope clone(VM &vm) const;
 };
@@ -57,9 +56,9 @@ public:
   [[nodiscard]] ScopeStack clone(VM &vm) const;
 
   [[nodiscard]]
-  std::optional<RefValue> read_variable(const Identifier &id) const;
+  std::optional<Ref> read_variable(const Identifier &id) const;
   [[nodiscard]]
-  utils::optional_ref<RefValue> read_variable_mut(const Identifier &id);
+  utils::optional_ref<Ref> read_variable_mut(const Identifier &id);
 
   void pop_back();
   void push_back(std::shared_ptr<Scope> &&scope);

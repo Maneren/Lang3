@@ -13,7 +13,7 @@ Stack::FrameGuard::FrameGuard(Stack &stack) : stack{stack} {
   frame_index = stack.frames.size();
   stack.debug_print("Pushed stack frame {}", frame_index);
 }
-RefValue Stack::push_value(RefValue value) {
+Ref Stack::push_value(Ref value) {
   frames.back().push_back(value);
   return value;
 }

@@ -7,7 +7,7 @@ import :variable;
 
 namespace l3::vm {
 
-RefValue VM::evaluate(const ast::UnaryExpression &unary) {
+Ref VM::evaluate(const ast::UnaryExpression &unary) {
   debug_print("Evaluating unary expression {}", unary.get_op());
   const auto argument = evaluate(unary.get_expression());
   try {
@@ -26,7 +26,7 @@ RefValue VM::evaluate(const ast::UnaryExpression &unary) {
   }
 }
 
-RefValue VM::evaluate(const ast::BinaryExpression &binary) {
+Ref VM::evaluate(const ast::BinaryExpression &binary) {
   debug_print("Evaluating binary expression {}", binary.get_op());
   const auto &left = *evaluate(binary.get_lhs());
   const auto &right = *evaluate(binary.get_rhs());
@@ -57,7 +57,7 @@ RefValue VM::evaluate(const ast::BinaryExpression &binary) {
   }
 }
 
-RefValue VM::evaluate(const ast::LogicalExpression &logical) {
+Ref VM::evaluate(const ast::LogicalExpression &logical) {
   const auto op = logical.get_op();
   debug_print("Evaluating logical expression {}", op);
 
@@ -96,7 +96,7 @@ RefValue VM::evaluate(const ast::LogicalExpression &logical) {
   }
 }
 
-RefValue VM::evaluate(const ast::Comparison &chained) {
+Ref VM::evaluate(const ast::Comparison &chained) {
   debug_print("Evaluating comparison");
   const auto &operands = chained.get_comparisons();
 
@@ -155,7 +155,7 @@ RefValue VM::evaluate(const ast::Comparison &chained) {
   return _true();
 }
 
-RefValue VM::evaluate(const ast::Identifier &identifier) {
+Ref VM::evaluate(const ast::Identifier &identifier) {
   try {
     return read_variable(identifier);
   } catch (RuntimeError &error) {
@@ -164,11 +164,11 @@ RefValue VM::evaluate(const ast::Identifier &identifier) {
   }
 }
 
-RefValue VM::evaluate(const ast::Variable &variable) {
+Ref VM::evaluate(const ast::Variable &variable) {
   return variable.visit([this](const auto &inner) { return evaluate(inner); });
 }
 
-RefValue VM::evaluate(const ast::Literal &literal) {
+Ref VM::evaluate(const ast::Literal &literal) {
   debug_print("Evaluating literal");
   Value value = literal.visit(
       [](const ast::Nil & /*unused*/) -> Value { return {Nil{}}; },
@@ -192,7 +192,7 @@ RefValue VM::evaluate(const ast::Literal &literal) {
   return store_value(std::move(value));
 }
 
-RefValue VM::evaluate(const ast::Expression &expression) {
+Ref VM::evaluate(const ast::Expression &expression) {
   debug_print("Evaluating expression");
   return expression.visit([this](const auto &expression) {
     auto result = evaluate(expression);
@@ -201,8 +201,8 @@ RefValue VM::evaluate(const ast::Expression &expression) {
   });
 }
 
-std::vector<RefValue> VM::evaluate(const ast::ExpressionList &expressions) {
-  std::vector<RefValue> result;
+std::vector<Ref> VM::evaluate(const ast::ExpressionList &expressions) {
+  std::vector<Ref> result;
   result.reserve(expressions.size());
   for (const auto &expression : expressions) {
     result.push_back(evaluate(expression));
@@ -210,11 +210,11 @@ std::vector<RefValue> VM::evaluate(const ast::ExpressionList &expressions) {
   return result;
 }
 
-RefValue VM::evaluate(const BuiltinFunction &function, L3Args arguments) {
+Ref VM::evaluate(const BuiltinFunction &function, L3Args arguments) {
   return function.invoke(*this, arguments);
 }
 
-RefValue VM::evaluate(const L3Function &function, L3Args arguments) {
+Ref VM::evaluate(const L3Function &function, L3Args arguments) {
   const auto &body = function.get_body().get();
   const auto parameters = body.get_parameters();
   const auto &curried = function.get_curried();
@@ -272,13 +272,13 @@ RefValue VM::evaluate(const L3Function &function, L3Args arguments) {
   return nil();
 }
 
-RefValue VM::evaluate(const Function &function, L3Args arguments) {
+Ref VM::evaluate(const Function &function, L3Args arguments) {
   return function.visit([&, this](const auto &function) {
     return evaluate(function, arguments);
   });
 }
 
-RefValue VM::evaluate(const ast::FunctionCall &function_call) {
+Ref VM::evaluate(const ast::FunctionCall &function_call) {
   const auto &function_name = function_call.get_name();
   const auto &argument_expressions = function_call.get_arguments();
 
@@ -307,7 +307,7 @@ RefValue VM::evaluate(const ast::FunctionCall &function_call) {
       {.function_name = function_name, .location = function_call.get_location()}
   };
 
-  RefValue result = nil();
+  Ref result = nil();
   try {
     result = evaluate(function, arguments);
   } catch (RuntimeError &error) {
@@ -319,11 +319,11 @@ RefValue VM::evaluate(const ast::FunctionCall &function_call) {
   return result;
 }
 
-RefValue VM::evaluate(const ast::AnonymousFunction &anonymous) {
+Ref VM::evaluate(const ast::AnonymousFunction &anonymous) {
   return store_value(Function{L3Function{state.scopes, anonymous}});
 }
 
-RefValue VM::evaluate(const ast::IndexExpression &index_expression) {
+Ref VM::evaluate(const ast::IndexExpression &index_expression) {
   auto base = evaluate(index_expression.get_base());
   auto index = evaluate(index_expression.get_index());
   try {
@@ -334,13 +334,13 @@ RefValue VM::evaluate(const ast::IndexExpression &index_expression) {
   }
 }
 
-RefValue &VM::evaluate_mut(const ast::Variable &variable) {
-  return variable.visit([this](const auto &variable) -> RefValue & {
+Ref &VM::evaluate_mut(const ast::Variable &variable) {
+  return variable.visit([this](const auto &variable) -> Ref & {
     return evaluate_mut(variable);
   });
 }
 
-RefValue &VM::evaluate_mut(const ast::Identifier &identifier) {
+Ref &VM::evaluate_mut(const ast::Identifier &identifier) {
   try {
     debug_print("Reading variable {}", identifier.get_name());
     return read_write_variable(identifier);
@@ -350,7 +350,7 @@ RefValue &VM::evaluate_mut(const ast::Identifier &identifier) {
   }
 }
 
-RefValue &VM::evaluate_mut(const ast::IndexExpression &index_expression) {
+Ref &VM::evaluate_mut(const ast::IndexExpression &index_expression) {
   auto base = evaluate_mut(index_expression.get_base());
   auto index = evaluate(index_expression.get_index());
   try {
@@ -375,7 +375,7 @@ bool VM::evaluate_if_branch(const ast::IfBase &if_base) {
   return false;
 }
 
-RefValue VM::evaluate(const ast::IfExpression &if_expr) {
+Ref VM::evaluate(const ast::IfExpression &if_expr) {
   execute(static_cast<const ast::IfElseBase &>(if_expr));
 
   if (state.flow_control == FlowControl::Return) {

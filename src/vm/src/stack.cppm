@@ -6,7 +6,7 @@ export namespace l3::vm {
 
 class Stack {
   bool debug;
-  std::vector<std::vector<RefValue>> frames;
+  std::vector<std::vector<Ref>> frames;
 
   class FrameGuard {
     Stack &stack;
@@ -25,7 +25,7 @@ public:
   Stack(bool debug = false);
 
   FrameGuard with_frame();
-  RefValue push_value(RefValue value);
+  Ref push_value(Ref value);
 
   void mark_gc();
 

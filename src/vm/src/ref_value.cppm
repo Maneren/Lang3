@@ -7,11 +7,11 @@ export namespace l3::vm {
 class GCValue;
 class Value;
 
-class RefValue {
+class Ref {
   std::reference_wrapper<GCValue> gc_value;
 
 public:
-  explicit RefValue(GCValue &gc_value);
+  explicit Ref(GCValue &gc_value);
 
   [[nodiscard]] const Value &get() const;
   [[nodiscard]] Value &get();

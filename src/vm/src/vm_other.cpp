@@ -10,7 +10,7 @@ namespace l3::vm {
 
 constexpr std::size_t GC_OBJECT_TRIGGER_TRESHOLD = 10000;
 
-RefValue VM::read_variable(const Identifier &id) {
+Ref VM::read_variable(const Identifier &id) {
   debug_print("Reading variable {}", id.get_name());
   if (auto value = state.scopes->read_variable(id)) {
     return *value;
@@ -21,7 +21,7 @@ RefValue VM::read_variable(const Identifier &id) {
   throw UndefinedVariableError(id);
 }
 
-RefValue &VM::read_write_variable(const Identifier &id) {
+Ref &VM::read_write_variable(const Identifier &id) {
   debug_print("Writing variable {}", id.get_name());
   if (auto value = state.scopes->read_variable_mut(id)) {
     return *value;
@@ -67,7 +67,7 @@ std::size_t VM::run_gc() {
 }
 
 Variable &VM::declare_variable(
-    const Identifier &id, Mutability mutability, RefValue ref_value
+    const Identifier &id, Mutability mutability, Ref ref_value
 ) {
   debug_print(
       "Declaring {} variable {} = {}", mutability, id.get_name(), ref_value
@@ -80,7 +80,7 @@ Variable &VM::declare_variable(
   }
 }
 
-RefValue VM::store_value(Value &&value) {
+Ref VM::store_value(Value &&value) {
   if (auto boolean = value.as_primitive().and_then(&Primitive::as_bool)) {
     if (*boolean) {
       return _true();
@@ -88,21 +88,21 @@ RefValue VM::store_value(Value &&value) {
     return _false();
   }
 
-  auto ref_value = RefValue{gc_storage.emplace(std::move(value))};
+  auto ref_value = Ref{gc_storage.emplace(std::move(value))};
   stack.push_value(ref_value);
   return ref_value;
 }
 
-RefValue VM::store_new_value(NewValue &&value) {
+Ref VM::store_new_value(NewValue &&value) {
   return match::match(
       std::move(value),
       [this](Value &&value) { return store_value(std::move(value)); },
-      [](RefValue value) { return value; }
+      [](Ref value) { return value; }
   );
 }
 
-RefValue VM::nil() { return RefValue{GCStorage::nil()}; }
-RefValue VM::_true() { return RefValue{GCStorage::_true()}; }
-RefValue VM::_false() { return RefValue{GCStorage::_false()}; }
+Ref VM::nil() { return Ref{GCStorage::nil()}; }
+Ref VM::_true() { return Ref{GCStorage::_true()}; }
+Ref VM::_false() { return Ref{GCStorage::_false()}; }
 
 } // namespace l3::vm
