@@ -153,7 +153,7 @@ struct std::formatter<l3::location::Location>
     }
     if (loc.begin.line != loc.end.line) {
       // Multi-line: file.l3:10.5-15.20
-      return std::format_to(ctx.out(), "-{}", loc.end);
+      return std::format_to(ctx.out(), "-{}.{}", loc.end.line, loc.end.column);
     }
     // Same line: file.l3:10.5-20
     return std::format_to(ctx.out(), "-{}", loc.end.column);
