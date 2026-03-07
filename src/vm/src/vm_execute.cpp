@@ -389,8 +389,13 @@ void VM::execute(const ast::RangeForLoop &range_for_loop) {
   }
 
   if (range_type == ast::RangeOperator::Inclusive) {
-    end = (step > 0) ? end + 1 : end - 1;
+    end += step;
   }
+
+  auto full_range =
+      step > 0 ? std::views::iota(start, end) : std::views::iota(end, start);
+
+  auto range = full_range | std::views::stride(std::abs(step));
 
   const auto scope_guard = state.scopes->with_frame();
   const auto frame_guard = stack.with_frame();
@@ -401,34 +406,20 @@ void VM::execute(const ast::RangeForLoop &range_for_loop) {
     execute(body);
 
     switch (state.flow_control) {
-    case FlowControl::Normal:
-      return true;
     case FlowControl::Continue:
       state.flow_control = FlowControl::Normal;
       debug_print("Continue in a range for loop");
-      return true;
+    case FlowControl::Normal:
+      return false;
     case FlowControl::Break:
       state.flow_control = FlowControl::Normal;
       debug_print("Break in a range for loop");
-      return false;
-    default:
-      return false;
+    case FlowControl::Return:
+      return true;
     }
   };
 
-  if (step > 0) {
-    for (std::int64_t i = start; i < end; i += step) {
-      if (!loop_body(i)) {
-        return;
-      }
-    }
-  } else {
-    for (std::int64_t i = start; i > end; i += step) {
-      if (!loop_body(i)) {
-        return;
-      }
-    }
-  }
+  std::ranges::any_of(range, loop_body);
 }
 
 } // namespace l3::vm
