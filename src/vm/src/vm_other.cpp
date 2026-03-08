@@ -12,7 +12,7 @@ constexpr std::size_t GC_OBJECT_TRIGGER_TRESHOLD = 10000;
 
 Ref VM::read_variable(const Identifier &id) {
   debug_print("Reading variable {}", id.get_name());
-  if (auto value = state.scopes->read_variable(id)) {
+  if (auto value = state().scope_stack->read_variable(id)) {
     return *value;
   }
   if (auto value = Scope::get_builtin(id)) {
@@ -23,7 +23,7 @@ Ref VM::read_variable(const Identifier &id) {
 
 Ref &VM::read_write_variable(const Identifier &id) {
   debug_print("Writing variable {}", id.get_name());
-  if (auto value = state.scopes->read_variable_mut(id)) {
+  if (auto value = state().scope_stack->read_variable_mut(id)) {
     return *value;
   }
   if (auto value = Scope::get_builtin(id)) {
@@ -33,7 +33,8 @@ Ref &VM::read_write_variable(const Identifier &id) {
 }
 
 VM::VM(bool debug)
-    : debug{debug}, state{std::make_shared<ScopeStack>()}, stack{debug} {}
+    : debug{debug}, state_stack{ExecutionState{std::make_shared<ScopeStack>()}},
+      stack{debug} {}
 
 std::size_t VM::run_gc() {
   const auto since_last_sweep = gc_storage.get_added_since_last_sweep();
@@ -43,13 +44,12 @@ std::size_t VM::run_gc() {
   }
 
   debug_print("[GC] Running");
-  state.scopes->mark_gc();
-  stack.mark_gc();
-  if (state.return_value) {
-    state.return_value->get_gc_mut().mark();
+  for (const auto &s : state_stack) {
+    s.scope_stack->mark_gc();
   }
-  for (const auto &state : unused_states) {
-    state.scopes->mark_gc();
+  stack.mark_gc();
+  if (state().return_value) {
+    state().return_value->get_gc_mut().mark();
   }
   auto erased = gc_storage.sweep();
   if (debug) {
@@ -61,7 +61,7 @@ std::size_t VM::run_gc() {
       debug_print("  {}", frame.size());
     }
     debug_print("Scopes:");
-    for (const auto &scope : state.scopes->get_scopes()) {
+    for (const auto &scope : state().scope_stack->get_scopes()) {
       debug_print("  {}", scope->get_variables().size());
     }
   }
@@ -75,7 +75,7 @@ Variable &VM::declare_variable(
       "Declaring {} variable {} = {}", mutability, id.get_name(), ref_value
   );
   try {
-    return state.scopes->declare_variable(id, ref_value, mutability);
+    return state().scope_stack->declare_variable(id, ref_value, mutability);
   } catch (NameError &error) {
     error.set_location(id.get_location());
     throw;

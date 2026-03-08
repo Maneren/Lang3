@@ -79,8 +79,7 @@ private:
   bool evaluate_if_branch(const ast::IfBase &if_base);
 
   bool debug;
-  ExecutionState state;
-  std::vector<ExecutionState> unused_states;
+  std::deque<ExecutionState> state_stack;
   Stack stack;
   GCStorage gc_storage;
 
@@ -93,6 +92,11 @@ private:
     if (debug) [[unlikely]] {
       std::println(std::cerr, message, std::forward<Ts>(args)...);
     }
+  }
+
+  [[nodiscard]] ExecutionState &state() { return state_stack.back(); }
+  [[nodiscard]] const ExecutionState &state() const {
+    return state_stack.back();
   }
 
   friend class ExecutionState::Overlay;

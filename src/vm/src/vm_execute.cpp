@@ -97,11 +97,11 @@ void VM::execute(const ast::Program &program) {
 void VM::execute(const ast::Block &block) {
   debug_print("Evaluating block");
   const auto frame_guard = stack.with_frame();
-  const auto scope_guard = state.scopes->with_frame();
+  const auto scope_guard = state().scope_stack->with_frame();
   for (const auto &statement : block.get_statements()) {
     execute(statement);
 
-    if (state.flow_control != FlowControl::Normal) {
+    if (state().flow_control != FlowControl::Normal) {
       return;
     }
   }
@@ -120,7 +120,7 @@ void VM::execute(const ast::NamedFunction &named_function) {
       name,
       Mutability::Immutable,
       store_value(
-          Function{L3Function{state.scopes->clone(*this), named_function}}
+          Function{L3Function{state().scope_stack->clone(*this), named_function}}
       )
   );
 
@@ -131,35 +131,37 @@ void VM::execute(const ast::LastStatement &last_statement) {
   debug_print("Evaluating last statement");
   last_statement.visit(
       [this](const ast::ReturnStatement &return_statement) {
-        if (!state.in_function) {
+        if (!state().in_function) {
           throw RuntimeError(
               return_statement.get_location(),
               "return statement outside of function"
           );
         }
-        state.return_value = return_statement.get_expression()
-                                 .transform([this](const auto &expression) {
-                                   return evaluate(expression);
-                                 })
-                                 .value_or(VM::nil());
-        state.flow_control = FlowControl::Return;
-        debug_print("Returning {}", *state.return_value);
+
+        state().return_value = return_statement.get_expression()
+                                   .transform([this](const auto &expression) {
+                                     return evaluate(expression);
+                                   })
+                                   .value_or(VM::nil());
+
+        state().flow_control = FlowControl::Return;
+        debug_print("Returning {}", *state().return_value);
       },
       [this](const ast::BreakStatement &break_stmt) {
-        if (!state.in_loop) {
+        if (!state().in_loop) {
           throw RuntimeError(
               break_stmt.get_location(), "break statement outside of loop"
           );
         }
-        state.flow_control = FlowControl::Break;
+        state().flow_control = FlowControl::Break;
       },
       [this](const ast::ContinueStatement &continue_stmt) {
-        if (!state.in_loop) {
+        if (!state().in_loop) {
           throw RuntimeError(
               continue_stmt.get_location(), "continue statement outside of loop"
           );
         }
-        state.flow_control = FlowControl::Continue;
+        state().flow_control = FlowControl::Continue;
       }
   );
 }
@@ -261,22 +263,22 @@ void VM::execute(const ast::NameAssignment &assignment) {
 }
 
 void VM::execute(const ast::While &while_loop) {
-  const auto loop_guard = LoopGuard{this->state};
+  const auto loop_guard = LoopGuard{state()};
   const auto &condition = while_loop.get_condition();
   const auto &body = while_loop.get_body();
 
   while (evaluate(condition)->is_truthy()) {
     execute(body);
 
-    switch (state.flow_control) {
+    switch (state().flow_control) {
     case FlowControl::Normal:
       break;
     case FlowControl::Continue:
-      state.flow_control = FlowControl::Normal;
+      state().flow_control = FlowControl::Normal;
       debug_print("Continue in a while loop");
       break;
     case FlowControl::Break:
-      state.flow_control = FlowControl::Normal;
+      state().flow_control = FlowControl::Normal;
       debug_print("Break in a while loop");
       return;
     default:
@@ -286,13 +288,13 @@ void VM::execute(const ast::While &while_loop) {
 }
 
 void VM::execute(const ast::ForLoop &for_loop) {
-  const auto loop_guard = LoopGuard{this->state};
+  const auto loop_guard = LoopGuard{state()};
   const auto &variable = for_loop.get_variable();
   const auto &collection = for_loop.get_collection();
   const auto &body = for_loop.get_body();
   const auto mutability = for_loop.get_mutability();
 
-  const auto scope_guard = state.scopes->with_frame();
+  const auto scope_guard = state().scope_stack->with_frame();
   const auto frame_guard = stack.with_frame();
   auto &value = declare_variable(variable, mutability);
 
@@ -300,15 +302,15 @@ void VM::execute(const ast::ForLoop &for_loop) {
     *value = item;
     execute(body);
 
-    switch (state.flow_control) {
+    switch (state().flow_control) {
     case FlowControl::Normal:
       return true;
     case FlowControl::Continue:
-      state.flow_control = FlowControl::Normal;
+      state().flow_control = FlowControl::Normal;
       debug_print("Continue in a for loop");
       return true;
     case FlowControl::Break:
-      state.flow_control = FlowControl::Normal;
+      state().flow_control = FlowControl::Normal;
       debug_print("Break in a for loop");
       return false;
     default:
@@ -345,7 +347,7 @@ void VM::execute(const ast::ForLoop &for_loop) {
 }
 
 void VM::execute(const ast::RangeForLoop &range_for_loop) {
-  const auto loop_guard = LoopGuard{this->state};
+  const auto loop_guard = LoopGuard{state()};
   const auto &variable = range_for_loop.get_variable();
   const auto &start_expr = range_for_loop.get_start();
   const auto &end_expr = range_for_loop.get_end();
@@ -397,7 +399,7 @@ void VM::execute(const ast::RangeForLoop &range_for_loop) {
 
   auto range = full_range | std::views::stride(std::abs(step));
 
-  const auto scope_guard = state.scopes->with_frame();
+  const auto scope_guard = state().scope_stack->with_frame();
   const auto frame_guard = stack.with_frame();
   auto &value = declare_variable(variable, mutability);
 
@@ -405,14 +407,14 @@ void VM::execute(const ast::RangeForLoop &range_for_loop) {
     *value = store_value(Primitive{i});
     execute(body);
 
-    switch (state.flow_control) {
+    switch (state().flow_control) {
     case FlowControl::Continue:
-      state.flow_control = FlowControl::Normal;
+      state().flow_control = FlowControl::Normal;
       debug_print("Continue in a range for loop");
     case FlowControl::Normal:
       return false;
     case FlowControl::Break:
-      state.flow_control = FlowControl::Normal;
+      state().flow_control = FlowControl::Normal;
       debug_print("Break in a range for loop");
     case FlowControl::Return:
       return true;

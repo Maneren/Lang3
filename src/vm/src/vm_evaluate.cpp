@@ -256,14 +256,15 @@ Ref VM::evaluate(const L3Function &function, L3Args arguments) {
   function_state.in_function = true;
   const auto overlay =
       ExecutionState::Overlay{*this, std::move(function_state)};
-  const auto scope_guard = state.scopes->with_frame(std::move(argument_scope));
+  const auto scope_guard =
+      state().scope_stack->with_frame(std::move(argument_scope));
 
   execute(body.get_block());
 
-  if (state.flow_control == FlowControl::Return) {
-    auto value = *state.return_value;
-    state.return_value = std::nullopt;
-    state.flow_control = FlowControl::Normal;
+  if (state().flow_control == FlowControl::Return) {
+    auto value = *state().return_value;
+    state().return_value = std::nullopt;
+    state().flow_control = FlowControl::Normal;
     debug_print("Returning from function: {}", value);
     return stack.push_value(value);
   }
@@ -320,7 +321,7 @@ Ref VM::evaluate(const ast::FunctionCall &function_call) {
 
 Ref VM::evaluate(const ast::AnonymousFunction &anonymous) {
   return store_value(
-      Function{L3Function{state.scopes->clone(*this), anonymous}}
+      Function{L3Function{state().scope_stack->clone(*this), anonymous}}
   );
 }
 
@@ -379,20 +380,20 @@ bool VM::evaluate_if_branch(const ast::IfBase &if_base) {
 Ref VM::evaluate(const ast::IfExpression &if_expr) {
   execute(static_cast<const ast::IfElseBase &>(if_expr));
 
-  if (state.flow_control == FlowControl::Return) {
-    auto value = *state.return_value;
-    state.return_value = std::nullopt;
-    state.flow_control = FlowControl::Normal;
+  if (state().flow_control == FlowControl::Return) {
+    auto value = *state().return_value;
+    state().return_value = std::nullopt;
+    state().flow_control = FlowControl::Normal;
     debug_print("Returning from if expression: {}", value);
     return value;
   }
 
   execute(if_expr.get_else_block());
 
-  if (state.flow_control == FlowControl::Return) {
-    auto value = *state.return_value;
-    state.return_value = std::nullopt;
-    state.flow_control = FlowControl::Normal;
+  if (state().flow_control == FlowControl::Return) {
+    auto value = *state().return_value;
+    state().return_value = std::nullopt;
+    state().flow_control = FlowControl::Normal;
     debug_print("Returning from if expression: {}", value);
     return value;
   }

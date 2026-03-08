@@ -11,7 +11,7 @@ enum class FlowControl : std::uint_fast8_t { Normal, Return, Break, Continue };
 class VM;
 
 struct ExecutionState {
-  std::shared_ptr<ScopeStack> scopes;
+  std::shared_ptr<ScopeStack> scope_stack;
   FlowControl flow_control = FlowControl::Normal;
   std::optional<Ref> return_value = std::nullopt;
   bool in_function = false;
@@ -19,7 +19,7 @@ struct ExecutionState {
 
   ExecutionState() = default;
   explicit ExecutionState(std::shared_ptr<ScopeStack> scopes)
-      : scopes(std::move(scopes)) {}
+      : scope_stack(std::move(scopes)) {}
 
   class Overlay {
     VM &vm; // NOLINT(cppcoreguidelines-avoid-const-or-ref-data-members)
