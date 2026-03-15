@@ -1,105 +1,101 @@
 export module l3.vm;
 
+import std;
+import l3.bytecode;
+import l3.runtime;
 import utils;
-import :error;
-import :execution_state;
-import :function;
-import :identifier;
-import :ref_value;
-import :scope;
-import :stack;
-import :storage;
-import :value;
-import l3.location;
+import :builtins;
 
 export namespace l3::vm {
 
-class VM {
+class BytecodeVM {
 public:
-  VM(bool debug = false);
+  explicit BytecodeVM(bool debug_ = false);
 
-  void execute(const ast::Program &program);
-
-  [[nodiscard]] Ref evaluate(const Function &function, L3Args arguments);
-
-  Ref store_value(Value &&value);
-  Ref store_new_value(NewValue &&value);
-  Variable &declare_variable(
-      const Identifier &id,
-      Mutability mutability,
-      Ref ref_value = Ref{GCStorage::nil()}
-  );
-  static Ref nil();
-  static Ref _true();
-  static Ref _false();
+  runtime::Ref store_value(runtime::Value &&value);
+  runtime::Ref store_new_value(runtime::NewValue &&value);
+  runtime::Ref evaluate(runtime::Ref function, runtime::L3Args arguments);
 
   std::size_t run_gc();
+  void maybe_gc();
+
+  struct CallFrame {
+    std::size_t chunk_id = 0;
+    std::size_t ip = 0;
+    std::size_t frame_pointer = 0;
+    std::optional<runtime::Ref> closure;
+  };
+
+  void execute(const std::vector<bytecode::Chunk> &chunks);
 
 private:
-  void execute(const ast::Block &block);
-  void execute(const ast::Statement &statement);
-  void execute(const ast::LastStatement &last_statement);
-  void execute(const ast::Declaration &declaration);
-  void execute(const ast::OperatorAssignment &assignment);
-  void execute(const ast::NameAssignment &assignment);
-  void execute(const ast::FunctionCall &function_call);
-  void execute(const ast::IfStatement &if_statement);
-  void execute(const ast::IfElseBase &if_else_base);
-  bool execute(const ast::ElseIfList &elseif_list);
-  void execute(const ast::NamedFunction &named_function);
-  void execute(const ast::While &while_loop);
-  void execute(const ast::ForLoop &for_loop);
-  void execute(const ast::RangeForLoop &range_for_loop);
+  void execute_loop(std::size_t target_frames);
 
-  [[nodiscard]] Ref evaluate(const ast::Expression &expression);
-  [[nodiscard]] Ref evaluate(const ast::Literal &literal);
-  [[nodiscard]] Ref evaluate(const ast::Variable &variable);
-  [[nodiscard]] Ref evaluate(const ast::UnaryExpression &unary);
-  [[nodiscard]] Ref evaluate(const ast::BinaryExpression &binary);
-  [[nodiscard]] Ref evaluate(const ast::LogicalExpression &logical);
-  [[nodiscard]] Ref evaluate(const ast::Comparison &chained);
-  [[nodiscard]] Ref evaluate(const ast::IndexExpression &index_expression);
-  [[nodiscard]] Ref evaluate(const ast::AnonymousFunction &anonymous);
-  [[nodiscard]] Ref evaluate(const ast::FunctionCall &function_call);
-  [[nodiscard]] Ref evaluate(const ast::IfExpression &if_expr);
-  [[nodiscard]] Ref evaluate(const ast::Identifier &identifier);
+  void execute_op_return(const bytecode::OpReturn &op);
+  void execute_op_constant(
+      const bytecode::OpConstant &op, const bytecode::Chunk &chunk
+  );
+  void execute_op_pop(const bytecode::OpPop &op);
+  void execute_op_add(const bytecode::OpAdd &op);
+  void execute_op_subtract(const bytecode::OpSubtract &op);
+  void execute_op_multiply(const bytecode::OpMultiply &op);
+  void execute_op_divide(const bytecode::OpDivide &op);
+  void execute_op_modulo(const bytecode::OpModulo &op);
+  void execute_op_negate(const bytecode::OpNegate &op);
+  void execute_op_not(const bytecode::OpNot &op);
+  void execute_op_equal(const bytecode::OpEqual &op);
+  void execute_op_not_equal(const bytecode::OpNotEqual &op);
+  void execute_op_greater(const bytecode::OpGreater &op);
+  void execute_op_greater_equal(const bytecode::OpGreaterEqual &op);
+  void execute_op_less(const bytecode::OpLess &op);
+  void execute_op_less_equal(const bytecode::OpLessEqual &op);
+  void execute_op_jump(const bytecode::OpJump &op);
+  void execute_op_jump_if_false(const bytecode::OpJumpIfFalse &op);
+  void execute_op_loop(const bytecode::OpLoop &op);
+  void execute_op_define_global(
+      const bytecode::OpDefineGlobal &op, const bytecode::Chunk &chunk
+  );
+  void execute_op_get_global(
+      const bytecode::OpGetGlobal &op, const bytecode::Chunk &chunk
+  );
+  void execute_op_set_global(
+      const bytecode::OpSetGlobal &op, const bytecode::Chunk &chunk
+  );
+  void execute_op_get_local(const bytecode::OpGetLocal &op, CallFrame &frame);
+  void execute_op_set_local(const bytecode::OpSetLocal &op, CallFrame &frame);
+  void
+  execute_op_mutate_local(const bytecode::OpMutateLocal &op, CallFrame &frame);
+  void execute_op_make_array(const bytecode::OpMakeArray &op);
+  void execute_op_get_index(const bytecode::OpGetIndex &op);
+  void execute_op_set_index(const bytecode::OpSetIndex &op);
+  void execute_op_call(const bytecode::OpCall &op);
+  void execute_op_closure(
+      const bytecode::OpClosure &op,
+      const bytecode::Chunk &chunk,
+      CallFrame &frame
+  );
+  void
+  execute_op_get_upvalue(const bytecode::OpGetUpvalue &op, CallFrame &frame);
+  void
+  execute_op_set_upvalue(const bytecode::OpSetUpvalue &op, CallFrame &frame);
 
-  std::vector<Ref> evaluate(const ast::ExpressionList &expressions);
+  runtime::Ref stack_pop();
+  void stack_push(runtime::Value &&value);
 
-  [[nodiscard]] Ref evaluate(const L3Function &function, L3Args arguments);
-  [[nodiscard]] Ref evaluate(const BuiltinFunction &function, L3Args arguments);
+  template <typename... Args>
+  void debug_print(std::format_string<Args...> fmt, Args &&...args);
 
-  [[nodiscard]] Ref &evaluate_mut(const ast::Variable &variable);
-  [[nodiscard]] Ref &evaluate_mut(const ast::Identifier &identifier);
-  [[nodiscard]] Ref &evaluate_mut(const ast::IndexExpression &index_expression);
+  template <typename Op> void binary_arithmetic(Op op);
 
-  [[nodiscard]] Ref read_variable(const Identifier &id);
-  [[nodiscard]] Ref &read_write_variable(const Identifier &id);
-
-  bool evaluate_if_branch(const ast::IfBase &if_base);
+  template <typename Predicate> void comparison_op(Predicate predicate);
 
   bool debug;
-  std::deque<ExecutionState> state_stack;
-  Stack stack;
-  GCStorage gc_storage;
+  runtime::GCStorage gc_storage;
+  std::vector<runtime::Ref> stack;
+  std::map<std::string, runtime::Ref> globals;
 
-  std::vector<CallStackFrame> call_stack;
-  FlowControl flow_control = FlowControl::Normal;
-  std::optional<Ref> return_value = std::nullopt;
-
-  template <typename... Ts>
-  void debug_print(std::format_string<Ts...> message, Ts &&...args) const {
-    if (debug) [[unlikely]] {
-      std::println(std::cerr, message, std::forward<Ts>(args)...);
-    }
-  }
-
-  [[nodiscard]] ExecutionState &state() { return state_stack.back(); }
-  [[nodiscard]] const ExecutionState &state() const {
-    return state_stack.back();
-  }
-
-  friend class ExecutionState::Overlay;
+  std::vector<CallFrame> frames;
+  const std::vector<bytecode::Chunk> *current_chunks = nullptr;
 };
 
 } // namespace l3::vm

@@ -5,6 +5,8 @@ import cli;
 import l3.ast;
 import l3.ast.printer;
 import l3.ast.dot_printer;
+import l3.bytecode;
+import l3.compiler;
 import l3.vm;
 
 namespace {
@@ -18,7 +20,9 @@ constexpr cli::Parser cli_parser() {
       .long_flag("debug-ast")
       .long_option("debug-ast-graph")
       .long_flag("debug-vm")
-      .long_flag("timings");
+      .long_flag("debug-bytecode")
+      .long_flag("timings")
+      .long_flag("new-vm");
 }
 
 struct Debug {
@@ -27,7 +31,9 @@ struct Debug {
   bool ast = false;
   std::optional<std::string_view> ast_graph = std::nullopt;
   bool vm = false;
+  bool bytecode = false;
   bool timings = false;
+  bool new_vm = false;
 };
 
 using namespace l3;
@@ -86,7 +92,9 @@ int main(int argc, char *argv[]) {
       .ast = debug_flag || args->has_flag("debug-ast"),
       .ast_graph = args->get_value("debug-ast-graph"),
       .vm = debug_flag || args->has_flag("debug-vm"),
-      .timings = debug_flag || args->has_flag("timings")
+      .bytecode = debug_flag || args->has_flag("debug-bytecode"),
+      .timings = debug_flag || args->has_flag("timings"),
+      .new_vm = args->has_flag("new-vm")
   };
 
   std::istream *input = &std::cin;
@@ -136,11 +144,27 @@ int main(int argc, char *argv[]) {
     std::println(std::cerr, "=== VM ===");
   }
 
-  vm::VM vm{debug.vm};
+  std::vector<bytecode::Chunk> chunks;
+  compiler::Compiler compiler(chunks);
+  compiler.compile(program);
 
+  if (debug.bytecode) {
+    for (std::size_t id = 0; id < chunks.size(); ++id) {
+      std::print(
+          std::cerr,
+          "{}",
+          bytecode::NamedChunk{chunks[id], std::format("Chunk {}", id)}
+      );
+    }
+
+    if (!debug.vm) {
+      return EXIT_SUCCESS;
+    }
+  }
+
+  vm::BytecodeVM new_vm{debug.vm};
   const auto start_time = std::chrono::steady_clock::now();
-
-  vm.execute(program);
+  new_vm.execute(chunks);
 
   if (debug.timings) {
     auto end_time = std::chrono::steady_clock::now();
