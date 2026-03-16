@@ -12,7 +12,6 @@ target_sources(${LIB_NAME} PUBLIC
   FILES ${MODULES}
 )
 
-target_link_libraries(${LIB_NAME} PRIVATE runtime utils)
-target_precompile_headers(${LIB_NAME} REUSE_FROM ast)
+target_link_libraries(${LIB_NAME} PRIVATE runtime)
 
 set_compiler_and_linker_flags(${LIB_NAME})
