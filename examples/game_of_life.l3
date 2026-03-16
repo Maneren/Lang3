@@ -2,9 +2,9 @@
 
 # Conway's Game of Life
 
-let WIDTH = int(input("Enter the width of the board: "))
-let HEIGHT = int(input("Enter the height of the board: "))
-let GENERATIONS = int(input("Enter the number of generations: "))
+let WIDTH = 40
+let HEIGHT = 40
+let GENERATIONS = 100
 
 fn create_board()
   let mut board = []

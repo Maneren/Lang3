@@ -8,7 +8,7 @@ Style:
 Completion:
   AllScopes: true
   ArgumentLists: Delimiters
-  HeaderInsertion: IWYU
+  HeaderInsertion: Never
   CodePatterns: All
   MacroFilter: ExactPrefix
 InlayHints:
@@ -26,4 +26,4 @@ Documentation:
   CommentFormat: Doxygen
 Diagnostics:
   UnusedIncludes: Strict
-  MissingIncludes: Strict
+  MissingIncludes: None
