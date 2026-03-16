@@ -1,11 +1,11 @@
-export module l3.vm:value;
+export module l3.runtime:value;
 
 import utils;
 import :primitive;
 import :function;
 import :ref_value;
 
-export namespace l3::vm {
+export namespace l3::runtime {
 
 // Abstraction over vector and string
 template <typename T>
@@ -75,6 +75,7 @@ public:
 
   [[nodiscard]] utils::optional_cref<Primitive> as_primitive() const;
   [[nodiscard]] utils::optional_cref<function_type> as_function() const;
+  [[nodiscard]] utils::optional_ref<function_type> as_mut_function();
   [[nodiscard]] utils::optional_cref<vector_type> as_vector() const;
   [[nodiscard]] utils::optional_ref<vector_type> as_mut_vector();
   [[nodiscard]] utils::optional_cref<string_type> as_string() const;
@@ -96,4 +97,4 @@ public:
   DEFINE_ACCESSOR_X(inner)
 };
 
-} // namespace l3::vm
+} // namespace l3::runtime

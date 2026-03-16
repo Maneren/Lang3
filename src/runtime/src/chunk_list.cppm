@@ -1,8 +1,8 @@
-export module l3.vm:chunk_list;
+export module l3.runtime:chunk_list;
 
 import std;
 
-export namespace l3::vm {
+export namespace l3::runtime {
 
 template <typename T, std::size_t ChunkSize> class ChunkedAllocator {
   class Chunk {
@@ -180,4 +180,4 @@ public:
 template <typename T, std::size_t ChunkSize>
 using ChunkedForwardList = std::forward_list<T, ChunkedAllocator<T, ChunkSize>>;
 
-} // namespace l3::vm
+} // namespace l3::runtime

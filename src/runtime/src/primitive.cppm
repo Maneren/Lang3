@@ -1,9 +1,9 @@
-export module l3.vm:primitive;
+export module l3.runtime:primitive;
 
 import utils;
 import std;
 
-export namespace l3::vm {
+export namespace l3::runtime {
 
 class Primitive {
   std::variant<bool, std::int64_t, double> inner;
@@ -42,4 +42,4 @@ Primitive operator!(const Primitive &value);
 Primitive operator-(const Primitive &value);
 Primitive operator+(const Primitive &value);
 
-} // namespace l3::vm
+} // namespace l3::runtime

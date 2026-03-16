@@ -1,12 +1,11 @@
-module l3.vm;
+module l3.runtime;
 
 import utils;
 import :error;
 import :primitive;
 import :ref_value;
-import :variable;
 
-namespace l3::vm {
+namespace l3::runtime {
 
 namespace {
 
@@ -304,6 +303,14 @@ copt_function_type Value::as_function() const {
   );
 }
 
+using opt_function_type = utils::optional_ref<Value::function_type>;
+utils::optional_ref<Value::function_type> Value::as_mut_function() {
+  return visit(
+      [](function_type &function) -> opt_function_type { return function; },
+      [](auto &) -> opt_function_type { return std::nullopt; }
+  );
+}
+
 using copt_vector_type = utils::optional_cref<Value::vector_type>;
 copt_vector_type Value::as_vector() const {
   return visit(
@@ -329,6 +336,14 @@ copt_string_type Value::as_string() const {
         return std::cref(value);
       },
       [](const auto &) -> copt_string_type { return std::nullopt; }
+  );
+}
+
+using opt_string_type = utils::optional_ref<Value::string_type>;
+opt_string_type Value::as_mut_string() {
+  return visit(
+      [](string_type &value) -> opt_string_type { return value; },
+      [](auto &) -> opt_string_type { return std::nullopt; }
   );
 }
 
@@ -431,4 +446,4 @@ std::string_view Value::type_name() const {
   );
 }
 
-} // namespace l3::vm
+} // namespace l3::runtime

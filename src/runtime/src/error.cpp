@@ -1,10 +1,10 @@
-module l3.vm;
+module l3.runtime;
 
 import l3.ast;
 import l3.location;
 import :identifier;
 
-namespace l3::vm {
+namespace l3::runtime {
 
 UndefinedVariableError::UndefinedVariableError(const Identifier &id)
     : NameError("variable '{}' not declared", id.get_name()) {}
@@ -13,12 +13,9 @@ RuntimeError::RuntimeError(const std::string &message)
     : std::runtime_error(message) {}
 
 RuntimeError::RuntimeError(
-    const std::string &message,
-    const location::Location &location,
-    std::vector<CallStackFrame> stack_trace
+    const std::string &message, const location::Location &location
 )
-    : std::runtime_error(message), location_(location),
-      stack_trace_(std::move(stack_trace)) {}
+    : std::runtime_error(message), location_(location) {}
 
 std::string RuntimeError::format_error() const {
   std::string result;
@@ -31,16 +28,7 @@ std::string RuntimeError::format_error() const {
     result += std::format("\n  at {}", location_->get());
   }
 
-  // Add stack trace
-  if (!stack_trace_.empty()) {
-    result += "\n\nStack trace:";
-    for (const auto &frame : stack_trace_) {
-      result +=
-          std::format("\n  in {} at {}", frame.function_name, frame.location);
-    }
-  }
-
   return result;
 }
 
-} // namespace l3::vm
+} // namespace l3::runtime

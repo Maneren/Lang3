@@ -1,8 +1,8 @@
-export module l3.vm:storage;
+export module l3.runtime:storage;
 
 import :chunk_list;
 
-export namespace l3::vm {
+export namespace l3::runtime {
 
 class GCValue;
 class Value;
@@ -49,4 +49,4 @@ private:
   static GCValue FALSE;
 };
 
-} // namespace l3::vm
+} // namespace l3::runtime

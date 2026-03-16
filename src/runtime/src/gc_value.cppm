@@ -1,9 +1,8 @@
-export module l3.vm:gc_value;
+export module l3.runtime:gc_value;
 
 import :value;
-import :variable;
 
-export namespace l3::vm {
+export namespace l3::runtime {
 
 class GCValue {
   Value value;
@@ -25,4 +24,4 @@ public:
   DEFINE_ACCESSOR_X(value);
 };
 
-} // namespace l3::vm
+} // namespace l3::runtime

@@ -1,9 +1,9 @@
-module l3.vm;
+module l3.runtime;
 
 import utils;
 import :error;
 
-namespace l3::vm {
+namespace l3::runtime {
 
 namespace {
 
@@ -192,4 +192,4 @@ std::string_view Primitive::type_name() const {
   );
 }
 
-} // namespace l3::vm
+} // namespace l3::runtime

@@ -1,8 +1,8 @@
-module l3.vm;
+module l3.runtime;
 
 import :gc_value;
 
-namespace l3::vm {
+namespace l3::runtime {
 
 GCValue::GCValue(Value &&value) : value{std::move(value)} {}
 GCValue::GCValue(GCValue &&other) noexcept
@@ -16,4 +16,4 @@ GCValue &GCValue::operator=(GCValue &&other) noexcept {
   return *this;
 }
 
-} // namespace l3::vm
+} // namespace l3::runtime

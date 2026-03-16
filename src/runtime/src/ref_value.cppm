@@ -1,8 +1,8 @@
-export module l3.vm:ref_value;
+export module l3.runtime:ref_value;
 
 import std;
 
-export namespace l3::vm {
+export namespace l3::runtime {
 
 class GCValue;
 class Value;
@@ -20,4 +20,4 @@ public:
   DEFINE_ACCESSOR(gc, GCValue, gc_value.get());
 };
 
-} // namespace l3::vm
+} // namespace l3::runtime

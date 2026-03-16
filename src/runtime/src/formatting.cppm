@@ -1,11 +1,10 @@
-export module l3.vm:formatting;
+export module l3.runtime:formatting;
 
 import utils;
 import :value;
 import :storage;
-import :scope;
 
-export namespace l3::vm {
+export namespace l3::runtime {
 
 struct PrimitivePrettyPrinter {
   const Primitive
@@ -17,11 +16,12 @@ struct ValuePrettyPrinter {
       &value; // NOLINT(cppcoreguidelines-avoid-const-or-ref-data-members)
 };
 
-} // namespace l3::vm
+} // namespace l3::runtime
 
 export {
   template <>
-  struct std::formatter<l3::vm::Nil> : utils::static_formatter<l3::vm::Nil> {
+  struct std::formatter<l3::runtime::Nil>
+      : utils::static_formatter<l3::runtime::Nil> {
     static constexpr auto
     format(const auto & /*unused*/, std::format_context &ctx) {
       return std::format_to(ctx.out(), "nil");
@@ -29,8 +29,8 @@ export {
   };
 
   template <>
-  struct std::formatter<l3::vm::Primitive>
-      : utils::static_formatter<l3::vm::Primitive> {
+  struct std::formatter<l3::runtime::Primitive>
+      : utils::static_formatter<l3::runtime::Primitive> {
     static constexpr auto
     format(const auto &primitive, std::format_context &ctx) {
       return primitive.visit(
@@ -48,8 +48,8 @@ export {
   };
 
   template <>
-  struct std::formatter<l3::vm::PrimitivePrettyPrinter>
-      : utils::static_formatter<l3::vm::PrimitivePrettyPrinter> {
+  struct std::formatter<l3::runtime::PrimitivePrettyPrinter>
+      : utils::static_formatter<l3::runtime::PrimitivePrettyPrinter> {
     static constexpr auto
     format(const auto &primitive_pp, std::format_context &ctx) {
       return primitive_pp.primitive.visit(
@@ -67,29 +67,24 @@ export {
   };
 
   template <>
-  struct std::formatter<l3::vm::L3Function>
-      : utils::static_formatter<l3::vm::L3Function> {
-    static constexpr auto format(const auto &obj, std::format_context &ctx) {
-      if (obj.get_curried()) {
-        return std::format_to(
-            ctx.out(), "function <{}>{}", obj.get_name(), *obj.get_curried()
-        );
-      }
-      return std::format_to(ctx.out(), "function <{}>", obj.get_name());
-    }
-  };
-
-  template <>
-  struct std::formatter<l3::vm::BuiltinFunction>
-      : utils::static_formatter<l3::vm::BuiltinFunction> {
+  struct std::formatter<l3::runtime::BuiltinFunction>
+      : utils::static_formatter<l3::runtime::BuiltinFunction> {
     static constexpr auto format(const auto &obj, std::format_context &ctx) {
       return std::format_to(ctx.out(), "function <{}>", obj.get_name());
     }
   };
 
   template <>
-  struct std::formatter<l3::vm::Function>
-      : utils::static_formatter<l3::vm::Function> {
+  struct std::formatter<l3::runtime::BytecodeFunctionId>
+      : utils::static_formatter<l3::runtime::BytecodeFunctionId> {
+    static constexpr auto format(const auto &obj, std::format_context &ctx) {
+      return std::format_to(ctx.out(), "function <{}>", obj.name);
+    }
+  };
+
+  template <>
+  struct std::formatter<l3::runtime::Function>
+      : utils::static_formatter<l3::runtime::Function> {
     static constexpr auto format(const auto &value, std::format_context &ctx) {
       return value.visit([&ctx](const auto &value) {
         return std::format_to(ctx.out(), "{}", value);
@@ -98,37 +93,22 @@ export {
   };
 
   template <>
-  struct std::formatter<l3::vm::Ref> : utils::static_formatter<l3::vm::Ref> {
+  struct std::formatter<l3::runtime::Ref>
+      : utils::static_formatter<l3::runtime::Ref> {
     static constexpr auto format(const auto &value, std::format_context &ctx) {
       return std::format_to(ctx.out(), "{}", *value);
     }
   };
 
   template <>
-  struct std::formatter<l3::vm::Variable>
-      : utils::static_formatter<l3::vm::Variable> {
-    static constexpr auto format(const auto &value, std::format_context &ctx) {
-      return std::format_to(ctx.out(), "{} {}", value.get_mutability(), *value);
-    }
-  };
-
-  template <>
-  struct std::formatter<l3::vm::Scope>
-      : utils::static_formatter<l3::vm::Scope> {
-    static constexpr auto format(const auto &value, std::format_context &ctx) {
-      return std::format_to(ctx.out(), "{}", value.get_variables());
-    }
-  };
-
-  template <>
-  struct std::formatter<l3::vm::Value>
-      : utils::static_formatter<l3::vm::Value> {
+  struct std::formatter<l3::runtime::Value>
+      : utils::static_formatter<l3::runtime::Value> {
     static constexpr auto format(const auto &value, std::format_context &ctx) {
       return value.visit(
-          [&ctx](const l3::vm::Function &function) {
+          [&ctx](const l3::runtime::Function &function) {
             return std::format_to(ctx.out(), "{}", function);
           },
-          [&ctx](const l3::vm::Value::string_type &value) {
+          [&ctx](const l3::runtime::Value::string_type &value) {
             return std::format_to(ctx.out(), R"("{}")", value);
           },
           [&ctx](const auto &value) {
@@ -139,17 +119,17 @@ export {
   };
 
   template <>
-  struct std::formatter<l3::vm::ValuePrettyPrinter>
-      : utils::static_formatter<l3::vm::ValuePrettyPrinter> {
+  struct std::formatter<l3::runtime::ValuePrettyPrinter>
+      : utils::static_formatter<l3::runtime::ValuePrettyPrinter> {
     static constexpr auto
     format(const auto &value_pp, std::format_context &ctx) {
       return value_pp.value.visit(
-          [&ctx](const l3::vm::Primitive &primitive) {
+          [&ctx](const l3::runtime::Primitive &primitive) {
             return std::format_to(
-                ctx.out(), "{}", l3::vm::PrimitivePrettyPrinter{primitive}
+                ctx.out(), "{}", l3::runtime::PrimitivePrettyPrinter{primitive}
             );
           },
-          [&ctx](const l3::vm::Value::string_type &value) {
+          [&ctx](const l3::runtime::Value::string_type &value) {
             return std::format_to(ctx.out(), "{}", value);
           },
           [&ctx](const auto &value) {
@@ -160,8 +140,8 @@ export {
   };
 
   template <>
-  struct std::formatter<l3::vm::GCValue>
-      : utils::static_formatter<l3::vm::GCValue> {
+  struct std::formatter<l3::runtime::GCValue>
+      : utils::static_formatter<l3::runtime::GCValue> {
     static constexpr auto format(const auto &value, std::format_context &ctx) {
       if (value.is_marked()) {
         return std::format_to(ctx.out(), "{}*", value.get_value());

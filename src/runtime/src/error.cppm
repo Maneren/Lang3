@@ -1,24 +1,18 @@
-export module l3.vm:error;
+export module l3.runtime:error;
 
 import :identifier;
-import :call_stack;
 import l3.location;
 import std;
 import utils;
 
-export namespace l3::vm {
+export namespace l3::runtime {
 
 class RuntimeError : public std::runtime_error {
   utils::optional_cref<location::Location> location_;
-  CallStack stack_trace_;
 
 public:
   RuntimeError(const std::string &message);
-  RuntimeError(
-      const std::string &message,
-      const location::Location &location,
-      CallStack stack_trace = {}
-  );
+  RuntimeError(const std::string &message, const location::Location &location);
 
   template <typename... Args>
   RuntimeError(const std::format_string<Args...> &message, Args &&...args)
@@ -33,16 +27,6 @@ public:
       : std::runtime_error(std::format(message, std::forward<Args>(args)...)),
         location_(location) {}
 
-  template <typename... Args>
-  RuntimeError(
-      const location::Location &location,
-      CallStack stack_trace,
-      const std::format_string<Args...> &message,
-      Args &&...args
-  )
-      : std::runtime_error(std::format(message, std::forward<Args>(args)...)),
-        location_(location), stack_trace_(std::move(stack_trace)) {}
-
   [[nodiscard]] constexpr virtual std::string_view type() const {
     return "RuntimeError";
   }
@@ -52,19 +36,9 @@ public:
     return location_;
   }
 
-  [[nodiscard]] const std::vector<CallStackFrame> &stack_trace() const {
-    return stack_trace_;
-  }
-
   void set_location(const location::Location &location) {
     if (!location_) {
       location_ = location;
-    }
-  }
-
-  void set_stack_trace(std::vector<CallStackFrame> stack_trace) {
-    if (stack_trace_.empty()) {
-      stack_trace_ = std::move(stack_trace);
     }
   }
 
@@ -126,4 +100,4 @@ public:
   }
 };
 
-} // namespace l3::vm
+} // namespace l3::runtime

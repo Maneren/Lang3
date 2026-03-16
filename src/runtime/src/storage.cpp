@@ -1,11 +1,11 @@
-module l3.vm;
+module l3.runtime;
 
 import utils;
 import :gc_value;
 import :value;
 import :formatting;
 
-namespace l3::vm {
+namespace l3::runtime {
 
 GCStorage::GCStorage(bool debug) : debug{debug} {}
 GCStorage::GCStorage(GCStorage &&) noexcept = default;
@@ -67,6 +67,16 @@ void GCValue::mark() {
           item.get_gc_mut().mark();
         }
       },
+      [](Value::function_type &func) {
+        if (auto bc_opt = func->as_mut_bytecode_function()) {
+          for (auto &uv : bc_opt->get().upvalues) {
+            uv.get_gc_mut().mark();
+          }
+          for (auto &ca : bc_opt->get().curried_args) {
+            ca.get_gc_mut().mark();
+          }
+        }
+      },
       [](auto & /*value*/) {}
   );
 }
@@ -75,4 +85,4 @@ GCValue GCStorage::NIL{Value()};
 GCValue GCStorage::TRUE{Value{Primitive{true}}};
 GCValue GCStorage::FALSE{Value{Primitive{false}}};
 
-} // namespace l3::vm
+} // namespace l3::runtime
