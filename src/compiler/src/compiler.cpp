@@ -142,16 +142,16 @@ std::size_t Compiler::make_constant(runtime::Value &&value) {
 }
 
 void Compiler::emit_loop(std::size_t loop_start) {
-  emit(bytecode::OpLoop{current_chunk().code.size() + 1 - loop_start});
+  emit(bytecode::OpJump{loop_start});
 }
 
 void Compiler::patch_jump(std::size_t offset) {
-  std::size_t jump_length = last_instruction_offset() - offset;
+  const auto target = current_chunk().code.size();
 
   match::match(
       current_chunk().code[offset],
-      [=](bytecode::OpJump &jump) { jump.offset = jump_length; },
-      [=](bytecode::OpJumpIfFalse &jump) { jump.offset = jump_length; },
+      [=](bytecode::OpJump &jump) { jump.offset = target; },
+      [=](bytecode::OpJumpIfFalse &jump) { jump.offset = target; },
       [](auto &) {
         throw std::runtime_error("Attempting to patch a non-jump instruction");
       }
@@ -593,7 +593,7 @@ void Compiler::compile_for_loop(const ast::ForLoop &loop) {
   emit(bytecode::OpGetLocal{len_idx});
   emit(bytecode::OpLess{});
 
-  std::size_t exit_jump = emit_jump(bytecode::OpJumpIfFalse{0});
+  std::size_t exit_jump = emit_jump(bytecode::OpJumpIfFalse{});
   emit(bytecode::OpPop{});
 
   // Snapshot locals before the inner scope so continue pops everything from the
@@ -974,7 +974,7 @@ void Compiler::compile_range_for_loop(const ast::RangeForLoop &loop) {
     emit(bytecode::OpLess{});
   }
 
-  std::size_t exit_jump = emit_jump(bytecode::OpJumpIfFalse{0});
+  std::size_t exit_jump = emit_jump(bytecode::OpJumpIfFalse{});
   emit(bytecode::OpPop{});
 
   // Snapshot locals before the inner scope so continue pops everything from the
@@ -1037,7 +1037,7 @@ void Compiler::compile_while_loop(const ast::While &loop) {
 
   compile_expression(loop.get_condition());
 
-  std::size_t exit_jump = emit_jump(bytecode::OpJumpIfFalse{0});
+  std::size_t exit_jump = emit_jump(bytecode::OpJumpIfFalse{});
 
   emit(bytecode::OpPop{});
 
@@ -1047,7 +1047,7 @@ void Compiler::compile_while_loop(const ast::While &loop) {
   compile_block(loop.get_body());
   loop_body_locals_snapshot.pop_back();
 
-  emit(bytecode::OpLoop{current_chunk().code.size() + 1 - loop_start});
+  emit_loop(loop_start);
 
   patch_jump(exit_jump);
 
@@ -1058,12 +1058,8 @@ void Compiler::compile_while_loop(const ast::While &loop) {
   }
   break_jumps_stack.pop_back();
 
-  // Patch continue jumps — they all loop back to loop_start.
   for (auto jump : continue_jumps_stack.back()) {
-    // continue jumps back (OpLoop), but we emitted OpJump forward placeholders.
-    // Instead, replace with an OpLoop at the placeholder site.
-    current_chunk().code[jump] =
-        bytecode::OpLoop{jump + 1 - loop_continues_stack.back()};
+    current_chunk().code[jump] = bytecode::OpJump{loop_start};
   }
   continue_jumps_stack.pop_back();
   loop_continues_stack.pop_back();

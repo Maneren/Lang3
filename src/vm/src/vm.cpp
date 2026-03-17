@@ -141,9 +141,10 @@ void BytecodeVM::execute_loop(std::size_t target_frames) {
     maybe_gc();
     auto &frame = frames.back();
     const auto &chunk = chunks[frame.chunk_id];
-    const auto &instruction = chunk.code[frame.ip++];
 
-    debug_print("IP: {}", frame.ip - 1);
+    debug_print("IP: {}", frame.ip);
+
+    const auto &instruction = chunk.code[frame.ip++];
 
     match::match(
         instruction,
@@ -169,7 +170,6 @@ void BytecodeVM::execute_loop(std::size_t target_frames) {
         [&](const bytecode::OpJumpIfFalse &op) {
           execute_op_jump_if_false(op);
         },
-        [&](const bytecode::OpLoop &op) { execute_op_loop(op); },
         [&](const bytecode::OpDefineGlobal &op) {
           execute_op_define_global(op, chunk);
         },
@@ -348,25 +348,21 @@ void BytecodeVM::execute_op_less_equal(const bytecode::OpLessEqual & /*op*/) {
 }
 
 void BytecodeVM::execute_op_jump(const bytecode::OpJump &op) {
-  debug_print(
-      "JUMP offset={} new_ip={}", op.offset, frames.back().ip + op.offset
-  );
-  frames.back().ip += op.offset;
+  debug_print("JUMP target={}", op.offset);
+  frames.back().ip = op.offset;
 }
 
 void BytecodeVM::execute_op_jump_if_false(const bytecode::OpJumpIfFalse &op) {
   const bool taken = stack.back()->is_falsy();
-  debug_print("JUMP_IF_FALSE condition={} taken={}", stack.back(), taken);
-  if (taken) {
-    frames.back().ip += op.offset;
-  }
-}
-
-void BytecodeVM::execute_op_loop(const bytecode::OpLoop &op) {
   debug_print(
-      "LOOP offset={} new_ip={}", op.offset, frames.back().ip - op.offset
+      "JUMP_IF_FALSE condition={} taken={} target={}",
+      stack.back(),
+      taken,
+      op.offset
   );
-  frames.back().ip -= op.offset;
+  if (taken) {
+    frames.back().ip = op.offset;
+  }
 }
 
 void BytecodeVM::execute_op_define_global(

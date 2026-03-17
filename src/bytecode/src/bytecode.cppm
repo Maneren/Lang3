@@ -71,9 +71,6 @@ struct OpJump {
 struct OpJumpIfFalse {
   std::size_t offset = -1UZ;
 };
-struct OpLoop {
-  std::size_t offset;
-};
 struct OpCall {
   std::size_t arg_count;
 };
@@ -111,7 +108,6 @@ using Instruction = std::variant<
     OpMutateLocal,
     OpJump,
     OpJumpIfFalse,
-    OpLoop,
     OpCall,
     OpMakeArray,
     OpGetIndex,
@@ -257,29 +253,12 @@ export {
             },
             [&](const l3::bytecode::OpJump &op) {
               return std::format_to(
-                  out,
-                  "{:<16} {:4d} -> {}\n",
-                  "OP_JUMP",
-                  op.offset,
-                  offset + 1 + op.offset
+                  out, "{:<16} {:4d}\n", "OP_JUMP", op.offset
               );
             },
             [&](const l3::bytecode::OpJumpIfFalse &op) {
               return std::format_to(
-                  out,
-                  "{:<16} {:4d} -> {}\n",
-                  "OP_JUMP_IF_FALSE",
-                  op.offset,
-                  offset + 1 + op.offset
-              );
-            },
-            [&](const l3::bytecode::OpLoop &op) {
-              return std::format_to(
-                  out,
-                  "{:<16} {:4d} -> {}\n",
-                  "OP_LOOP",
-                  op.offset,
-                  offset + 1 - op.offset
+                  out, "{:<16} {:4d}\n", "OP_JUMP_IF_FALSE", op.offset
               );
             },
             [&](const l3::bytecode::OpCall &op) {
