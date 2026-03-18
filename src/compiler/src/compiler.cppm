@@ -42,6 +42,13 @@ private:
   };
   std::vector<Context> contexts;
 
+  enum class VariableType : std::uint8_t { Local, Upvalue, Global };
+  struct ResolvedVariable {
+    VariableType type;
+    std::size_t index;
+  };
+  ResolvedVariable resolve_variable(const std::string &name);
+
   std::vector<std::vector<std::size_t>> break_jumps_stack;
   std::vector<std::vector<std::size_t>> continue_jumps_stack;
   std::vector<std::size_t> loop_continues_stack;
@@ -53,12 +60,13 @@ private:
   void begin_scope();
   void end_scope();
 
-  int resolve_local(const std::string &name);
-  int resolve_local_in_context(const std::string &name, const Context &ctx);
-  int add_upvalue(
-      std::vector<Upvalue> &upvalues, bool is_local, std::size_t index
-  );
-  int resolve_upvalue(const std::string &name, int context_index);
+  std::optional<std::size_t> resolve_local(const std::string &name);
+  std::optional<std::size_t>
+  resolve_local_in_context(const std::string &name, const Context &ctx);
+  std::size_t
+  add_upvalue(std::vector<Upvalue> &upvalues, bool is_local, std::size_t index);
+  std::optional<std::size_t>
+  resolve_upvalue(const std::string &name, std::size_t context_index);
 
   void emit(const bytecode::Instruction &instruction, std::size_t line = 0);
   std::size_t make_constant(runtime::Value &&value);
