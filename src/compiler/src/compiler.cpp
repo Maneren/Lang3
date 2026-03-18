@@ -8,7 +8,9 @@ import utils;
 
 namespace l3::compiler {
 
-Compiler::Compiler(std::vector<bytecode::Chunk> &chunks) : chunks(chunks) {}
+using namespace l3::bytecode;
+
+Compiler::Compiler(std::vector<Chunk> &chunks) : chunks(chunks) {}
 
 void Compiler::compile(const ast::Program &program) {
   chunks.emplace_back();
@@ -19,11 +21,11 @@ void Compiler::compile(const ast::Program &program) {
   if (auto last = program.get_last_statement(); last) {
     throw std::runtime_error("Unexpected last statement in top-level scope");
   }
-  emit(bytecode::OpConstant{make_constant(runtime::Value{runtime::Nil{}})});
-  emit(bytecode::OpReturn{});
+  emit(OpConstant{make_constant(runtime::Value{runtime::Nil{}})});
+  emit(OpReturn{});
 }
 
-bytecode::Chunk &Compiler::current_chunk() { return chunks[current_chunk_id]; }
+Chunk &Compiler::current_chunk() { return chunks[current_chunk_id]; }
 std::size_t Compiler::last_instruction_offset() {
   return current_instruction_offset() - 1;
 }
@@ -58,12 +60,13 @@ void Compiler::begin_scope() { scope_depth++; }
 void Compiler::end_scope() {
   scope_depth--;
   while (!locals.empty() && locals.back().depth > scope_depth) {
-    emit(bytecode::OpPop{});
+    emit(OpPop{});
     locals.pop_back();
   }
 }
 
-std::optional<std::size_t> Compiler::resolve_local(const std::string &name) {
+std::optional<std::size_t>
+Compiler::resolve_local(const ast::Identifier &name) {
   for (const auto &[i, local] :
        std::views::reverse(utils::ranges::enumerate(locals))) {
     if (local.name == name) {
@@ -74,7 +77,7 @@ std::optional<std::size_t> Compiler::resolve_local(const std::string &name) {
 }
 
 std::optional<std::size_t> Compiler::resolve_local_in_context(
-    const std::string &name, const Context &ctx
+    const ast::Identifier &name, const Context &ctx
 ) {
   for (const auto &[i, local] :
        std::views::reverse(utils::ranges::enumerate(ctx.locals))) {
@@ -97,8 +100,9 @@ std::size_t Compiler::add_upvalue(
   return upvalues.size() - 1;
 }
 
-std::optional<std::size_t>
-Compiler::resolve_upvalue(const std::string &name, std::size_t context_index) {
+std::optional<std::size_t> Compiler::resolve_upvalue(
+    const ast::Identifier &name, std::size_t context_index
+) {
 
   std::optional<std::size_t> local =
       resolve_local_in_context(name, contexts[context_index]);
@@ -126,26 +130,49 @@ Compiler::resolve_upvalue(const std::string &name, std::size_t context_index) {
   return resolve_upvalue(name, context_index - 1);
 }
 
-Compiler::ResolvedVariable Compiler::resolve_variable(const std::string &name) {
-  if (auto local_arg = resolve_local(name)) {
-    return {Compiler::VariableType::Local, *local_arg};
+Compiler::ResolvedVariable
+Compiler::resolve_variable(const ast::Identifier &identifier) {
+  if (auto local_arg = resolve_local(identifier)) {
+    return {.type = Compiler::VariableType::Local, .index = *local_arg};
   }
 
   if (!contexts.empty()) {
-    if (auto upvalue_arg = resolve_upvalue(name, contexts.size() - 1)) {
-      return {Compiler::VariableType::Upvalue, *upvalue_arg};
+    if (auto upvalue_arg = resolve_upvalue(identifier, contexts.size() - 1)) {
+      return {.type = Compiler::VariableType::Upvalue, .index = *upvalue_arg};
     }
   }
 
   return {
-      Compiler::VariableType::Global,
-      make_constant(runtime::Value{std::string{name}})
+      .type = Compiler::VariableType::Global,
+      .index = make_constant(runtime::Value{std::string{identifier.get_name()}})
   };
 }
 
-void Compiler::emit(
-    const bytecode::Instruction &instruction, std::size_t line
-) {
+Instruction Compiler::emit_get_variable(const ast::Identifier &name) {
+  auto resolved = resolve_variable(name);
+  switch (resolved.type) {
+  case VariableType::Local:
+    return OpGetLocal{resolved.index};
+  case VariableType::Upvalue:
+    return OpGetUpvalue{resolved.index};
+  case VariableType::Global:
+    return OpGetGlobal{resolved.index};
+  }
+}
+
+Instruction Compiler::emit_set_variable(const ast::Identifier &name) {
+  auto resolved = resolve_variable(name);
+  switch (resolved.type) {
+  case VariableType::Local:
+    return OpSetLocal{resolved.index};
+  case VariableType::Upvalue:
+    return OpSetUpvalue{resolved.index};
+  case VariableType::Global:
+    return OpSetGlobal{resolved.index};
+  }
+}
+
+void Compiler::emit(const Instruction &instruction, std::size_t line) {
   current_chunk().write(instruction, line);
 }
 
@@ -153,15 +180,13 @@ std::size_t Compiler::make_constant(runtime::Value &&value) {
   return current_chunk().add_constant(std::move(value));
 }
 
-void Compiler::emit_loop(std::size_t loop_start) {
-  emit(bytecode::OpJump{loop_start});
-}
+void Compiler::emit_loop(std::size_t loop_start) { emit(OpJump{loop_start}); }
 
 void Compiler::patch_jump(std::size_t jump_offset, std::size_t target) {
   match::match(
       current_chunk().code[jump_offset],
-      [=](bytecode::OpJump &jump) { jump.offset = target; },
-      [=](bytecode::OpJumpIfFalse &jump) { jump.offset = target; },
+      [=](OpJump &jump) { jump.offset = target; },
+      [=](OpJumpIfFalse &jump) { jump.offset = target; },
       [](auto &) {
         throw std::runtime_error("Attempting to patch a non-jump instruction");
       }
@@ -172,7 +197,7 @@ void Compiler::patch_jump_here(std::size_t jump_offset) {
   patch_jump(jump_offset, last_instruction_offset() + 1);
 }
 
-std::size_t Compiler::emit_jump(const bytecode::Instruction &instruction) {
+std::size_t Compiler::emit_jump(const Instruction &instruction) {
   current_chunk().write(instruction, 0);
   return last_instruction_offset();
 }
@@ -220,21 +245,21 @@ void Compiler::compile_binary_expression(const ast::BinaryExpression &binary) {
 
   switch (binary.get_op()) {
   case ast::BinaryOperator::Plus:
-    emit(bytecode::OpAdd{});
+    emit(OpAdd{});
     break;
   case ast::BinaryOperator::Minus:
-    emit(bytecode::OpSubtract{});
+    emit(OpSubtract{});
     break;
   case ast::BinaryOperator::Multiply:
-    emit(bytecode::OpMultiply{});
+    emit(OpMultiply{});
     break;
   case ast::BinaryOperator::Divide:
-    emit(bytecode::OpDivide{});
+    emit(OpDivide{});
     break;
   case ast::BinaryOperator::Modulo:
-    emit(bytecode::OpModulo{});
+    emit(OpModulo{});
     break;
-  case ast::BinaryOperator::Power: /* emit(bytecode::OpPower{}); */
+  case ast::BinaryOperator::Power: /* emit(OpPower{}); */
     break;
   }
 }
@@ -244,10 +269,10 @@ void Compiler::compile_unary_expression(const ast::UnaryExpression &unary) {
 
   switch (unary.get_op()) {
   case ast::UnaryOperator::Minus:
-    emit(bytecode::OpNegate{});
+    emit(OpNegate{});
     break;
   case ast::UnaryOperator::Not:
-    emit(bytecode::OpNot{});
+    emit(OpNot{});
     break;
   case ast::UnaryOperator::Plus: /* do nothing */
     break;
@@ -261,17 +286,17 @@ void Compiler::compile_logical_expression(
 
   switch (logical.get_op()) {
   case ast::LogicalOperator::And: {
-    std::size_t jump = emit_jump(bytecode::OpJumpIfFalse{});
-    emit(bytecode::OpPop{});
+    std::size_t jump = emit_jump(OpJumpIfFalse{});
+    emit(OpPop{});
     compile_expression(logical.get_rhs());
     patch_jump_here(jump);
   } break;
   case ast::LogicalOperator::Or: { // Logical OR
-    std::size_t jump_if_false = emit_jump(bytecode::OpJumpIfFalse{});
-    std::size_t jump_to_end = emit_jump(bytecode::OpJump{});
+    std::size_t jump_if_false = emit_jump(OpJumpIfFalse{});
+    std::size_t jump_to_end = emit_jump(OpJump{});
 
     patch_jump_here(jump_if_false);
-    emit(bytecode::OpPop{});
+    emit(OpPop{});
     compile_expression(logical.get_rhs());
 
     patch_jump_here(jump_to_end);
@@ -299,28 +324,28 @@ void Compiler::compile_comparison(const ast::Comparison &comparison) {
 
     switch (comps[i].first) {
     case ast::ComparisonOperator::Equal:
-      emit(bytecode::OpEqual{});
+      emit(OpEqual{});
       break;
     case ast::ComparisonOperator::NotEqual:
-      emit(bytecode::OpNotEqual{});
+      emit(OpNotEqual{});
       break;
     case ast::ComparisonOperator::Greater:
-      emit(bytecode::OpGreater{});
+      emit(OpGreater{});
       break;
     case ast::ComparisonOperator::GreaterEqual:
-      emit(bytecode::OpGreaterEqual{});
+      emit(OpGreaterEqual{});
       break;
     case ast::ComparisonOperator::Less:
-      emit(bytecode::OpLess{});
+      emit(OpLess{});
       break;
     case ast::ComparisonOperator::LessEqual:
-      emit(bytecode::OpLessEqual{});
+      emit(OpLessEqual{});
       break;
     }
 
     if (i < comps.size() - 1) {
-      jumps.push_back(emit_jump(bytecode::OpJumpIfFalse{}));
-      emit(bytecode::OpPop{});
+      jumps.push_back(emit_jump(OpJumpIfFalse{}));
+      emit(OpPop{});
     }
   }
 
@@ -342,10 +367,10 @@ void Compiler::compile_anonymous_function(const ast::AnonymousFunction &func) {
   }
 
   compile_block(func.get_body().get_block());
-  emit(bytecode::OpConstant{make_constant(runtime::Value{runtime::Nil{}})});
-  emit(bytecode::OpReturn{});
+  emit(OpConstant{make_constant(runtime::Value{runtime::Nil{}})});
+  emit(OpReturn{});
 
-  std::vector<bytecode::UpvalueInfo> upvalue_infos;
+  std::vector<UpvalueInfo> upvalue_infos;
   upvalue_infos.reserve(current_upvalues.size());
   for (const auto &uv : current_upvalues) {
     upvalue_infos.push_back({.is_local = uv.is_local, .index = uv.index});
@@ -364,13 +389,9 @@ void Compiler::compile_anonymous_function(const ast::AnonymousFunction &func) {
   );
 
   if (upvalue_infos.empty()) {
-    emit(bytecode::OpConstant{id});
+    emit(OpConstant{id});
   } else {
-    emit(
-        bytecode::OpClosure{
-            .function_index = id, .upvalues = std::move(upvalue_infos)
-        }
-    );
+    emit(OpClosure{.function_index = id, .upvalues = std::move(upvalue_infos)});
   }
 }
 
@@ -379,7 +400,7 @@ void Compiler::compile_function_call(const ast::FunctionCall &call) {
   for (const auto &arg : call.get_arguments()) {
     compile_expression(arg);
   }
-  emit(bytecode::OpCall{call.get_arguments().size()});
+  emit(OpCall{call.get_arguments().size()});
 }
 
 void Compiler::compile_if_expression(const ast::IfExpression &if_expr) {
@@ -388,32 +409,32 @@ void Compiler::compile_if_expression(const ast::IfExpression &if_expr) {
   const auto &base_if = if_expr.get_base_if();
 
   compile_expression(base_if.get_condition());
-  std::size_t then_jump = emit_jump(bytecode::OpJumpIfFalse{});
-  emit(bytecode::OpPop{});
+  std::size_t then_jump = emit_jump(OpJumpIfFalse{});
+  emit(OpPop{});
 
   compile_block(base_if.get_block());
 
-  emit(bytecode::OpConstant{make_constant(runtime::Value{runtime::Nil{}})});
-  jump_to_ends.push_back(emit_jump(bytecode::OpJump{}));
+  emit(OpConstant{make_constant(runtime::Value{runtime::Nil{}})});
+  jump_to_ends.push_back(emit_jump(OpJump{}));
 
   patch_jump_here(then_jump);
-  emit(bytecode::OpPop{});
+  emit(OpPop{});
 
   for (const auto &elif : if_expr.get_elseif().get_elseifs()) {
     compile_expression(elif.get_condition());
-    std::size_t elif_jump = emit_jump(bytecode::OpJumpIfFalse{});
+    std::size_t elif_jump = emit_jump(OpJumpIfFalse{});
 
-    emit(bytecode::OpPop{});
+    emit(OpPop{});
     compile_block(elif.get_block());
-    emit(bytecode::OpConstant{make_constant(runtime::Value{runtime::Nil{}})});
-    jump_to_ends.push_back(emit_jump(bytecode::OpJump{}));
+    emit(OpConstant{make_constant(runtime::Value{runtime::Nil{}})});
+    jump_to_ends.push_back(emit_jump(OpJump{}));
 
     patch_jump_here(elif_jump);
-    emit(bytecode::OpPop{});
+    emit(OpPop{});
   }
 
   compile_block(if_expr.get_else_block());
-  emit(bytecode::OpConstant{make_constant(runtime::Value{runtime::Nil{}})});
+  emit(OpConstant{make_constant(runtime::Value{runtime::Nil{}})});
 
   for (auto jump : jump_to_ends) {
     patch_jump_here(jump);
@@ -423,25 +444,24 @@ void Compiler::compile_if_expression(const ast::IfExpression &if_expr) {
 void Compiler::compile_variable(const ast::Variable &variable) {
   variable.visit(
       [this](const ast::Identifier &identifier) {
-        const std::string &name = identifier.get_name();
-        auto resolved = resolve_variable(name);
+        auto resolved = resolve_variable(identifier);
 
         switch (resolved.type) {
         case VariableType::Local:
-          emit(bytecode::OpGetLocal{resolved.index});
+          emit(OpGetLocal{resolved.index});
           break;
         case VariableType::Upvalue:
-          emit(bytecode::OpGetUpvalue{resolved.index});
+          emit(OpGetUpvalue{resolved.index});
           break;
         case VariableType::Global:
-          emit(bytecode::OpGetGlobal{resolved.index});
+          emit(OpGetGlobal{resolved.index});
           break;
         }
       },
       [this](const ast::IndexExpression &index) {
         compile_variable(index.get_base());
         compile_expression(index.get_index());
-        emit(bytecode::OpGetIndex{});
+        emit(OpGetIndex{});
       }
   );
 }
@@ -449,27 +469,25 @@ void Compiler::compile_variable(const ast::Variable &variable) {
 void Compiler::compile_literal(const ast::Literal &literal) {
   literal.visit(
       [this](const ast::Nil &) {
-        emit(
-            bytecode::OpConstant{make_constant(runtime::Value{runtime::Nil{}})}
-        );
+        emit(OpConstant{make_constant(runtime::Value{runtime::Nil{}})});
       },
       [this](const ast::Array &array) {
         const auto &elements = array.get_elements();
         for (const auto &elem : elements) {
           compile_expression(elem);
         }
-        emit(bytecode::OpMakeArray{elements.size()});
+        emit(OpMakeArray{elements.size()});
       },
       [this](const ast::String &string) {
         emit(
-            bytecode::OpConstant{
+            OpConstant{
                 make_constant(runtime::Value{std::string{string.get_value()}})
             }
         );
       },
       [this](const auto &literal_value) {
         emit(
-            bytecode::OpConstant{make_constant(
+            OpConstant{make_constant(
                 runtime::Value{runtime::Primitive{literal_value.get_value()}}
             )}
         );
@@ -508,24 +526,24 @@ void Compiler::compile_declaration(const ast::Declaration &decl) {
     if (decl.get_expression()) {
       compile_expression(*decl.get_expression());
     } else {
-      emit(bytecode::OpConstant{make_constant(runtime::Value{runtime::Nil{}})});
+      emit(OpConstant{make_constant(runtime::Value{runtime::Nil{}})});
     }
 
     if (scope_depth > 0) {
       locals.push_back({std::string{name}, scope_depth});
     } else {
-      emit(bytecode::OpDefineGlobal{name_index});
+      emit(OpDefineGlobal{name_index});
     }
   } else {
     if (!decl.get_expression()) {
       for (const auto &ident : names) {
         const std::string &name{ident.get_name()};
         std::size_t name_index = make_constant(std::string{name});
-        emit(bytecode::OpConstant{make_constant(runtime::Nil{})});
+        emit(OpConstant{make_constant(runtime::Nil{})});
         if (scope_depth > 0) {
           locals.push_back({.name = std::string{name}, .depth = scope_depth});
         } else {
-          emit(bytecode::OpDefineGlobal{name_index});
+          emit(OpDefineGlobal{name_index});
         }
       }
       return;
@@ -533,43 +551,45 @@ void Compiler::compile_declaration(const ast::Declaration &decl) {
 
     compile_expression(*decl.get_expression());
 
-    std::string hidden_name = "_destruct_" + std::to_string(scope_depth) + "_" +
-                              std::to_string(locals.size());
+    ast::Identifier hidden_name{
+        "_destruct_" + std::to_string(scope_depth) + "_" +
+        std::to_string(locals.size())
+    };
 
     if (scope_depth > 0) {
       locals.push_back({.name = hidden_name, .depth = scope_depth});
     } else {
       emit(
-          bytecode::OpDefineGlobal{
-              make_constant(runtime::Value{std::string{hidden_name}})
+          OpDefineGlobal{
+              make_constant(runtime::Value{std::string{hidden_name.get_name()}})
           }
       );
     }
 
     for (std::size_t i = 0; i < names.size(); ++i) {
       if (scope_depth > 0) {
-        emit(bytecode::OpGetLocal{*resolve_local(hidden_name)});
+        emit(OpGetLocal{*resolve_local(hidden_name)});
       } else {
         emit(
-            bytecode::OpGetGlobal{
-                make_constant(runtime::Value{std::string{hidden_name}})
-            }
+            OpGetGlobal{make_constant(
+                runtime::Value{std::string{hidden_name.get_name()}}
+            )}
         );
       }
 
       emit(
-          bytecode::OpConstant{make_constant(
+          OpConstant{make_constant(
               runtime::Value{runtime::Primitive{static_cast<std::int64_t>(i)}}
           )}
       );
-      emit(bytecode::OpGetIndex{});
+      emit(OpGetIndex{});
 
       const auto &name = names[i].get_name();
       std::size_t name_index = make_constant(runtime::Value{std::string{name}});
       if (scope_depth > 0) {
         locals.push_back({.name = std::string{name}, .depth = scope_depth});
       } else {
-        emit(bytecode::OpDefineGlobal{name_index});
+        emit(OpDefineGlobal{name_index});
       }
     }
   }
@@ -585,16 +605,12 @@ void Compiler::compile_for_loop(const ast::ForLoop &loop) {
 
   std::size_t len_name_index =
       make_constant(runtime::Value{std::string{"len"}});
-  emit(bytecode::OpGetGlobal{len_name_index});
-  emit(bytecode::OpGetLocal{*resolve_local("_for_collection")});
-  emit(bytecode::OpCall{1});
+  emit(OpGetGlobal{len_name_index});
+  emit(OpGetLocal{*resolve_local("_for_collection")});
+  emit(OpCall{1});
   locals.push_back({.name = "_for_len", .depth = scope_depth});
 
-  emit(
-      bytecode::OpConstant{
-          make_constant(runtime::Value{runtime::Primitive{0l}})
-      }
-  );
+  emit(OpConstant{make_constant(runtime::Value{runtime::Primitive{0l}})});
   locals.push_back({.name = "_for_index", .depth = scope_depth});
 
   std::size_t loop_start = current_chunk().code.size();
@@ -603,21 +619,21 @@ void Compiler::compile_for_loop(const ast::ForLoop &loop) {
   std::size_t len_idx = *resolve_local("_for_len");
   std::size_t coll_idx = *resolve_local("_for_collection");
 
-  emit(bytecode::OpGetLocal{index_idx});
-  emit(bytecode::OpGetLocal{len_idx});
-  emit(bytecode::OpLess{});
+  emit(OpGetLocal{index_idx});
+  emit(OpGetLocal{len_idx});
+  emit(OpLess{});
 
-  std::size_t exit_jump = emit_jump(bytecode::OpJumpIfFalse{});
-  emit(bytecode::OpPop{});
+  std::size_t exit_jump = emit_jump(OpJumpIfFalse{});
+  emit(OpPop{});
 
   // Snapshot locals before the inner scope so continue pops everything from the
   // inner scope (loop variable + body locals) without mutating `locals`.
   loop_body_locals_snapshot.push_back(locals.size());
 
   begin_scope();
-  emit(bytecode::OpGetLocal{coll_idx});
-  emit(bytecode::OpGetLocal{index_idx});
-  emit(bytecode::OpGetIndex{});
+  emit(OpGetLocal{coll_idx});
+  emit(OpGetLocal{index_idx});
+  emit(OpGetIndex{});
   locals.push_back(
       {.name = std::string{loop.get_variable().get_name()},
        .depth = scope_depth}
@@ -632,19 +648,19 @@ void Compiler::compile_for_loop(const ast::ForLoop &loop) {
   std::size_t continue_target = current_chunk().code.size();
   loop_continues_stack.push_back(continue_target);
 
-  emit(bytecode::OpGetLocal{index_idx});
+  emit(OpGetLocal{index_idx});
   emit(
-      bytecode::OpConstant{make_constant(
+      OpConstant{make_constant(
           runtime::Value{runtime::Primitive{static_cast<std::int64_t>(1)}}
       )}
   );
-  emit(bytecode::OpAdd{});
-  emit(bytecode::OpSetLocal{index_idx});
+  emit(OpAdd{});
+  emit(OpSetLocal{index_idx});
 
   emit_loop(loop_start);
 
   patch_jump_here(exit_jump);
-  emit(bytecode::OpPop{});
+  emit(OpPop{});
 
   end_scope();
 
@@ -657,7 +673,7 @@ void Compiler::compile_for_loop(const ast::ForLoop &loop) {
   for (auto jump : continue_jumps_stack.back()) {
     match::match(
         current_chunk().code[jump],
-        [&](bytecode::OpJump &j) { j.offset = continue_target - jump - 1; },
+        [&](OpJump &j) { j.offset = continue_target - jump - 1; },
         [](auto &) {
           throw std::runtime_error("Expected OpJump at continue site");
         }
@@ -674,8 +690,8 @@ void Compiler::compile_function_call_statement(const ast::FunctionCall &call) {
     compile_expression(arg);
   }
 
-  emit(bytecode::OpCall{call.get_arguments().size()});
-  emit(bytecode::OpPop{});
+  emit(OpCall{call.get_arguments().size()});
+  emit(OpPop{});
 }
 
 void Compiler::compile_if_statement(const ast::IfStatement &if_stmt) {
@@ -683,26 +699,26 @@ void Compiler::compile_if_statement(const ast::IfStatement &if_stmt) {
 
   const auto &base_if = if_stmt.get_base_if();
   compile_expression(base_if.get_condition());
-  std::size_t then_jump = emit_jump(bytecode::OpJumpIfFalse{});
+  std::size_t then_jump = emit_jump(OpJumpIfFalse{});
 
-  emit(bytecode::OpPop{});
+  emit(OpPop{});
 
   compile_block(base_if.get_block());
-  jump_to_ends.push_back(emit_jump(bytecode::OpJump{}));
+  jump_to_ends.push_back(emit_jump(OpJump{}));
 
   patch_jump_here(then_jump);
-  emit(bytecode::OpPop{});
+  emit(OpPop{});
 
   for (const auto &elif : if_stmt.get_elseif().get_elseifs()) {
     compile_expression(elif.get_condition());
-    std::size_t elif_jump = emit_jump(bytecode::OpJumpIfFalse{});
+    std::size_t elif_jump = emit_jump(OpJumpIfFalse{});
 
-    emit(bytecode::OpPop{});
+    emit(OpPop{});
     compile_block(elif.get_block());
-    jump_to_ends.push_back(emit_jump(bytecode::OpJump{}));
+    jump_to_ends.push_back(emit_jump(OpJump{}));
 
     patch_jump_here(elif_jump);
-    emit(bytecode::OpPop{});
+    emit(OpPop{});
   }
 
   if (auto else_block = if_stmt.get_else_block(); else_block) {
@@ -719,73 +735,53 @@ void Compiler::compile_name_assignment(const ast::NameAssignment &assign) {
   compile_expression(assign.get_expression());
 
   if (names.size() == 1) {
-    std::string name{names.front().get_name()};
-    auto resolved = resolve_variable(name);
-
-    switch (resolved.type) {
-    case VariableType::Local:
-      emit(bytecode::OpSetLocal{resolved.index});
-      break;
-    case VariableType::Upvalue:
-      emit(bytecode::OpSetUpvalue{resolved.index});
-      break;
-    case VariableType::Global:
-      emit(bytecode::OpSetGlobal{resolved.index});
-      break;
-    }
+    emit_get_variable(names.front());
     return;
   }
 
-  std::string hidden_name = "_destruct_assign_" + std::to_string(scope_depth) +
-                            "_" + std::to_string(locals.size());
+  ast::Identifier hidden_name{
+      "_destruct_assign_" + std::to_string(scope_depth) + "_" +
+      std::to_string(locals.size())
+  };
 
   if (scope_depth > 0) {
-    locals.push_back({hidden_name, scope_depth});
+    locals.emplace_back(hidden_name, scope_depth);
   } else {
-    std::size_t hidden_idx =
-        make_constant(runtime::Value{std::string{hidden_name}});
-    emit(bytecode::OpDefineGlobal{hidden_idx});
+    emit(
+        OpDefineGlobal{
+            make_constant(runtime::Value{std::string{hidden_name.get_name()}})
+        }
+    );
   }
 
   for (std::size_t i = 0; i < names.size(); ++i) {
     if (scope_depth > 0) {
-      emit(bytecode::OpGetLocal{*resolve_local(hidden_name)});
+      emit(OpGetLocal{*resolve_local(hidden_name)});
     } else {
-      std::size_t hidden_idx =
-          make_constant(runtime::Value{std::string{hidden_name}});
-      emit(bytecode::OpGetGlobal{hidden_idx});
+      emit(
+          OpGetGlobal{
+              make_constant(runtime::Value{std::string{hidden_name.get_name()}})
+          }
+      );
     }
 
     emit(
-        bytecode::OpConstant{make_constant(
+        OpConstant{make_constant(
             runtime::Value{runtime::Primitive{static_cast<std::int64_t>(i)}}
         )}
     );
-    emit(bytecode::OpGetIndex{});
+    emit(OpGetIndex{});
 
-    std::string name{names[i].get_name()};
-    auto resolved = resolve_variable(name);
-
-    switch (resolved.type) {
-    case VariableType::Local:
-      emit(bytecode::OpSetLocal{resolved.index});
-      break;
-    case VariableType::Upvalue:
-      emit(bytecode::OpSetUpvalue{resolved.index});
-      break;
-    case VariableType::Global:
-      emit(bytecode::OpSetGlobal{resolved.index});
-      break;
-    }
+    emit_set_variable(names[i]);
   }
 }
 
 void Compiler::compile_named_function(const ast::NamedFunction &func) {
-  std::string name{func.get_name().get_name()};
+  auto name = func.get_name();
   bool is_local = scope_depth > 0;
 
   if (is_local) {
-    emit(bytecode::OpConstant{make_constant(runtime::Value{runtime::Nil{}})});
+    emit(OpConstant{make_constant(runtime::Value{runtime::Nil{}})});
     locals.push_back({.name = name, .depth = scope_depth});
   }
 
@@ -801,10 +797,10 @@ void Compiler::compile_named_function(const ast::NamedFunction &func) {
   }
 
   compile_block(func.get_body().get_block());
-  emit(bytecode::OpConstant{make_constant(runtime::Value{runtime::Nil{}})});
-  emit(bytecode::OpReturn{});
+  emit(OpConstant{make_constant(runtime::Value{runtime::Nil{}})});
+  emit(OpReturn{});
 
-  std::vector<bytecode::UpvalueInfo> upvalue_infos;
+  std::vector<UpvalueInfo> upvalue_infos;
   upvalue_infos.reserve(current_upvalues.size());
   for (const auto &uv : current_upvalues) {
     upvalue_infos.emplace_back(uv.is_local, uv.index);
@@ -815,7 +811,7 @@ void Compiler::compile_named_function(const ast::NamedFunction &func) {
   std::size_t id = make_constant(
       runtime::Function{runtime::BytecodeFunctionId{
           .id = new_chunk_id,
-          .name = name,
+          .name = name.get_name(),
           .arity = args.size(),
           .upvalues = std::vector<runtime::Ref>(),
           .curried_args = std::vector<runtime::Ref>()
@@ -823,20 +819,17 @@ void Compiler::compile_named_function(const ast::NamedFunction &func) {
   );
 
   if (upvalue_infos.empty()) {
-    emit(bytecode::OpConstant{id});
+    emit(OpConstant{id});
   } else {
-    emit(
-        bytecode::OpClosure{
-            .function_index = id, .upvalues = std::move(upvalue_infos)
-        }
-    );
+    emit(OpClosure{.function_index = id, .upvalues = std::move(upvalue_infos)});
   }
 
-  std::size_t name_index = make_constant(runtime::Value{std::string{name}});
+  std::size_t name_index =
+      make_constant(runtime::Value{std::string{name.get_name()}});
   if (is_local) {
-    emit(bytecode::OpMutateLocal{static_cast<std::size_t>(locals.size() - 1)});
+    emit(OpMutateLocal{static_cast<std::size_t>(locals.size() - 1)});
   } else {
-    emit(bytecode::OpDefineGlobal{name_index});
+    emit(OpDefineGlobal{name_index});
   }
 }
 
@@ -845,19 +838,18 @@ void Compiler::compile_operator_assignment(
 ) {
   assign.get_variable().visit(
       [&](const ast::Identifier &id) {
-        std::string name{id.get_name()};
-        auto resolved = resolve_variable(name);
+        auto resolved = resolve_variable(id);
 
         if (assign.get_operator() != ast::AssignmentOperator::Assign) {
           switch (resolved.type) {
           case VariableType::Local:
-            emit(bytecode::OpGetLocal{resolved.index});
+            emit(OpGetLocal{resolved.index});
             break;
           case VariableType::Upvalue:
-            emit(bytecode::OpGetUpvalue{resolved.index});
+            emit(OpGetUpvalue{resolved.index});
             break;
           case VariableType::Global:
-            emit(bytecode::OpGetGlobal{resolved.index});
+            emit(OpGetGlobal{resolved.index});
             break;
           }
         }
@@ -868,19 +860,19 @@ void Compiler::compile_operator_assignment(
         case ast::AssignmentOperator::Assign:
           break;
         case ast::AssignmentOperator::Plus:
-          emit(bytecode::OpAdd{});
+          emit(OpAdd{});
           break;
         case ast::AssignmentOperator::Minus:
-          emit(bytecode::OpSubtract{});
+          emit(OpSubtract{});
           break;
         case ast::AssignmentOperator::Multiply:
-          emit(bytecode::OpMultiply{});
+          emit(OpMultiply{});
           break;
         case ast::AssignmentOperator::Divide:
-          emit(bytecode::OpDivide{});
+          emit(OpDivide{});
           break;
         case ast::AssignmentOperator::Modulo:
-          emit(bytecode::OpModulo{});
+          emit(OpModulo{});
           break;
         case ast::AssignmentOperator::Power:
           break; // TODO
@@ -888,13 +880,13 @@ void Compiler::compile_operator_assignment(
 
         switch (resolved.type) {
         case VariableType::Local:
-          emit(bytecode::OpSetLocal{resolved.index});
+          emit(OpSetLocal{resolved.index});
           break;
         case VariableType::Upvalue:
-          emit(bytecode::OpSetUpvalue{resolved.index});
+          emit(OpSetUpvalue{resolved.index});
           break;
         case VariableType::Global:
-          emit(bytecode::OpSetGlobal{resolved.index});
+          emit(OpSetGlobal{resolved.index});
           break;
         }
       },
@@ -904,25 +896,25 @@ void Compiler::compile_operator_assignment(
           compile_expression(idx.get_index());
           compile_variable(idx.get_base());
           compile_expression(idx.get_index());
-          emit(bytecode::OpGetIndex{});
+          emit(OpGetIndex{});
 
           compile_expression(assign.get_expression());
 
           switch (assign.get_operator()) {
           case ast::AssignmentOperator::Plus:
-            emit(bytecode::OpAdd{});
+            emit(OpAdd{});
             break;
           case ast::AssignmentOperator::Minus:
-            emit(bytecode::OpSubtract{});
+            emit(OpSubtract{});
             break;
           case ast::AssignmentOperator::Multiply:
-            emit(bytecode::OpMultiply{});
+            emit(OpMultiply{});
             break;
           case ast::AssignmentOperator::Divide:
-            emit(bytecode::OpDivide{});
+            emit(OpDivide{});
             break;
           case ast::AssignmentOperator::Modulo:
-            emit(bytecode::OpModulo{});
+            emit(OpModulo{});
             break;
           case ast::AssignmentOperator::Power:
             break;
@@ -930,12 +922,12 @@ void Compiler::compile_operator_assignment(
             std::unreachable();
           }
 
-          emit(bytecode::OpSetIndex{});
+          emit(OpSetIndex{});
         } else {
           compile_variable(idx.get_base());
           compile_expression(idx.get_index());
           compile_expression(assign.get_expression());
-          emit(bytecode::OpSetIndex{});
+          emit(OpSetIndex{});
         }
       }
   );
@@ -955,11 +947,7 @@ void Compiler::compile_range_for_loop(const ast::RangeForLoop &loop) {
   if (loop.get_step()) {
     compile_expression(*loop.get_step());
   } else {
-    emit(
-        bytecode::OpConstant{
-            make_constant(runtime::Value{runtime::Primitive{1L}})
-        }
-    );
+    emit(OpConstant{make_constant(runtime::Value{runtime::Primitive{1L}})});
   }
   locals.push_back({.name = "_range_step", .depth = scope_depth});
 
@@ -969,22 +957,22 @@ void Compiler::compile_range_for_loop(const ast::RangeForLoop &loop) {
   std::size_t end_idx = *resolve_local("_range_end");
   std::size_t step_idx = *resolve_local("_range_step");
 
-  emit(bytecode::OpGetLocal{current_idx});
-  emit(bytecode::OpGetLocal{end_idx});
+  emit(OpGetLocal{current_idx});
+  emit(OpGetLocal{end_idx});
 
   if (loop.get_range_type() == ast::RangeOperator::Inclusive) {
-    emit(bytecode::OpLessEqual{});
+    emit(OpLessEqual{});
   } else {
-    emit(bytecode::OpLess{});
+    emit(OpLess{});
   }
 
-  std::size_t exit_jump = emit_jump(bytecode::OpJumpIfFalse{});
-  emit(bytecode::OpPop{});
+  std::size_t exit_jump = emit_jump(OpJumpIfFalse{});
+  emit(OpPop{});
 
   loop_body_locals_snapshot.push_back(locals.size());
 
   begin_scope();
-  emit(bytecode::OpGetLocal{current_idx});
+  emit(OpGetLocal{current_idx});
   locals.push_back(
       {.name = std::string{loop.get_variable().get_name()},
        .depth = scope_depth}
@@ -998,15 +986,15 @@ void Compiler::compile_range_for_loop(const ast::RangeForLoop &loop) {
   // continue target: after end_scope(), before the increment block.
   std::size_t continue_target = current_instruction_offset();
 
-  emit(bytecode::OpGetLocal{current_idx});
-  emit(bytecode::OpGetLocal{step_idx});
-  emit(bytecode::OpAdd{});
-  emit(bytecode::OpSetLocal{current_idx});
+  emit(OpGetLocal{current_idx});
+  emit(OpGetLocal{step_idx});
+  emit(OpAdd{});
+  emit(OpSetLocal{current_idx});
 
   emit_loop(loop_start);
 
   patch_jump_here(exit_jump);
-  emit(bytecode::OpPop{});
+  emit(OpPop{});
 
   end_scope();
 
@@ -1029,9 +1017,9 @@ void Compiler::compile_while_loop(const ast::While &loop) {
 
   compile_expression(loop.get_condition());
 
-  std::size_t exit_jump = emit_jump(bytecode::OpJumpIfFalse{});
+  std::size_t exit_jump = emit_jump(OpJumpIfFalse{});
 
-  emit(bytecode::OpPop{});
+  emit(OpPop{});
 
   // Snapshot locals before the body scope so continue can compute how many
   // body-scope locals to pop.
@@ -1043,7 +1031,7 @@ void Compiler::compile_while_loop(const ast::While &loop) {
 
   patch_jump_here(exit_jump);
 
-  emit(bytecode::OpPop{});
+  emit(OpPop{});
 
   for (auto jump : break_jumps_stack.back()) {
     patch_jump_here(jump);
@@ -1051,7 +1039,7 @@ void Compiler::compile_while_loop(const ast::While &loop) {
   break_jumps_stack.pop_back();
 
   for (auto jump : continue_jumps_stack.back()) {
-    current_chunk().code[jump] = bytecode::OpJump{loop_start};
+    current_chunk().code[jump] = OpJump{loop_start};
   }
   continue_jumps_stack.pop_back();
 }
@@ -1072,16 +1060,16 @@ void Compiler::compile_return_statement(const ast::ReturnStatement &ret) {
   if (ret.get_expression()) {
     compile_expression(*ret.get_expression());
   } else {
-    emit(bytecode::OpConstant{make_constant(runtime::Value{runtime::Nil{}})});
+    emit(OpConstant{make_constant(runtime::Value{runtime::Nil{}})});
   }
-  emit(bytecode::OpReturn{});
+  emit(OpReturn{});
 }
 
 void Compiler::compile_break_statement(const ast::BreakStatement & /* brk */) {
   if (break_jumps_stack.empty()) {
     throw std::runtime_error("Break statement outside of loop");
   }
-  break_jumps_stack.back().push_back(emit_jump(bytecode::OpJump{}));
+  break_jumps_stack.back().push_back(emit_jump(OpJump{}));
 }
 
 void Compiler::
@@ -1092,9 +1080,9 @@ void Compiler::
 
   const auto body_locals = locals.size() - loop_body_locals_snapshot.back();
   for (auto i = 0UZ; i < body_locals; ++i) {
-    emit(bytecode::OpPop{});
+    emit(OpPop{});
   }
-  continue_jumps_stack.back().push_back(emit_jump(bytecode::OpJump{}));
+  continue_jumps_stack.back().push_back(emit_jump(OpJump{}));
 }
 
 } // namespace l3::compiler

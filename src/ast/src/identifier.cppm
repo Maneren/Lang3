@@ -15,6 +15,7 @@ public:
   Identifier();
   Identifier(std::string &&name, location::Location location = {});
   Identifier(std::string_view name, location::Location location = {});
+  Identifier(const char *name, location::Location location = {});
 
   DEFINE_ACCESSOR_X(name);
 

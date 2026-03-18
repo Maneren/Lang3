@@ -22,7 +22,7 @@ private:
   std::size_t current_instruction_offset();
 
   struct Local {
-    std::string name;
+    ast::Identifier name;
     int depth;
   };
   std::vector<Local> locals;
@@ -47,7 +47,9 @@ private:
     VariableType type;
     std::size_t index;
   };
-  ResolvedVariable resolve_variable(const std::string &name);
+  ResolvedVariable resolve_variable(const ast::Identifier &name);
+  bytecode::Instruction emit_get_variable(const ast::Identifier &name);
+  bytecode::Instruction emit_set_variable(const ast::Identifier &name);
 
   std::vector<std::vector<std::size_t>> break_jumps_stack;
   std::vector<std::vector<std::size_t>> continue_jumps_stack;
@@ -60,13 +62,13 @@ private:
   void begin_scope();
   void end_scope();
 
-  std::optional<std::size_t> resolve_local(const std::string &name);
+  std::optional<std::size_t> resolve_local(const ast::Identifier &name);
   std::optional<std::size_t>
-  resolve_local_in_context(const std::string &name, const Context &ctx);
+  resolve_local_in_context(const ast::Identifier &name, const Context &ctx);
   std::size_t
   add_upvalue(std::vector<Upvalue> &upvalues, bool is_local, std::size_t index);
   std::optional<std::size_t>
-  resolve_upvalue(const std::string &name, std::size_t context_index);
+  resolve_upvalue(const ast::Identifier &name, std::size_t context_index);
 
   void emit(const bytecode::Instruction &instruction, std::size_t line = 0);
   std::size_t make_constant(runtime::Value &&value);
