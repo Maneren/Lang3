@@ -19,6 +19,7 @@ private:
   std::size_t current_chunk_id = 0;
   bytecode::Chunk &current_chunk();
   std::size_t last_instruction_offset();
+  std::size_t current_instruction_offset();
 
   struct Local {
     std::string name;
@@ -62,7 +63,8 @@ private:
   void emit(const bytecode::Instruction &instruction, std::size_t line = 0);
   std::size_t make_constant(runtime::Value &&value);
   void emit_loop(std::size_t loop_start);
-  void patch_jump(std::size_t offset);
+  void patch_jump(std::size_t jump_offset, std::size_t target);
+  void patch_jump_here(std::size_t jump_offset);
   std::size_t emit_jump(const bytecode::Instruction &instruction);
 
   void compile_block(const ast::Block &block);

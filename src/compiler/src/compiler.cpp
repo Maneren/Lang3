@@ -25,7 +25,10 @@ void Compiler::compile(const ast::Program &program) {
 
 bytecode::Chunk &Compiler::current_chunk() { return chunks[current_chunk_id]; }
 std::size_t Compiler::last_instruction_offset() {
-  return current_chunk().code.size() - 1;
+  return current_instruction_offset() - 1;
+}
+std::size_t Compiler::current_instruction_offset() {
+  return current_chunk().code.size();
 }
 
 void Compiler::push_context(std::size_t new_chunk_id) {
@@ -112,7 +115,7 @@ int Compiler::resolve_upvalue(const std::string &name, int context_index) {
           static_cast<std::size_t>(local)
       );
     }
-    for (std::size_t j = static_cast<std::size_t>(context_index + 2);
+    for (auto j = static_cast<std::size_t>(context_index + 2);
          j <= contexts.size();
          j++) {
       if (j == contexts.size()) {
@@ -145,17 +148,19 @@ void Compiler::emit_loop(std::size_t loop_start) {
   emit(bytecode::OpJump{loop_start});
 }
 
-void Compiler::patch_jump(std::size_t offset) {
-  const auto target = current_chunk().code.size();
-
+void Compiler::patch_jump(std::size_t jump_offset, std::size_t target) {
   match::match(
-      current_chunk().code[offset],
+      current_chunk().code[jump_offset],
       [=](bytecode::OpJump &jump) { jump.offset = target; },
       [=](bytecode::OpJumpIfFalse &jump) { jump.offset = target; },
       [](auto &) {
         throw std::runtime_error("Attempting to patch a non-jump instruction");
       }
   );
+}
+
+void Compiler::patch_jump_here(std::size_t jump_offset) {
+  patch_jump(jump_offset, last_instruction_offset() + 1);
 }
 
 std::size_t Compiler::emit_jump(const bytecode::Instruction &instruction) {
@@ -250,17 +255,17 @@ void Compiler::compile_logical_expression(
     std::size_t jump = emit_jump(bytecode::OpJumpIfFalse{});
     emit(bytecode::OpPop{});
     compile_expression(logical.get_rhs());
-    patch_jump(jump);
+    patch_jump_here(jump);
   } break;
   case ast::LogicalOperator::Or: { // Logical OR
     std::size_t jump_if_false = emit_jump(bytecode::OpJumpIfFalse{});
     std::size_t jump_to_end = emit_jump(bytecode::OpJump{});
 
-    patch_jump(jump_if_false);
+    patch_jump_here(jump_if_false);
     emit(bytecode::OpPop{});
     compile_expression(logical.get_rhs());
 
-    patch_jump(jump_to_end);
+    patch_jump_here(jump_to_end);
   } break;
   }
 }
@@ -305,13 +310,13 @@ void Compiler::compile_comparison(const ast::Comparison &comparison) {
     }
 
     if (i < comps.size() - 1) {
-      jumps.push_back(emit_jump(bytecode::OpJumpIfFalse{0}));
+      jumps.push_back(emit_jump(bytecode::OpJumpIfFalse{}));
       emit(bytecode::OpPop{});
     }
   }
 
   for (auto jump : jumps) {
-    patch_jump(jump);
+    patch_jump_here(jump);
   }
 }
 
@@ -368,27 +373,30 @@ void Compiler::compile_function_call(const ast::FunctionCall &call) {
 void Compiler::compile_if_expression(const ast::IfExpression &if_expr) {
   std::vector<std::size_t> jump_to_ends;
 
-  compile_expression(if_expr.get_base_if().get_condition());
-  std::size_t then_jump = emit_jump(bytecode::OpJumpIfFalse{0});
+  const auto &base_if = if_expr.get_base_if();
 
+  compile_expression(base_if.get_condition());
+  std::size_t then_jump = emit_jump(bytecode::OpJumpIfFalse{});
   emit(bytecode::OpPop{});
-  compile_block(if_expr.get_base_if().get_block());
-  emit(bytecode::OpConstant{make_constant(runtime::Value{runtime::Nil{}})});
-  jump_to_ends.push_back(emit_jump(bytecode::OpJump{0}));
 
-  patch_jump(then_jump);
+  compile_block(base_if.get_block());
+
+  emit(bytecode::OpConstant{make_constant(runtime::Value{runtime::Nil{}})});
+  jump_to_ends.push_back(emit_jump(bytecode::OpJump{}));
+
+  patch_jump_here(then_jump);
   emit(bytecode::OpPop{});
 
   for (const auto &elif : if_expr.get_elseif().get_elseifs()) {
     compile_expression(elif.get_condition());
-    std::size_t elif_jump = emit_jump(bytecode::OpJumpIfFalse{0});
+    std::size_t elif_jump = emit_jump(bytecode::OpJumpIfFalse{});
 
     emit(bytecode::OpPop{});
     compile_block(elif.get_block());
     emit(bytecode::OpConstant{make_constant(runtime::Value{runtime::Nil{}})});
-    jump_to_ends.push_back(emit_jump(bytecode::OpJump{0}));
+    jump_to_ends.push_back(emit_jump(bytecode::OpJump{}));
 
-    patch_jump(elif_jump);
+    patch_jump_here(elif_jump);
     emit(bytecode::OpPop{});
   }
 
@@ -396,7 +404,7 @@ void Compiler::compile_if_expression(const ast::IfExpression &if_expr) {
   emit(bytecode::OpConstant{make_constant(runtime::Value{runtime::Nil{}})});
 
   for (auto jump : jump_to_ends) {
-    patch_jump(jump);
+    patch_jump_here(jump);
   }
 }
 
@@ -629,13 +637,13 @@ void Compiler::compile_for_loop(const ast::ForLoop &loop) {
 
   emit_loop(loop_start);
 
-  patch_jump(exit_jump);
+  patch_jump_here(exit_jump);
   emit(bytecode::OpPop{});
 
   end_scope();
 
   for (auto jump : break_jumps_stack.back()) {
-    patch_jump(jump);
+    patch_jump_here(jump);
   }
   break_jumps_stack.pop_back();
 
@@ -669,25 +677,25 @@ void Compiler::compile_if_statement(const ast::IfStatement &if_stmt) {
 
   const auto &base_if = if_stmt.get_base_if();
   compile_expression(base_if.get_condition());
-  std::size_t then_jump = emit_jump(bytecode::OpJumpIfFalse{0});
+  std::size_t then_jump = emit_jump(bytecode::OpJumpIfFalse{});
 
   emit(bytecode::OpPop{});
 
   compile_block(base_if.get_block());
-  jump_to_ends.push_back(emit_jump(bytecode::OpJump{0}));
+  jump_to_ends.push_back(emit_jump(bytecode::OpJump{}));
 
-  patch_jump(then_jump);
+  patch_jump_here(then_jump);
   emit(bytecode::OpPop{});
 
   for (const auto &elif : if_stmt.get_elseif().get_elseifs()) {
     compile_expression(elif.get_condition());
-    std::size_t elif_jump = emit_jump(bytecode::OpJumpIfFalse{0});
+    std::size_t elif_jump = emit_jump(bytecode::OpJumpIfFalse{});
 
     emit(bytecode::OpPop{});
     compile_block(elif.get_block());
-    jump_to_ends.push_back(emit_jump(bytecode::OpJump{0}));
+    jump_to_ends.push_back(emit_jump(bytecode::OpJump{}));
 
-    patch_jump(elif_jump);
+    patch_jump_here(elif_jump);
     emit(bytecode::OpPop{});
   }
 
@@ -696,7 +704,7 @@ void Compiler::compile_if_statement(const ast::IfStatement &if_stmt) {
   }
 
   for (auto jump : jump_to_ends) {
-    patch_jump(jump);
+    patch_jump_here(jump);
   }
 }
 
@@ -798,8 +806,9 @@ void Compiler::compile_named_function(const ast::NamedFunction &func) {
   emit(bytecode::OpReturn{});
 
   std::vector<bytecode::UpvalueInfo> upvalue_infos;
+  upvalue_infos.reserve(current_upvalues.size());
   for (const auto &uv : current_upvalues) {
-    upvalue_infos.push_back({uv.is_local, uv.index});
+    upvalue_infos.emplace_back(uv.is_local, uv.index);
   }
 
   pop_context();
@@ -951,14 +960,14 @@ void Compiler::compile_range_for_loop(const ast::RangeForLoop &loop) {
     compile_expression(*loop.get_step());
   } else {
     emit(
-        bytecode::OpConstant{make_constant(
-            runtime::Value{runtime::Primitive{static_cast<std::int64_t>(1)}}
-        )}
+        bytecode::OpConstant{
+            make_constant(runtime::Value{runtime::Primitive{1L}})
+        }
     );
   }
   locals.push_back({.name = "_range_step", .depth = scope_depth});
 
-  std::size_t loop_start = current_chunk().code.size();
+  std::size_t loop_start = current_instruction_offset();
 
   std::size_t current_idx =
       static_cast<std::size_t>(resolve_local("_range_current"));
@@ -977,8 +986,6 @@ void Compiler::compile_range_for_loop(const ast::RangeForLoop &loop) {
   std::size_t exit_jump = emit_jump(bytecode::OpJumpIfFalse{});
   emit(bytecode::OpPop{});
 
-  // Snapshot locals before the inner scope so continue pops everything from the
-  // inner scope (loop variable + body locals) without mutating `locals`.
   loop_body_locals_snapshot.push_back(locals.size());
 
   begin_scope();
@@ -994,8 +1001,7 @@ void Compiler::compile_range_for_loop(const ast::RangeForLoop &loop) {
   loop_body_locals_snapshot.pop_back();
 
   // continue target: after end_scope(), before the increment block.
-  std::size_t continue_target = current_chunk().code.size();
-  loop_continues_stack.push_back(continue_target);
+  std::size_t continue_target = current_instruction_offset();
 
   emit(bytecode::OpGetLocal{current_idx});
   emit(bytecode::OpGetLocal{step_idx});
@@ -1004,28 +1010,20 @@ void Compiler::compile_range_for_loop(const ast::RangeForLoop &loop) {
 
   emit_loop(loop_start);
 
-  patch_jump(exit_jump);
+  patch_jump_here(exit_jump);
   emit(bytecode::OpPop{});
 
   end_scope();
 
   for (auto jump : break_jumps_stack.back()) {
-    patch_jump(jump);
+    patch_jump_here(jump);
   }
   break_jumps_stack.pop_back();
 
-  // Patch continue jumps to the continue target.
   for (auto jump : continue_jumps_stack.back()) {
-    match::match(
-        current_chunk().code[jump],
-        [&](bytecode::OpJump &j) { j.offset = continue_target - jump - 1; },
-        [](auto &) {
-          throw std::runtime_error("Expected OpJump at continue site");
-        }
-    );
+    patch_jump(jump, continue_target);
   }
   continue_jumps_stack.pop_back();
-  loop_continues_stack.pop_back();
 }
 
 void Compiler::compile_while_loop(const ast::While &loop) {
@@ -1033,7 +1031,6 @@ void Compiler::compile_while_loop(const ast::While &loop) {
   continue_jumps_stack.emplace_back();
   std::size_t loop_start = current_chunk().code.size();
   // `continue` in a while loop jumps back to the condition check.
-  loop_continues_stack.push_back(loop_start);
 
   compile_expression(loop.get_condition());
 
@@ -1049,12 +1046,12 @@ void Compiler::compile_while_loop(const ast::While &loop) {
 
   emit_loop(loop_start);
 
-  patch_jump(exit_jump);
+  patch_jump_here(exit_jump);
 
   emit(bytecode::OpPop{});
 
   for (auto jump : break_jumps_stack.back()) {
-    patch_jump(jump);
+    patch_jump_here(jump);
   }
   break_jumps_stack.pop_back();
 
@@ -1062,7 +1059,6 @@ void Compiler::compile_while_loop(const ast::While &loop) {
     current_chunk().code[jump] = bytecode::OpJump{loop_start};
   }
   continue_jumps_stack.pop_back();
-  loop_continues_stack.pop_back();
 }
 
 void Compiler::compile_last_statement(const ast::LastStatement &stmt) {
@@ -1090,7 +1086,7 @@ void Compiler::compile_break_statement(const ast::BreakStatement & /* brk */) {
   if (break_jumps_stack.empty()) {
     throw std::runtime_error("Break statement outside of loop");
   }
-  break_jumps_stack.back().push_back(emit_jump(bytecode::OpJump{0}));
+  break_jumps_stack.back().push_back(emit_jump(bytecode::OpJump{}));
 }
 
 void Compiler::
@@ -1104,7 +1100,7 @@ void Compiler::
   for (std::size_t i = 0; i < body_locals; ++i) {
     emit(bytecode::OpPop{});
   }
-  continue_jumps_stack.back().push_back(emit_jump(bytecode::OpJump{0}));
+  continue_jumps_stack.back().push_back(emit_jump(bytecode::OpJump{}));
 }
 
 } // namespace l3::compiler
