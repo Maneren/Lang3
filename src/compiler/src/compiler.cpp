@@ -33,17 +33,19 @@ std::size_t Compiler::current_instruction_offset() {
   return current_chunk().code.size();
 }
 
-void Compiler::push_context(std::size_t new_chunk_id) {
+std::size_t Compiler::push_context() {
   contexts.emplace_back(
       current_chunk_id,
       std::move(locals),
       scope_depth,
       std::move(current_upvalues)
   );
-  current_chunk_id = new_chunk_id;
+  current_chunk_id = chunks.size();
+  chunks.emplace_back();
   locals.clear();
   scope_depth = 0;
   current_upvalues.clear();
+  return current_chunk_id;
 }
 
 void Compiler::pop_context() {
@@ -361,9 +363,7 @@ void Compiler::compile_comparison(const ast::Comparison &comparison) {
 }
 
 void Compiler::compile_anonymous_function(const ast::AnonymousFunction &func) {
-  std::size_t new_chunk_id = chunks.size();
-  chunks.emplace_back();
-  push_context(new_chunk_id);
+  const auto new_chunk_id = push_context();
 
   const auto &args = func.get_body().get_parameters();
   for (const auto &arg : args) {
@@ -789,8 +789,7 @@ void Compiler::compile_named_function(const ast::NamedFunction &func) {
   }
 
   chunks.emplace_back();
-  std::size_t new_chunk_id = chunks.size() - 1;
-  push_context(new_chunk_id);
+  const auto new_chunk_id = push_context();
 
   const auto &args = func.get_body().get_parameters();
   for (const auto &arg : args) {

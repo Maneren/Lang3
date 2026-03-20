@@ -57,7 +57,7 @@ private:
   std::vector<std::size_t> loop_continues_stack;
   std::vector<std::size_t> loop_body_locals_snapshot;
 
-  void push_context(std::size_t new_chunk_id);
+  std::size_t push_context();
   void pop_context();
 
   void begin_scope();
