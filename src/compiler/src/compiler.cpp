@@ -21,7 +21,7 @@ void Compiler::compile(const ast::Program &program) {
   if (auto last = program.get_last_statement(); last) {
     throw std::runtime_error("Unexpected last statement in top-level scope");
   }
-  emit(OpConstant{make_constant(runtime::Value{runtime::Nil{}})});
+  emit(OpConstant{make_constant({})});
   emit(OpReturn{});
 }
 
@@ -63,6 +63,12 @@ void Compiler::end_scope() {
     emit(OpPop{});
     locals.pop_back();
   }
+}
+
+std::size_t Compiler::add_local(const ast::Identifier &name) {
+  auto index = locals.size();
+  locals.emplace_back(name, scope_depth);
+  return index;
 }
 
 std::optional<std::size_t>
@@ -361,13 +367,11 @@ void Compiler::compile_anonymous_function(const ast::AnonymousFunction &func) {
 
   const auto &args = func.get_body().get_parameters();
   for (const auto &arg : args) {
-    locals.push_back(
-        {.name = std::string{arg.get_name()}, .depth = scope_depth}
-    );
+    add_local(arg);
   }
 
   compile_block(func.get_body().get_block());
-  emit(OpConstant{make_constant(runtime::Value{runtime::Nil{}})});
+  emit(OpConstant{make_constant({})});
   emit(OpReturn{});
 
   std::vector<UpvalueInfo> upvalue_infos;
@@ -414,7 +418,7 @@ void Compiler::compile_if_expression(const ast::IfExpression &if_expr) {
 
   compile_block(base_if.get_block());
 
-  emit(OpConstant{make_constant(runtime::Value{runtime::Nil{}})});
+  emit(OpConstant{make_constant({})});
   jump_to_ends.push_back(emit_jump(OpJump{}));
 
   patch_jump_here(then_jump);
@@ -426,7 +430,7 @@ void Compiler::compile_if_expression(const ast::IfExpression &if_expr) {
 
     emit(OpPop{});
     compile_block(elif.get_block());
-    emit(OpConstant{make_constant(runtime::Value{runtime::Nil{}})});
+    emit(OpConstant{make_constant({})});
     jump_to_ends.push_back(emit_jump(OpJump{}));
 
     patch_jump_here(elif_jump);
@@ -434,7 +438,7 @@ void Compiler::compile_if_expression(const ast::IfExpression &if_expr) {
   }
 
   compile_block(if_expr.get_else_block());
-  emit(OpConstant{make_constant(runtime::Value{runtime::Nil{}})});
+  emit(OpConstant{make_constant({})});
 
   for (auto jump : jump_to_ends) {
     patch_jump_here(jump);
@@ -468,9 +472,7 @@ void Compiler::compile_variable(const ast::Variable &variable) {
 
 void Compiler::compile_literal(const ast::Literal &literal) {
   literal.visit(
-      [this](const ast::Nil &) {
-        emit(OpConstant{make_constant(runtime::Value{runtime::Nil{}})});
-      },
+      [this](const ast::Nil &) { emit(OpConstant{make_constant({})}); },
       [this](const ast::Array &array) {
         const auto &elements = array.get_elements();
         for (const auto &elem : elements) {
@@ -520,77 +522,83 @@ void Compiler::compile_statement(const ast::Statement &stmt) {
 void Compiler::compile_declaration(const ast::Declaration &decl) {
   const auto &names = decl.get_names();
   if (names.size() == 1) {
-    const auto &name = names.front().get_name();
-    std::size_t name_index = make_constant(runtime::Value{std::string{name}});
-
     if (decl.get_expression()) {
       compile_expression(*decl.get_expression());
     } else {
-      emit(OpConstant{make_constant(runtime::Value{runtime::Nil{}})});
+      emit(OpConstant{make_constant({})});
     }
 
+    const auto &name = names.front();
     if (scope_depth > 0) {
-      locals.push_back({std::string{name}, scope_depth});
-    } else {
-      emit(OpDefineGlobal{name_index});
-    }
-  } else {
-    if (!decl.get_expression()) {
-      for (const auto &ident : names) {
-        const std::string &name{ident.get_name()};
-        std::size_t name_index = make_constant(std::string{name});
-        emit(OpConstant{make_constant(runtime::Nil{})});
-        if (scope_depth > 0) {
-          locals.push_back({.name = std::string{name}, .depth = scope_depth});
-        } else {
-          emit(OpDefineGlobal{name_index});
-        }
-      }
-      return;
-    }
-
-    compile_expression(*decl.get_expression());
-
-    ast::Identifier hidden_name{
-        "_destruct_" + std::to_string(scope_depth) + "_" +
-        std::to_string(locals.size())
-    };
-
-    if (scope_depth > 0) {
-      locals.push_back({.name = hidden_name, .depth = scope_depth});
+      add_local(name);
     } else {
       emit(
           OpDefineGlobal{
+              make_constant(runtime::Value{std::string{name.get_name()}})
+          }
+      );
+    }
+    return;
+  }
+  if (!decl.get_expression()) {
+    for (const auto &ident : names) {
+      std::size_t name_index = make_constant(std::string{ident.get_name()});
+      emit(OpConstant{make_constant({})});
+      if (scope_depth > 0) {
+        add_local(ident);
+      } else {
+        emit(OpDefineGlobal{name_index});
+      }
+    }
+    return;
+  }
+
+  compile_expression(*decl.get_expression());
+
+  ast::Identifier hidden_name{
+      "_destruct_" + std::to_string(scope_depth) + "_" +
+      std::to_string(locals.size())
+  };
+
+  std::size_t hidden_name_index = -1UZ;
+
+  if (scope_depth > 0) {
+    hidden_name_index = add_local(hidden_name);
+  } else {
+    emit(
+        OpDefineGlobal{
+            make_constant(runtime::Value{std::string{hidden_name.get_name()}})
+        }
+    );
+  }
+
+  for (std::size_t i = 0; i < names.size(); ++i) {
+    if (scope_depth > 0) {
+      emit(OpGetLocal{hidden_name_index});
+    } else {
+      emit(
+          OpGetGlobal{
               make_constant(runtime::Value{std::string{hidden_name.get_name()}})
           }
       );
     }
 
-    for (std::size_t i = 0; i < names.size(); ++i) {
-      if (scope_depth > 0) {
-        emit(OpGetLocal{*resolve_local(hidden_name)});
-      } else {
-        emit(
-            OpGetGlobal{make_constant(
-                runtime::Value{std::string{hidden_name.get_name()}}
-            )}
-        );
-      }
+    emit(
+        OpConstant{make_constant(
+            runtime::Value{runtime::Primitive{static_cast<std::int64_t>(i)}}
+        )}
+    );
+    emit(OpGetIndex{});
 
+    const auto &name = names[i];
+    if (scope_depth > 0) {
+      add_local(name);
+    } else {
       emit(
-          OpConstant{make_constant(
-              runtime::Value{runtime::Primitive{static_cast<std::int64_t>(i)}}
-          )}
+          OpDefineGlobal{
+              make_constant(runtime::Value{std::string{name.get_name()}})
+          }
       );
-      emit(OpGetIndex{});
-
-      const auto &name = names[i].get_name();
-      std::size_t name_index = make_constant(runtime::Value{std::string{name}});
-      if (scope_depth > 0) {
-        locals.push_back({.name = std::string{name}, .depth = scope_depth});
-      } else {
-        emit(OpDefineGlobal{name_index});
-      }
     }
   }
 }
@@ -601,23 +609,19 @@ void Compiler::compile_for_loop(const ast::ForLoop &loop) {
   begin_scope();
 
   compile_expression(loop.get_collection());
-  locals.push_back({.name = "_for_collection", .depth = scope_depth});
+  const auto coll_idx = add_local("_for_collection");
 
   std::size_t len_name_index =
       make_constant(runtime::Value{std::string{"len"}});
   emit(OpGetGlobal{len_name_index});
-  emit(OpGetLocal{*resolve_local("_for_collection")});
+  emit(OpGetLocal{coll_idx});
   emit(OpCall{1});
-  locals.push_back({.name = "_for_len", .depth = scope_depth});
+  const auto len_idx = add_local("_for_len");
 
-  emit(OpConstant{make_constant(runtime::Value{runtime::Primitive{0l}})});
-  locals.push_back({.name = "_for_index", .depth = scope_depth});
+  emit(OpConstant{make_constant(runtime::Value{runtime::Primitive{0L}})});
+  const auto index_idx = add_local("_for_index");
 
-  std::size_t loop_start = current_chunk().code.size();
-
-  std::size_t index_idx = *resolve_local("_for_index");
-  std::size_t len_idx = *resolve_local("_for_len");
-  std::size_t coll_idx = *resolve_local("_for_collection");
+  std::size_t loop_start = current_instruction_offset();
 
   emit(OpGetLocal{index_idx});
   emit(OpGetLocal{len_idx});
@@ -634,10 +638,7 @@ void Compiler::compile_for_loop(const ast::ForLoop &loop) {
   emit(OpGetLocal{coll_idx});
   emit(OpGetLocal{index_idx});
   emit(OpGetIndex{});
-  locals.push_back(
-      {.name = std::string{loop.get_variable().get_name()},
-       .depth = scope_depth}
-  );
+  add_local(loop.get_variable());
 
   compile_block(loop.get_body());
 
@@ -645,7 +646,7 @@ void Compiler::compile_for_loop(const ast::ForLoop &loop) {
   loop_body_locals_snapshot.pop_back();
 
   // continue target: after end_scope(), before the increment block.
-  std::size_t continue_target = current_chunk().code.size();
+  const auto continue_target = current_instruction_offset();
   loop_continues_stack.push_back(continue_target);
 
   emit(OpGetLocal{index_idx});
@@ -744,8 +745,10 @@ void Compiler::compile_name_assignment(const ast::NameAssignment &assign) {
       std::to_string(locals.size())
   };
 
+  std::size_t hidden_name_idx = -1UZ;
+
   if (scope_depth > 0) {
-    locals.emplace_back(hidden_name, scope_depth);
+    hidden_name_idx = add_local(hidden_name);
   } else {
     emit(
         OpDefineGlobal{
@@ -756,7 +759,7 @@ void Compiler::compile_name_assignment(const ast::NameAssignment &assign) {
 
   for (std::size_t i = 0; i < names.size(); ++i) {
     if (scope_depth > 0) {
-      emit(OpGetLocal{*resolve_local(hidden_name)});
+      emit(OpGetLocal{hidden_name_idx});
     } else {
       emit(
           OpGetGlobal{
@@ -777,12 +780,12 @@ void Compiler::compile_name_assignment(const ast::NameAssignment &assign) {
 }
 
 void Compiler::compile_named_function(const ast::NamedFunction &func) {
-  auto name = func.get_name();
+  const auto &name = func.get_name();
   bool is_local = scope_depth > 0;
 
   if (is_local) {
-    emit(OpConstant{make_constant(runtime::Value{runtime::Nil{}})});
-    locals.push_back({.name = name, .depth = scope_depth});
+    emit(OpConstant{make_constant({})});
+    add_local(name);
   }
 
   chunks.emplace_back();
@@ -791,13 +794,11 @@ void Compiler::compile_named_function(const ast::NamedFunction &func) {
 
   const auto &args = func.get_body().get_parameters();
   for (const auto &arg : args) {
-    locals.push_back(
-        {.name = std::string{arg.get_name()}, .depth = scope_depth}
-    );
+    add_local(arg);
   }
 
   compile_block(func.get_body().get_block());
-  emit(OpConstant{make_constant(runtime::Value{runtime::Nil{}})});
+  emit(OpConstant{make_constant({})});
   emit(OpReturn{});
 
   std::vector<UpvalueInfo> upvalue_infos;
@@ -939,23 +940,19 @@ void Compiler::compile_range_for_loop(const ast::RangeForLoop &loop) {
   begin_scope();
 
   compile_expression(loop.get_start());
-  locals.push_back({.name = "_range_current", .depth = scope_depth});
+  const auto current_idx = add_local("_range_current");
 
   compile_expression(loop.get_end());
-  locals.push_back({.name = "_range_end", .depth = scope_depth});
+  const auto end_idx = add_local("_range_end");
 
   if (loop.get_step()) {
     compile_expression(*loop.get_step());
   } else {
     emit(OpConstant{make_constant(runtime::Value{runtime::Primitive{1L}})});
   }
-  locals.push_back({.name = "_range_step", .depth = scope_depth});
+  const auto step_idx = add_local("_range_step");
 
-  std::size_t loop_start = current_instruction_offset();
-
-  std::size_t current_idx = *resolve_local("_range_current");
-  std::size_t end_idx = *resolve_local("_range_end");
-  std::size_t step_idx = *resolve_local("_range_step");
+  const auto loop_start = current_instruction_offset();
 
   emit(OpGetLocal{current_idx});
   emit(OpGetLocal{end_idx});
@@ -973,10 +970,7 @@ void Compiler::compile_range_for_loop(const ast::RangeForLoop &loop) {
 
   begin_scope();
   emit(OpGetLocal{current_idx});
-  locals.push_back(
-      {.name = std::string{loop.get_variable().get_name()},
-       .depth = scope_depth}
-  );
+  add_local(loop.get_variable());
 
   compile_block(loop.get_body());
 
@@ -984,7 +978,7 @@ void Compiler::compile_range_for_loop(const ast::RangeForLoop &loop) {
   loop_body_locals_snapshot.pop_back();
 
   // continue target: after end_scope(), before the increment block.
-  std::size_t continue_target = current_instruction_offset();
+  const auto continue_target = current_instruction_offset();
 
   emit(OpGetLocal{current_idx});
   emit(OpGetLocal{step_idx});
@@ -1012,7 +1006,7 @@ void Compiler::compile_range_for_loop(const ast::RangeForLoop &loop) {
 void Compiler::compile_while_loop(const ast::While &loop) {
   break_jumps_stack.emplace_back();
   continue_jumps_stack.emplace_back();
-  std::size_t loop_start = current_instruction_offset();
+  const auto loop_start = current_instruction_offset();
   // `continue` in a while loop jumps back to the condition check.
 
   compile_expression(loop.get_condition());
@@ -1060,7 +1054,7 @@ void Compiler::compile_return_statement(const ast::ReturnStatement &ret) {
   if (ret.get_expression()) {
     compile_expression(*ret.get_expression());
   } else {
-    emit(OpConstant{make_constant(runtime::Value{runtime::Nil{}})});
+    emit(OpConstant{make_constant({})});
   }
   emit(OpReturn{});
 }
