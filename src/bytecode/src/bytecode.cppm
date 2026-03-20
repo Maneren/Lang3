@@ -68,7 +68,7 @@ struct OpSetUpvalue {
 struct OpJump {
   std::size_t offset = -1UZ;
 };
-struct OpJumpIfFalse {
+struct OpTest {
   std::size_t offset = -1UZ;
 };
 struct OpCall {
@@ -107,7 +107,7 @@ using Instruction = std::variant<
     OpSetLocal,
     OpMutateLocal,
     OpJump,
-    OpJumpIfFalse,
+    OpTest,
     OpCall,
     OpMakeArray,
     OpGetIndex,
@@ -256,9 +256,9 @@ export {
                   out, "{:<16} {:4d}\n", "OP_JUMP", op.offset
               );
             },
-            [&](const l3::bytecode::OpJumpIfFalse &op) {
+            [&](const l3::bytecode::OpTest &op) {
               return std::format_to(
-                  out, "{:<16} {:4d}\n", "OP_JUMP_IF_FALSE", op.offset
+                  out, "{:<16} {:4d}\n", "OP_TEST", op.offset
               );
             },
             [&](const l3::bytecode::OpCall &op) {

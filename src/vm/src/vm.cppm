@@ -50,7 +50,7 @@ private:
   void execute_op_less(const bytecode::OpLess &op);
   void execute_op_less_equal(const bytecode::OpLessEqual &op);
   void execute_op_jump(const bytecode::OpJump &op);
-  void execute_op_jump_if_false(const bytecode::OpJumpIfFalse &op);
+  void execute_op_jump_if_false(const bytecode::OpTest &op);
   void execute_op_define_global(
       const bytecode::OpDefineGlobal &op, const bytecode::Chunk &chunk
   );

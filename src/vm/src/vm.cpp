@@ -82,7 +82,7 @@ BytecodeVM::evaluate(runtime::Ref function, runtime::L3Args arguments) {
       if (total_args == bc_func.arity) {
         auto previous_frames = frames.size();
         auto fp = stack.size();
-        frames.push_back({bc_func.id, 0, fp, std::make_optional(function)});
+        frames.emplace_back(bc_func.id, 0, fp, std::make_optional(function));
         for (const auto &arg : bc_func.curried_args) {
           stack.push_back(arg);
         }
@@ -127,9 +127,7 @@ void BytecodeVM::maybe_gc() {
 
 void BytecodeVM::execute(const std::vector<bytecode::Chunk> &chunks) {
   current_chunks = &chunks;
-  frames.push_back(
-      {.chunk_id = 0, .ip = 0, .frame_pointer = 0, .closure = std::nullopt}
-  );
+  frames.emplace_back();
   execute_loop(0);
   current_chunks = nullptr;
 }
@@ -167,7 +165,7 @@ void BytecodeVM::execute_loop(std::size_t target_frames) {
         [&](const bytecode::OpLess &op) { execute_op_less(op); },
         [&](const bytecode::OpLessEqual &op) { execute_op_less_equal(op); },
         [&](const bytecode::OpJump &op) { execute_op_jump(op); },
-        [&](const bytecode::OpJumpIfFalse &op) {
+        [&](const bytecode::OpTest &op) {
           execute_op_jump_if_false(op);
         },
         [&](const bytecode::OpDefineGlobal &op) {
@@ -207,8 +205,8 @@ void BytecodeVM::execute_loop(std::size_t target_frames) {
 
 void BytecodeVM::execute_op_return(const bytecode::OpReturn & /*op*/) {
   auto result = stack_pop();
-  auto fp = frames.back().frame_pointer;
   debug_print("RETURN value={}", result);
+  auto fp = frames.back().frame_pointer;
   frames.pop_back();
   stack.erase(stack.begin() + static_cast<std::ptrdiff_t>(fp), stack.end());
   stack.push_back(result);
@@ -218,10 +216,8 @@ void BytecodeVM::execute_op_constant(
     const bytecode::OpConstant &op, const bytecode::Chunk &chunk
 ) {
   const auto &chunk_val = chunk.constants[op.index];
-  if (chunk_val.is_nil()) {
-    stack_push(runtime::Nil{});
-  } else if (chunk_val.is_primitive()) {
-    stack_push(runtime::Value{*chunk_val.as_primitive()});
+  if (chunk_val.is_primitive()) {
+    stack_push(chunk_val.as_primitive()->get());
   } else if (chunk_val.is_string()) {
     stack_push(std::string(chunk_val.as_string()->get()));
   } else if (auto func_opt = chunk_val.as_function()) {
@@ -240,8 +236,7 @@ void BytecodeVM::execute_op_constant(
 
 void BytecodeVM::execute_op_pop(const bytecode::OpPop & /*op*/) {
   if (!stack.empty()) {
-    debug_print("POP value={}", stack.back());
-    stack.pop_back();
+    debug_print("POP value={}", stack_pop());
   }
 }
 
@@ -352,15 +347,15 @@ void BytecodeVM::execute_op_jump(const bytecode::OpJump &op) {
   frames.back().ip = op.offset;
 }
 
-void BytecodeVM::execute_op_jump_if_false(const bytecode::OpJumpIfFalse &op) {
-  const bool taken = stack.back()->is_falsy();
+void BytecodeVM::execute_op_jump_if_false(const bytecode::OpTest &op) {
+  const bool take = stack.back()->is_falsy();
   debug_print(
-      "JUMP_IF_FALSE condition={} taken={} target={}",
+      "TEST condition={} take={} target={}",
       stack.back(),
-      taken,
+      take,
       op.offset
   );
-  if (taken) {
+  if (take) {
     frames.back().ip = op.offset;
   }
 }

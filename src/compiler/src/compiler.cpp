@@ -186,7 +186,7 @@ void Compiler::patch_jump(std::size_t jump_offset, std::size_t target) {
   match::match(
       current_chunk().code[jump_offset],
       [=](OpJump &jump) { jump.offset = target; },
-      [=](OpJumpIfFalse &jump) { jump.offset = target; },
+      [=](OpTest &jump) { jump.offset = target; },
       [](auto &) {
         throw std::runtime_error("Attempting to patch a non-jump instruction");
       }
@@ -286,13 +286,13 @@ void Compiler::compile_logical_expression(
 
   switch (logical.get_op()) {
   case ast::LogicalOperator::And: {
-    std::size_t jump = emit_jump(OpJumpIfFalse{});
+    std::size_t jump = emit_jump(OpTest{});
     emit(OpPop{});
     compile_expression(logical.get_rhs());
     patch_jump_here(jump);
   } break;
   case ast::LogicalOperator::Or: { // Logical OR
-    std::size_t jump_if_false = emit_jump(OpJumpIfFalse{});
+    std::size_t jump_if_false = emit_jump(OpTest{});
     std::size_t jump_to_end = emit_jump(OpJump{});
 
     patch_jump_here(jump_if_false);
@@ -344,7 +344,7 @@ void Compiler::compile_comparison(const ast::Comparison &comparison) {
     }
 
     if (i < comps.size() - 1) {
-      jumps.push_back(emit_jump(OpJumpIfFalse{}));
+      jumps.push_back(emit_jump(OpTest{}));
       emit(OpPop{});
     }
   }
@@ -409,7 +409,7 @@ void Compiler::compile_if_expression(const ast::IfExpression &if_expr) {
   const auto &base_if = if_expr.get_base_if();
 
   compile_expression(base_if.get_condition());
-  std::size_t then_jump = emit_jump(OpJumpIfFalse{});
+  std::size_t then_jump = emit_jump(OpTest{});
   emit(OpPop{});
 
   compile_block(base_if.get_block());
@@ -422,7 +422,7 @@ void Compiler::compile_if_expression(const ast::IfExpression &if_expr) {
 
   for (const auto &elif : if_expr.get_elseif().get_elseifs()) {
     compile_expression(elif.get_condition());
-    std::size_t elif_jump = emit_jump(OpJumpIfFalse{});
+    std::size_t elif_jump = emit_jump(OpTest{});
 
     emit(OpPop{});
     compile_block(elif.get_block());
@@ -623,7 +623,7 @@ void Compiler::compile_for_loop(const ast::ForLoop &loop) {
   emit(OpGetLocal{len_idx});
   emit(OpLess{});
 
-  std::size_t exit_jump = emit_jump(OpJumpIfFalse{});
+  const std::size_t exit_jump = emit_jump(OpTest{});
   emit(OpPop{});
 
   // Snapshot locals before the inner scope so continue pops everything from the
@@ -699,7 +699,7 @@ void Compiler::compile_if_statement(const ast::IfStatement &if_stmt) {
 
   const auto &base_if = if_stmt.get_base_if();
   compile_expression(base_if.get_condition());
-  std::size_t then_jump = emit_jump(OpJumpIfFalse{});
+  std::size_t then_jump = emit_jump(OpTest{});
 
   emit(OpPop{});
 
@@ -711,7 +711,7 @@ void Compiler::compile_if_statement(const ast::IfStatement &if_stmt) {
 
   for (const auto &elif : if_stmt.get_elseif().get_elseifs()) {
     compile_expression(elif.get_condition());
-    std::size_t elif_jump = emit_jump(OpJumpIfFalse{});
+    std::size_t elif_jump = emit_jump(OpTest{});
 
     emit(OpPop{});
     compile_block(elif.get_block());
@@ -966,7 +966,7 @@ void Compiler::compile_range_for_loop(const ast::RangeForLoop &loop) {
     emit(OpLess{});
   }
 
-  std::size_t exit_jump = emit_jump(OpJumpIfFalse{});
+  const auto exit_jump = emit_jump(OpTest{});
   emit(OpPop{});
 
   loop_body_locals_snapshot.push_back(locals.size());
@@ -1017,7 +1017,7 @@ void Compiler::compile_while_loop(const ast::While &loop) {
 
   compile_expression(loop.get_condition());
 
-  std::size_t exit_jump = emit_jump(OpJumpIfFalse{});
+  const auto exit_jump = emit_jump(OpTest{});
 
   emit(OpPop{});
 
