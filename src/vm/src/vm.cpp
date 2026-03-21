@@ -241,84 +241,60 @@ void BytecodeVM::execute_op_pop(const bytecode::OpPop & /*op*/) {
 }
 
 void BytecodeVM::execute_op_add(const bytecode::OpAdd & /*op*/) {
-  if (debug) {
-    debug_print("ADD a={} b={}", stack[stack.size() - 2], stack.back());
-  }
+  debug_print("ADD a={} b={}", stack[stack.size() - 2], stack.back());
   binary_arithmetic([](auto &a, auto &b) { return a.add(b); });
 }
 
 void BytecodeVM::execute_op_subtract(const bytecode::OpSubtract & /*op*/) {
-  if (debug) {
-    debug_print("SUBTRACT a={} b={}", stack[stack.size() - 2], stack.back());
-  }
+  debug_print("SUBTRACT a={} b={}", stack[stack.size() - 2], stack.back());
   binary_arithmetic([](auto &a, auto &b) { return a.sub(b); });
 }
 
 void BytecodeVM::execute_op_multiply(const bytecode::OpMultiply & /*op*/) {
-  if (debug) {
-    debug_print("MULTIPLY a={} b={}", stack[stack.size() - 2], stack.back());
-  }
+  debug_print("MULTIPLY a={} b={}", stack[stack.size() - 2], stack.back());
   binary_arithmetic([](auto &a, auto &b) { return a.mul(b); });
 }
 
 void BytecodeVM::execute_op_divide(const bytecode::OpDivide & /*op*/) {
-  if (debug) {
-    debug_print("DIVIDE a={} b={}", stack[stack.size() - 2], stack.back());
-  }
+  debug_print("DIVIDE a={} b={}", stack[stack.size() - 2], stack.back());
   binary_arithmetic([](auto &a, auto &b) { return a.div(b); });
 }
 
 void BytecodeVM::execute_op_modulo(const bytecode::OpModulo & /*op*/) {
-  if (debug) {
-    debug_print("MODULO a={} b={}", stack[stack.size() - 2], stack.back());
-  }
+  debug_print("MODULO a={} b={}", stack[stack.size() - 2], stack.back());
   binary_arithmetic([](auto &a, auto &b) { return a.mod(b); });
 }
 
 void BytecodeVM::execute_op_negate(const bytecode::OpNegate & /*op*/) {
-  if (debug) {
-    debug_print("NEGATE a={}", stack.back());
-  }
+  debug_print("NEGATE a={}", stack.back());
   auto a = stack_pop();
   stack_push(a->negative());
 }
 
 void BytecodeVM::execute_op_not(const bytecode::OpNot & /*op*/) {
-  if (debug) {
-    debug_print("NOT a={}", stack.back());
-  }
+  debug_print("NOT a={}", stack.back());
   auto a = stack_pop();
   stack_push(a->not_op());
 }
 
 void BytecodeVM::execute_op_equal(const bytecode::OpEqual & /*op*/) {
-  if (debug) {
-    debug_print("EQUAL a={} b={}", stack[stack.size() - 2], stack.back());
-  }
+  debug_print("EQUAL a={} b={}", stack[stack.size() - 2], stack.back());
   comparison_op([](auto c) { return c == std::partial_ordering::equivalent; });
 }
 
 void BytecodeVM::execute_op_not_equal(const bytecode::OpNotEqual & /*op*/) {
-  if (debug) {
-    debug_print("NOT_EQUAL a={} b={}", stack[stack.size() - 2], stack.back());
-  }
+  debug_print("NOT_EQUAL a={} b={}", stack[stack.size() - 2], stack.back());
   comparison_op([](auto c) { return c != std::partial_ordering::equivalent; });
 }
 
 void BytecodeVM::execute_op_greater(const bytecode::OpGreater & /*op*/) {
-  if (debug) {
-    debug_print("GREATER a={} b={}", stack[stack.size() - 2], stack.back());
-  }
+  debug_print("GREATER a={} b={}", stack[stack.size() - 2], stack.back());
   comparison_op([](auto c) { return c == std::partial_ordering::greater; });
 }
 
 void BytecodeVM::
     execute_op_greater_equal(const bytecode::OpGreaterEqual & /*op*/) {
-  if (debug) {
-    debug_print(
-        "GREATER_EQUAL a={} b={}", stack[stack.size() - 2], stack.back()
-    );
-  }
+  debug_print("GREATER_EQUAL a={} b={}", stack[stack.size() - 2], stack.back());
   comparison_op([](auto c) {
     return c == std::partial_ordering::greater ||
            c == std::partial_ordering::equivalent;
@@ -326,16 +302,12 @@ void BytecodeVM::
 }
 
 void BytecodeVM::execute_op_less(const bytecode::OpLess & /*op*/) {
-  if (debug) {
-    debug_print("LESS a={} b={}", stack[stack.size() - 2], stack.back());
-  }
+  debug_print("LESS a={} b={}", stack[stack.size() - 2], stack.back());
   comparison_op([](auto c) { return c == std::partial_ordering::less; });
 }
 
 void BytecodeVM::execute_op_less_equal(const bytecode::OpLessEqual & /*op*/) {
-  if (debug) {
-    debug_print("LESS_EQUAL a={} b={}", stack[stack.size() - 2], stack.back());
-  }
+  debug_print("LESS_EQUAL a={} b={}", stack[stack.size() - 2], stack.back());
   comparison_op([](auto c) {
     return c == std::partial_ordering::less ||
            c == std::partial_ordering::equivalent;
@@ -442,11 +414,9 @@ void BytecodeVM::execute_op_make_array(const bytecode::OpMakeArray &op) {
 }
 
 void BytecodeVM::execute_op_get_index(const bytecode::OpGetIndex & /*op*/) {
-  if (debug) {
-    debug_print(
-        "GET_INDEX array={} index={}", stack[stack.size() - 2], stack.back()
-    );
-  }
+  debug_print(
+      "GET_INDEX array={} index={}", stack[stack.size() - 2], stack.back()
+  );
   auto index = stack_pop();
   auto array = stack_pop();
   if (auto vec_opt = array->as_vector()) {
@@ -473,14 +443,12 @@ void BytecodeVM::execute_op_get_index(const bytecode::OpGetIndex & /*op*/) {
 }
 
 void BytecodeVM::execute_op_set_index(const bytecode::OpSetIndex & /*op*/) {
-  if (debug) {
-    debug_print(
-        "SET_INDEX array={} index={} value={}",
-        stack[stack.size() - 3],
-        stack[stack.size() - 2],
-        stack.back()
-    );
-  }
+  debug_print(
+      "SET_INDEX array={} index={} value={}",
+      stack[stack.size() - 3],
+      stack[stack.size() - 2],
+      stack.back()
+  );
   auto value = stack_pop();
   auto index = stack_pop();
   auto array = stack_pop();

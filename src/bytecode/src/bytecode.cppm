@@ -69,6 +69,7 @@ struct OpJump {
   std::size_t offset = -1UZ;
 };
 struct OpTest {
+  bool pop = true;
   std::size_t offset = -1UZ;
 };
 struct OpCall {
@@ -258,7 +259,11 @@ export {
             },
             [&](const l3::bytecode::OpTest &op) {
               return std::format_to(
-                  out, "{:<16} {:4d}\n", "OP_TEST", op.offset
+                  out,
+                  "{:<16} {:4d} {}\n",
+                  "OP_TEST",
+                  op.offset,
+                  op.pop ? "POP" : "KEEP"
               );
             },
             [&](const l3::bytecode::OpCall &op) {
