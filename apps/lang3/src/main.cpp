@@ -144,18 +144,12 @@ int main(int argc, char *argv[]) {
     std::println(std::cerr, "=== VM ===");
   }
 
-  std::vector<bytecode::Chunk> chunks;
-  compiler::Compiler compiler(chunks);
+  bytecode::ProgramBytecode program_bytecode;
+  compiler::Compiler compiler(program_bytecode);
   compiler.compile(program);
 
   if (debug.bytecode) {
-    for (std::size_t id = 0; id < chunks.size(); ++id) {
-      std::print(
-          std::cerr,
-          "{}",
-          bytecode::NamedChunk{chunks[id], std::format("Chunk {}", id)}
-      );
-    }
+    std::print(std::cerr, "{}", program_bytecode);
 
     if (!debug.vm) {
       return EXIT_SUCCESS;
@@ -164,7 +158,7 @@ int main(int argc, char *argv[]) {
 
   vm::BytecodeVM new_vm{debug.vm};
   const auto start_time = std::chrono::steady_clock::now();
-  new_vm.execute(chunks);
+  new_vm.execute(program_bytecode);
 
   if (debug.timings) {
     auto end_time = std::chrono::steady_clock::now();

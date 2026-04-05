@@ -26,7 +26,7 @@ public:
     std::optional<runtime::Ref> closure;
   };
 
-  void execute(const std::vector<bytecode::Chunk> &chunks);
+  void execute(const bytecode::ProgramBytecode &program);
 
 private:
   std::optional<std::size_t>
@@ -41,9 +41,7 @@ private:
   void execute_loop(std::size_t target_frames);
 
   void execute_op_return(const bytecode::OpReturn &op);
-  void execute_op_constant(
-      const bytecode::OpConstant &op, const bytecode::Chunk &chunk
-  );
+  void execute_op_constant(const bytecode::OpConstant &op);
   void execute_op_pop(const bytecode::OpPop &op);
   void execute_op_add(const bytecode::OpAdd &op);
   void execute_op_subtract(const bytecode::OpSubtract &op);
@@ -60,12 +58,8 @@ private:
   void execute_op_less_equal(const bytecode::OpLessEqual &op);
   void execute_op_jump(const bytecode::OpJump &op);
   void execute_op_jump_if_false(const bytecode::OpTest &op);
-  void execute_op_get_global(
-      const bytecode::OpGetGlobal &op, const bytecode::Chunk &chunk
-  );
-  void execute_op_set_global(
-      const bytecode::OpSetGlobal &op, const bytecode::Chunk &chunk
-  );
+  void execute_op_get_global(const bytecode::OpGetGlobal &op);
+  void execute_op_set_global(const bytecode::OpSetGlobal &op);
   void execute_op_get_local(const bytecode::OpGetLocal &op, CallFrame &frame);
   void execute_op_set_local(const bytecode::OpSetLocal &op, CallFrame &frame);
   void
@@ -74,11 +68,7 @@ private:
   void execute_op_get_index(const bytecode::OpGetIndex &op);
   void execute_op_set_index(const bytecode::OpSetIndex &op);
   void execute_op_call(const bytecode::OpCall &op);
-  void execute_op_closure(
-      const bytecode::OpClosure &op,
-      const bytecode::Chunk &chunk,
-      CallFrame &frame
-  );
+  void execute_op_closure(const bytecode::OpClosure &op, CallFrame &frame);
   void
   execute_op_get_upvalue(const bytecode::OpGetUpvalue &op, CallFrame &frame);
   void
@@ -101,7 +91,7 @@ private:
   std::map<std::string, std::size_t> file_scope_indices;
 
   std::vector<CallFrame> frames;
-  const std::vector<bytecode::Chunk> *current_chunks = nullptr;
+  const bytecode::ProgramBytecode *current_program = nullptr;
 };
 
 } // namespace l3::vm

@@ -166,15 +166,16 @@ void BytecodeVM::maybe_gc() {
   }
 }
 
-void BytecodeVM::execute(const std::vector<bytecode::Chunk> &chunks) {
-  current_chunks = &chunks;
+void BytecodeVM::execute(const bytecode::ProgramBytecode &program) {
+  current_program = &program;
   frames.emplace_back();
   execute_loop(0);
-  current_chunks = nullptr;
+  current_program = nullptr;
 }
 
 void BytecodeVM::execute_loop(std::size_t target_frames) {
-  const auto &chunks = *current_chunks;
+  const auto &program = *current_program;
+  const auto &chunks = program.chunks;
 
   while (frames.size() > target_frames) {
     maybe_gc();
@@ -188,7 +189,7 @@ void BytecodeVM::execute_loop(std::size_t target_frames) {
     match::match(
         instruction,
         [&](const bytecode::OpReturn &op) { execute_op_return(op); },
-        [&](const bytecode::OpConstant &op) { execute_op_constant(op, chunk); },
+        [&](const bytecode::OpConstant &op) { execute_op_constant(op); },
         [&](const bytecode::OpPop &op) { execute_op_pop(op); },
         [&](const bytecode::OpAdd &op) { execute_op_add(op); },
         [&](const bytecode::OpSubtract &op) { execute_op_subtract(op); },
@@ -207,12 +208,8 @@ void BytecodeVM::execute_loop(std::size_t target_frames) {
         [&](const bytecode::OpLessEqual &op) { execute_op_less_equal(op); },
         [&](const bytecode::OpJump &op) { execute_op_jump(op); },
         [&](const bytecode::OpTest &op) { execute_op_jump_if_false(op); },
-        [&](const bytecode::OpGetGlobal &op) {
-          execute_op_get_global(op, chunk);
-        },
-        [&](const bytecode::OpSetGlobal &op) {
-          execute_op_set_global(op, chunk);
-        },
+        [&](const bytecode::OpGetGlobal &op) { execute_op_get_global(op); },
+        [&](const bytecode::OpSetGlobal &op) { execute_op_set_global(op); },
         [&](const bytecode::OpGetLocal &op) {
           execute_op_get_local(op, frame);
         },
@@ -226,9 +223,7 @@ void BytecodeVM::execute_loop(std::size_t target_frames) {
         [&](const bytecode::OpGetIndex &op) { execute_op_get_index(op); },
         [&](const bytecode::OpSetIndex &op) { execute_op_set_index(op); },
         [&](const bytecode::OpCall &op) { execute_op_call(op); },
-        [&](const bytecode::OpClosure &op) {
-          execute_op_closure(op, chunk, frame);
-        },
+        [&](const bytecode::OpClosure &op) { execute_op_closure(op, frame); },
         [&](const bytecode::OpGetUpvalue &op) {
           execute_op_get_upvalue(op, frame);
         },
@@ -248,10 +243,8 @@ void BytecodeVM::execute_op_return(const bytecode::OpReturn & /*op*/) {
   stack.push_back(result);
 }
 
-void BytecodeVM::execute_op_constant(
-    const bytecode::OpConstant &op, const bytecode::Chunk &chunk
-) {
-  const auto &chunk_val = chunk.constants[op.index];
+void BytecodeVM::execute_op_constant(const bytecode::OpConstant &op) {
+  const auto &chunk_val = current_program->constants[op.index];
   if (chunk_val.is_primitive()) {
     stack_push(chunk_val.as_primitive()->get());
   } else if (chunk_val.is_string()) {
@@ -365,10 +358,8 @@ void BytecodeVM::execute_op_jump_if_false(const bytecode::OpTest &op) {
   }
 }
 
-void BytecodeVM::execute_op_get_global(
-    const bytecode::OpGetGlobal &op, const bytecode::Chunk &chunk
-) {
-  const auto &name_val = chunk.constants[op.name_index];
+void BytecodeVM::execute_op_get_global(const bytecode::OpGetGlobal &op) {
+  const auto &name_val = current_program->constants[op.name_index];
   if (auto str_opt = name_val.as_string()) {
     auto slot_index = resolve_file_scope_slot(str_opt->get());
     if (!slot_index) {
@@ -380,10 +371,8 @@ void BytecodeVM::execute_op_get_global(
   }
 }
 
-void BytecodeVM::execute_op_set_global(
-    const bytecode::OpSetGlobal &op, const bytecode::Chunk &chunk
-) {
-  const auto &name_val = chunk.constants[op.name_index];
+void BytecodeVM::execute_op_set_global(const bytecode::OpSetGlobal &op) {
+  const auto &name_val = current_program->constants[op.name_index];
   if (auto str_opt = name_val.as_string()) {
     auto slot_index = resolve_file_scope_slot(str_opt->get());
     if (!slot_index) {
@@ -542,11 +531,9 @@ void BytecodeVM::execute_op_call(const bytecode::OpCall &op) {
 }
 
 void BytecodeVM::execute_op_closure(
-    const bytecode::OpClosure &op,
-    const bytecode::Chunk &chunk,
-    CallFrame &frame
+    const bytecode::OpClosure &op, CallFrame &frame
 ) {
-  const auto &chunk_val = chunk.constants[op.function_index];
+  const auto &chunk_val = current_program->constants[op.function_index];
   if (auto func_opt = chunk_val.as_function()) {
     if (auto bc_opt = func_opt->get()->as_bytecode_function()) {
       auto func_id = bc_opt->get();

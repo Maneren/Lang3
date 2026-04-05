@@ -10,11 +10,11 @@ namespace l3::compiler {
 
 using namespace l3::bytecode;
 
-Compiler::Compiler(std::vector<Chunk> &chunks) : chunks(chunks) {}
+Compiler::Compiler(bytecode::ProgramBytecode &program) : program(program) {}
 
 void Compiler::compile(const ast::Program &program) {
-  chunks.emplace_back();
-  current_chunk_id = chunks.size() - 1;
+  this->program.chunks.emplace_back();
+  current_chunk_id = this->program.chunks.size() - 1;
   for (const auto &stmt : program.get_statements()) {
     compile_statement(stmt);
   }
@@ -23,9 +23,10 @@ void Compiler::compile(const ast::Program &program) {
   }
   emit(OpConstant{make_constant({})});
   emit(OpReturn{});
+  deduplicate_constants();
 }
 
-Chunk &Compiler::current_chunk() { return chunks[current_chunk_id]; }
+Chunk &Compiler::current_chunk() { return program.chunks[current_chunk_id]; }
 std::size_t Compiler::last_instruction_offset() {
   return current_instruction_offset() - 1;
 }
@@ -40,8 +41,8 @@ std::size_t Compiler::push_context() {
       scope_depth,
       std::move(current_upvalues)
   );
-  current_chunk_id = chunks.size();
-  chunks.emplace_back();
+  current_chunk_id = program.chunks.size();
+  program.chunks.emplace_back();
   locals.clear();
   scope_depth = 0;
   current_upvalues.clear();
@@ -185,7 +186,54 @@ void Compiler::emit(const Instruction &instruction, std::size_t line) {
 }
 
 std::size_t Compiler::make_constant(runtime::Value &&value) {
-  return current_chunk().add_constant(std::move(value));
+  auto index = program.constants.size();
+  program.constants.emplace_back(std::move(value));
+  return index;
+}
+
+void Compiler::deduplicate_constants() {
+  std::vector<std::size_t> index_map(program.constants.size(), 0UZ);
+  std::unordered_map<std::string, std::size_t> string_indices;
+  std::vector<runtime::Value> deduped_constants;
+  deduped_constants.reserve(program.constants.size());
+
+  for (std::size_t old_index = 0; old_index < program.constants.size();
+       ++old_index) {
+    auto &constant = program.constants[old_index];
+    if (const auto string_value = constant.as_string()) {
+      const auto [it, inserted] =
+          string_indices.emplace(string_value->get(), deduped_constants.size());
+      if (inserted) {
+        deduped_constants.emplace_back(runtime::Value{std::string{it->first}});
+      }
+      index_map[old_index] = it->second;
+      continue;
+    }
+
+    index_map[old_index] = deduped_constants.size();
+    deduped_constants.emplace_back(std::move(constant));
+  }
+
+  for (auto &chunk : program.chunks) {
+    for (auto &instruction : chunk.code) {
+      match::match(
+          instruction,
+          [&index_map](OpConstant &op) { op.index = index_map[op.index]; },
+          [&index_map](OpGetGlobal &op) {
+            op.name_index = index_map[op.name_index];
+          },
+          [&index_map](OpSetGlobal &op) {
+            op.name_index = index_map[op.name_index];
+          },
+          [&index_map](OpClosure &op) {
+            op.function_index = index_map[op.function_index];
+          },
+          [](auto &) {}
+      );
+    }
+  }
+
+  program.constants = std::move(deduped_constants);
 }
 
 void Compiler::emit_loop(std::size_t loop_start) { emit(OpJump{loop_start}); }
@@ -719,7 +767,6 @@ void Compiler::compile_named_function(const ast::NamedFunction &func) {
     add_local(name);
   }
 
-  chunks.emplace_back();
   const auto new_chunk_id = push_context();
 
   const auto &args = func.get_body().get_parameters();

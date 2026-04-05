@@ -10,12 +10,12 @@ export namespace l3::compiler {
 
 class Compiler {
 public:
-  Compiler(std::vector<bytecode::Chunk> &chunks);
+  Compiler(bytecode::ProgramBytecode &program);
 
   void compile(const ast::Program &program);
 
 private:
-  std::vector<bytecode::Chunk> &chunks;
+  bytecode::ProgramBytecode &program;
   std::size_t current_chunk_id = 0;
   bytecode::Chunk &current_chunk();
   std::size_t last_instruction_offset();
@@ -73,6 +73,7 @@ private:
 
   void emit(const bytecode::Instruction &instruction, std::size_t line = 0);
   std::size_t make_constant(runtime::Value &&value);
+  void deduplicate_constants();
   void emit_loop(std::size_t loop_start);
   void patch_jump(std::size_t jump_offset, std::size_t target);
   void patch_jump_here(std::size_t jump_offset);
