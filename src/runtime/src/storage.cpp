@@ -54,33 +54,6 @@ std::size_t GCStorage::sweep() {
   return erased;
 }
 
-void GCValue::mark() {
-  if (marked) {
-    return;
-  }
-
-  marked = true;
-
-  get_value_mut().visit(
-      [](Value::vector_type &vector) {
-        for (auto &item : vector) {
-          item.get_gc_mut().mark();
-        }
-      },
-      [](Value::function_type &func) {
-        if (auto bc_opt = func->as_mut_bytecode_function()) {
-          for (auto &uv : bc_opt->get().upvalues) {
-            uv.get_gc_mut().mark();
-          }
-          for (auto &ca : bc_opt->get().curried_args) {
-            ca.get_gc_mut().mark();
-          }
-        }
-      },
-      [](auto & /*value*/) {}
-  );
-}
-
 GCValue GCStorage::NIL{Value()};
 GCValue GCStorage::TRUE{Value{Primitive{true}}};
 GCValue GCStorage::FALSE{Value{Primitive{false}}};

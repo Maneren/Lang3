@@ -43,9 +43,6 @@ struct OpGetLocal {
 struct OpSetLocal {
   std::size_t index;
 };
-struct OpMutateLocal {
-  std::size_t index;
-};
 
 struct UpvalueInfo {
   bool is_local;
@@ -102,7 +99,6 @@ using Instruction = std::variant<
     OpSetGlobal,
     OpGetLocal,
     OpSetLocal,
-    OpMutateLocal,
     OpJump,
     OpTest,
     OpCall,
@@ -125,7 +121,7 @@ public:
 
 struct ProgramBytecode {
   std::vector<Chunk> chunks;
-  std::vector<runtime::Value> constants;
+  std::vector<runtime::GCValue> constants;
 };
 
 } // namespace l3::bytecode
@@ -135,12 +131,13 @@ export {
   template <>
   struct std::formatter<l3::bytecode::ProgramBytecode>
       : utils::static_formatter<l3::bytecode::ProgramBytecode> {
-    static auto
-    format(const l3::bytecode::ProgramBytecode &program, std::format_context &ctx
+    static auto format(
+        const l3::bytecode::ProgramBytecode &program, std::format_context &ctx
     ) {
       auto out = ctx.out();
 
-      for (const auto &[chunk_id, chunk] : std::views::enumerate(program.chunks)) {
+      for (const auto &[chunk_id, chunk] :
+           std::views::enumerate(program.chunks)) {
         out = std::format_to(out, "== Chunk {} ==\n", chunk_id);
 
         for (const auto &[offset, instruction] :
@@ -229,11 +226,6 @@ export {
               [&](const l3::bytecode::OpSetLocal &op) {
                 return std::format_to(
                     out, "{:<16} {:4d}\n", "OP_SET_LOCAL", op.index
-                );
-              },
-              [&](const l3::bytecode::OpMutateLocal &op) {
-                return std::format_to(
-                    out, "{:<16} {:4d}\n", "OP_MUTATE_LOCAL", op.index
                 );
               },
               [&](const l3::bytecode::OpJump &op) {

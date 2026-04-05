@@ -18,7 +18,7 @@ void Compiler::compile(const ast::Program &program) {
   for (const auto &stmt : program.get_statements()) {
     compile_statement(stmt);
   }
-  if (auto last = program.get_last_statement(); last) {
+  if (const auto last = program.get_last_statement(); last) {
     throw std::runtime_error("Unexpected last statement in top-level scope");
   }
   emit(OpConstant{make_constant({})});
@@ -112,9 +112,7 @@ std::size_t Compiler::add_upvalue(
 std::optional<std::size_t> Compiler::resolve_upvalue(
     const ast::Identifier &name, std::size_t context_index
 ) {
-
-  std::optional<std::size_t> local =
-      resolve_local_in_context(name, contexts[context_index]);
+  const auto local = resolve_local_in_context(name, contexts[context_index]);
 
   if (local) {
     std::size_t upvalue_idx =
@@ -194,17 +192,17 @@ std::size_t Compiler::make_constant(runtime::Value &&value) {
 void Compiler::deduplicate_constants() {
   std::vector<std::size_t> index_map(program.constants.size(), 0UZ);
   std::unordered_map<std::string, std::size_t> string_indices;
-  std::vector<runtime::Value> deduped_constants;
+  std::vector<runtime::GCValue> deduped_constants;
   deduped_constants.reserve(program.constants.size());
 
   for (std::size_t old_index = 0; old_index < program.constants.size();
        ++old_index) {
     auto &constant = program.constants[old_index];
-    if (const auto string_value = constant.as_string()) {
+    if (const auto string_value = constant.get_value().as_string()) {
       const auto [it, inserted] =
           string_indices.emplace(string_value->get(), deduped_constants.size());
       if (inserted) {
-        deduped_constants.emplace_back(runtime::Value{std::string{it->first}});
+        deduped_constants.emplace_back(std::string{it->first});
       }
       index_map[old_index] = it->second;
       continue;
@@ -228,7 +226,7 @@ void Compiler::deduplicate_constants() {
           [&index_map](OpClosure &op) {
             op.function_index = index_map[op.function_index];
           },
-          [](auto &) {}
+          [](const auto &) {}
       );
     }
   }
@@ -243,7 +241,7 @@ void Compiler::patch_jump(std::size_t jump_offset, std::size_t target) {
       current_chunk().code[jump_offset],
       [=](OpJump &jump) { jump.offset = target; },
       [=](OpTest &jump) { jump.offset = target; },
-      [](auto &) {
+      [](const auto &) {
         throw std::runtime_error("Attempting to patch a non-jump instruction");
       }
   );
@@ -263,7 +261,7 @@ void Compiler::compile_block(const ast::Block &block) {
   for (const auto &stmt : block.get_statements()) {
     compile_statement(stmt);
   }
-  if (auto last = block.get_last_statement(); last) {
+  if (const auto last = block.get_last_statement(); last) {
     compile_last_statement(last->get());
   }
   end_scope();
@@ -803,7 +801,7 @@ void Compiler::compile_named_function(const ast::NamedFunction &func) {
   }
 
   if (is_local) {
-    emit(OpMutateLocal{static_cast<std::size_t>(locals.size() - 1)});
+    emit(OpSetLocal{static_cast<std::size_t>(locals.size() - 1)});
   }
 }
 

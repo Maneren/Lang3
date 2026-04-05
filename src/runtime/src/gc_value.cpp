@@ -16,4 +16,31 @@ GCValue &GCValue::operator=(GCValue &&other) noexcept {
   return *this;
 }
 
+void GCValue::mark() {
+  if (marked) {
+    return;
+  }
+
+  marked = true;
+
+  get_value_mut().visit(
+      [](Value::vector_type &vector) {
+        for (auto &item : vector) {
+          item.get_gc_mut().mark();
+        }
+      },
+      [](Value::function_type &func) {
+        if (auto bc_opt = func->as_mut_bytecode_function()) {
+          for (auto &uv : bc_opt->get().upvalues) {
+            uv.get_gc_mut().mark();
+          }
+          for (auto &ca : bc_opt->get().curried_args) {
+            ca.get_gc_mut().mark();
+          }
+        }
+      },
+      [](auto & /*value*/) {}
+  );
+}
+
 } // namespace l3::runtime

@@ -6,6 +6,23 @@ import l3.runtime;
 import utils;
 import :builtins;
 
+namespace {
+struct string_hash {
+
+  using is_transparent = void;
+  [[nodiscard]] std::size_t operator()(const char *txt) const {
+    return std::hash<std::string_view>{}(txt);
+  }
+  [[nodiscard]] std::size_t operator()(std::string_view txt) const {
+    return std::hash<std::string_view>{}(txt);
+  }
+  [[nodiscard]] std::size_t operator()(const std::string &txt) const {
+    return std::hash<std::string>{}(txt);
+  }
+};
+
+} // namespace
+
 export namespace l3::vm {
 
 class BytecodeVM {
@@ -26,17 +43,13 @@ public:
     std::optional<runtime::Ref> closure;
   };
 
-  void execute(const bytecode::ProgramBytecode &program);
+  void execute(bytecode::ProgramBytecode &program);
 
 private:
-  std::optional<std::size_t>
-  resolve_file_scope_slot(std::string_view name) const;
-  std::size_t define_file_scope_slot(std::string_view name, runtime::Ref value);
-  runtime::Ref &file_scope_slot(std::size_t index);
-  const runtime::Ref &file_scope_slot(std::size_t index) const;
+  std::optional<runtime::Ref> resolve_global(std::string_view name) const;
+  void define_global(std::string_view name, runtime::Ref value);
 
   void assign_slot(runtime::Ref &slot);
-  void mutate_slot(runtime::Ref &slot);
 
   void execute_loop(std::size_t target_frames);
 
@@ -62,8 +75,6 @@ private:
   void execute_op_set_global(const bytecode::OpSetGlobal &op);
   void execute_op_get_local(const bytecode::OpGetLocal &op, CallFrame &frame);
   void execute_op_set_local(const bytecode::OpSetLocal &op, CallFrame &frame);
-  void
-  execute_op_mutate_local(const bytecode::OpMutateLocal &op, CallFrame &frame);
   void execute_op_make_array(const bytecode::OpMakeArray &op);
   void execute_op_get_index(const bytecode::OpGetIndex &op);
   void execute_op_set_index(const bytecode::OpSetIndex &op);
@@ -87,11 +98,11 @@ private:
   bool debug;
   runtime::GCStorage gc_storage;
   std::vector<runtime::Ref> stack;
-  std::vector<runtime::Ref> file_scope_slots;
-  std::map<std::string, std::size_t> file_scope_indices;
+  std::unordered_map<std::string, runtime::Ref, string_hash, std::equal_to<>>
+      global_symbols;
 
   std::vector<CallFrame> frames;
-  const bytecode::ProgramBytecode *current_program = nullptr;
+  bytecode::ProgramBytecode *current_program = nullptr;
 };
 
 } // namespace l3::vm
