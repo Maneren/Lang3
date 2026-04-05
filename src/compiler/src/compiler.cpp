@@ -448,19 +448,7 @@ void Compiler::compile_if_expression(const ast::IfExpression &if_expr) {
 void Compiler::compile_variable(const ast::Variable &variable) {
   variable.visit(
       [this](const ast::Identifier &identifier) {
-        auto resolved = resolve_variable(identifier);
-
-        switch (resolved.type) {
-        case VariableType::Local:
-          emit(OpGetLocal{resolved.index});
-          break;
-        case VariableType::Upvalue:
-          emit(OpGetUpvalue{resolved.index});
-          break;
-        case VariableType::Global:
-          emit(OpGetGlobal{resolved.index});
-          break;
-        }
+        emit(emit_get_variable(identifier));
       },
       [this](const ast::IndexExpression &index) {
         compile_variable(index.get_base());
@@ -529,26 +517,13 @@ void Compiler::compile_declaration(const ast::Declaration &decl) {
     }
 
     const auto &name = names.front();
-    if (scope_depth > 0) {
-      add_local(name);
-    } else {
-      emit(
-          OpDefineGlobal{
-              make_constant(runtime::Value{std::string{name.get_name()}})
-          }
-      );
-    }
+    add_local(name);
     return;
   }
   if (!decl.get_expression()) {
     for (const auto &ident : names) {
-      std::size_t name_index = make_constant(std::string{ident.get_name()});
       emit(OpConstant{make_constant({})});
-      if (scope_depth > 0) {
-        add_local(ident);
-      } else {
-        emit(OpDefineGlobal{name_index});
-      }
+      add_local(ident);
     }
     return;
   }
@@ -561,27 +536,10 @@ void Compiler::compile_declaration(const ast::Declaration &decl) {
   };
 
   std::size_t hidden_name_index = -1UZ;
-
-  if (scope_depth > 0) {
-    hidden_name_index = add_local(hidden_name);
-  } else {
-    emit(
-        OpDefineGlobal{
-            make_constant(runtime::Value{std::string{hidden_name.get_name()}})
-        }
-    );
-  }
+  hidden_name_index = add_local(hidden_name);
 
   for (std::size_t i = 0; i < names.size(); ++i) {
-    if (scope_depth > 0) {
-      emit(OpGetLocal{hidden_name_index});
-    } else {
-      emit(
-          OpGetGlobal{
-              make_constant(runtime::Value{std::string{hidden_name.get_name()}})
-          }
-      );
-    }
+    emit(OpGetLocal{hidden_name_index});
 
     emit(
         OpConstant{make_constant(
@@ -591,15 +549,7 @@ void Compiler::compile_declaration(const ast::Declaration &decl) {
     emit(OpGetIndex{});
 
     const auto &name = names[i];
-    if (scope_depth > 0) {
-      add_local(name);
-    } else {
-      emit(
-          OpDefineGlobal{
-              make_constant(runtime::Value{std::string{name.get_name()}})
-          }
-      );
-    }
+    add_local(name);
   }
 }
 
@@ -611,9 +561,7 @@ void Compiler::compile_for_loop(const ast::ForLoop &loop) {
   compile_expression(loop.get_collection());
   const auto coll_idx = add_local("_for_collection");
 
-  std::size_t len_name_index =
-      make_constant(runtime::Value{std::string{"len"}});
-  emit(OpGetGlobal{len_name_index});
+  emit(emit_get_variable(ast::Identifier{"len"}));
   emit(OpGetLocal{coll_idx});
   emit(OpCall{1});
   const auto len_idx = add_local("_for_len");
@@ -736,7 +684,7 @@ void Compiler::compile_name_assignment(const ast::NameAssignment &assign) {
   compile_expression(assign.get_expression());
 
   if (names.size() == 1) {
-    emit_get_variable(names.front());
+    emit(emit_set_variable(names.front()));
     return;
   }
 
@@ -746,27 +694,10 @@ void Compiler::compile_name_assignment(const ast::NameAssignment &assign) {
   };
 
   std::size_t hidden_name_idx = -1UZ;
-
-  if (scope_depth > 0) {
-    hidden_name_idx = add_local(hidden_name);
-  } else {
-    emit(
-        OpDefineGlobal{
-            make_constant(runtime::Value{std::string{hidden_name.get_name()}})
-        }
-    );
-  }
+  hidden_name_idx = add_local(hidden_name);
 
   for (std::size_t i = 0; i < names.size(); ++i) {
-    if (scope_depth > 0) {
-      emit(OpGetLocal{hidden_name_idx});
-    } else {
-      emit(
-          OpGetGlobal{
-              make_constant(runtime::Value{std::string{hidden_name.get_name()}})
-          }
-      );
-    }
+    emit(OpGetLocal{hidden_name_idx});
 
     emit(
         OpConstant{make_constant(
@@ -781,7 +712,7 @@ void Compiler::compile_name_assignment(const ast::NameAssignment &assign) {
 
 void Compiler::compile_named_function(const ast::NamedFunction &func) {
   const auto &name = func.get_name();
-  bool is_local = scope_depth > 0;
+  bool is_local = true;
 
   if (is_local) {
     emit(OpConstant{make_constant({})});
@@ -824,12 +755,8 @@ void Compiler::compile_named_function(const ast::NamedFunction &func) {
     emit(OpClosure{.function_index = id, .upvalues = std::move(upvalue_infos)});
   }
 
-  std::size_t name_index =
-      make_constant(runtime::Value{std::string{name.get_name()}});
   if (is_local) {
     emit(OpMutateLocal{static_cast<std::size_t>(locals.size() - 1)});
-  } else {
-    emit(OpDefineGlobal{name_index});
   }
 }
 
@@ -838,20 +765,8 @@ void Compiler::compile_operator_assignment(
 ) {
   assign.get_variable().visit(
       [&](const ast::Identifier &id) {
-        auto resolved = resolve_variable(id);
-
         if (assign.get_operator() != ast::AssignmentOperator::Assign) {
-          switch (resolved.type) {
-          case VariableType::Local:
-            emit(OpGetLocal{resolved.index});
-            break;
-          case VariableType::Upvalue:
-            emit(OpGetUpvalue{resolved.index});
-            break;
-          case VariableType::Global:
-            emit(OpGetGlobal{resolved.index});
-            break;
-          }
+          emit(emit_get_variable(id));
         }
 
         compile_expression(assign.get_expression());
@@ -878,17 +793,7 @@ void Compiler::compile_operator_assignment(
           break; // TODO
         }
 
-        switch (resolved.type) {
-        case VariableType::Local:
-          emit(OpSetLocal{resolved.index});
-          break;
-        case VariableType::Upvalue:
-          emit(OpSetUpvalue{resolved.index});
-          break;
-        case VariableType::Global:
-          emit(OpSetGlobal{resolved.index});
-          break;
-        }
+        emit(emit_set_variable(id));
       },
       [&](const ast::IndexExpression &idx) {
         if (assign.get_operator() != ast::AssignmentOperator::Assign) {

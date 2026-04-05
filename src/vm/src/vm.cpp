@@ -15,7 +15,7 @@ BytecodeVM::BytecodeVM(bool debug_) : debug(debug_) {
             [this, &body](runtime::L3Args args) { return body(*this, args); }
         }}
     );
-    globals.insert_or_assign(std::string(name), func);
+    define_file_scope_slot(name, func);
   }
 }
 
@@ -41,6 +41,47 @@ runtime::Ref BytecodeVM::stack_pop() {
 
 void BytecodeVM::stack_push(runtime::Value &&value) {
   stack.emplace_back(gc_storage.emplace(std::move(value)));
+}
+
+std::optional<std::size_t>
+BytecodeVM::resolve_file_scope_slot(std::string_view name) const {
+  if (auto it = file_scope_indices.find(std::string{name});
+      it != file_scope_indices.end()) {
+    return it->second;
+  }
+  return std::nullopt;
+}
+
+std::size_t
+BytecodeVM::define_file_scope_slot(std::string_view name, runtime::Ref value) {
+  auto key = std::string{name};
+  if (auto it = file_scope_indices.find(key); it != file_scope_indices.end()) {
+    file_scope_slots[it->second] = value;
+    return it->second;
+  }
+
+  const auto index = file_scope_slots.size();
+  file_scope_slots.push_back(value);
+  file_scope_indices.emplace(std::move(key), index);
+  return index;
+}
+
+runtime::Ref &BytecodeVM::file_scope_slot(std::size_t index) {
+  return file_scope_slots[index];
+}
+
+const runtime::Ref &BytecodeVM::file_scope_slot(std::size_t index) const {
+  return file_scope_slots[index];
+}
+
+void BytecodeVM::assign_slot(runtime::Ref &slot) {
+  slot = stack.back();
+  stack.pop_back();
+}
+
+void BytecodeVM::mutate_slot(runtime::Ref &slot) {
+  slot.get() = std::move(stack.back().get());
+  stack.pop_back();
 }
 
 template <typename... Args>
@@ -107,7 +148,7 @@ std::size_t BytecodeVM::run_gc() {
   for (auto &ref : stack) {
     ref.get_gc_mut().mark();
   }
-  for (auto &[name, ref] : globals) {
+  for (auto &ref : file_scope_slots) {
     ref.get_gc_mut().mark();
   }
   for (auto &frame : frames) {
@@ -165,12 +206,7 @@ void BytecodeVM::execute_loop(std::size_t target_frames) {
         [&](const bytecode::OpLess &op) { execute_op_less(op); },
         [&](const bytecode::OpLessEqual &op) { execute_op_less_equal(op); },
         [&](const bytecode::OpJump &op) { execute_op_jump(op); },
-        [&](const bytecode::OpTest &op) {
-          execute_op_jump_if_false(op);
-        },
-        [&](const bytecode::OpDefineGlobal &op) {
-          execute_op_define_global(op, chunk);
-        },
+        [&](const bytecode::OpTest &op) { execute_op_jump_if_false(op); },
         [&](const bytecode::OpGetGlobal &op) {
           execute_op_get_global(op, chunk);
         },
@@ -322,24 +358,10 @@ void BytecodeVM::execute_op_jump(const bytecode::OpJump &op) {
 void BytecodeVM::execute_op_jump_if_false(const bytecode::OpTest &op) {
   const bool take = stack.back()->is_falsy();
   debug_print(
-      "TEST condition={} take={} target={}",
-      stack.back(),
-      take,
-      op.offset
+      "TEST condition={} take={} target={}", stack.back(), take, op.offset
   );
   if (take) {
     frames.back().ip = op.offset;
-  }
-}
-
-void BytecodeVM::execute_op_define_global(
-    const bytecode::OpDefineGlobal &op, const bytecode::Chunk &chunk
-) {
-  auto value = stack_pop();
-  const auto &name_val = chunk.constants[op.name_index];
-  if (auto str_opt = name_val.as_string()) {
-    debug_print("DEFINE_GLOBAL name={} value={}", str_opt->get(), value);
-    globals.insert_or_assign(str_opt->get(), value);
   }
 }
 
@@ -348,28 +370,27 @@ void BytecodeVM::execute_op_get_global(
 ) {
   const auto &name_val = chunk.constants[op.name_index];
   if (auto str_opt = name_val.as_string()) {
-    auto it = globals.find(str_opt->get());
-    if (it != globals.end()) {
-      debug_print("GET_GLOBAL name={} value={}", str_opt->get(), it->second);
-      stack.push_back(it->second);
-    } else {
+    auto slot_index = resolve_file_scope_slot(str_opt->get());
+    if (!slot_index) {
       throw std::runtime_error("Undefined variable: " + str_opt->get());
     }
+    const auto &value = file_scope_slot(*slot_index);
+    debug_print("GET_GLOBAL name={} value={}", str_opt->get(), value);
+    stack.push_back(value);
   }
 }
 
 void BytecodeVM::execute_op_set_global(
     const bytecode::OpSetGlobal &op, const bytecode::Chunk &chunk
 ) {
-  auto value = stack_pop();
   const auto &name_val = chunk.constants[op.name_index];
   if (auto str_opt = name_val.as_string()) {
-    if (globals.contains(str_opt->get())) {
-      debug_print("SET_GLOBAL name={} value={}", str_opt->get(), value);
-      globals.insert_or_assign(str_opt->get(), value);
-    } else {
+    auto slot_index = resolve_file_scope_slot(str_opt->get());
+    if (!slot_index) {
       throw std::runtime_error("Undefined variable: " + str_opt->get());
     }
+    debug_print("SET_GLOBAL name={} value={}", str_opt->get(), stack.back());
+    assign_slot(file_scope_slot(*slot_index));
   }
 }
 
@@ -390,16 +411,14 @@ void BytecodeVM::execute_op_set_local(
     const bytecode::OpSetLocal &op, CallFrame &frame
 ) {
   debug_print("SET_LOCAL index={} value={}", op.index, stack.back());
-  stack[frame.frame_pointer + op.index] = stack.back();
-  stack.pop_back();
+  assign_slot(stack[frame.frame_pointer + op.index]);
 }
 
 void BytecodeVM::execute_op_mutate_local(
     const bytecode::OpMutateLocal &op, CallFrame &frame
 ) {
   debug_print("MUTATE_LOCAL index={} value={}", op.index, stack.back());
-  stack[frame.frame_pointer + op.index].get() = std::move(stack.back().get());
-  stack.pop_back();
+  mutate_slot(stack[frame.frame_pointer + op.index]);
 }
 
 void BytecodeVM::execute_op_make_array(const bytecode::OpMakeArray &op) {

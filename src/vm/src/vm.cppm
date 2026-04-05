@@ -29,6 +29,15 @@ public:
   void execute(const std::vector<bytecode::Chunk> &chunks);
 
 private:
+  std::optional<std::size_t>
+  resolve_file_scope_slot(std::string_view name) const;
+  std::size_t define_file_scope_slot(std::string_view name, runtime::Ref value);
+  runtime::Ref &file_scope_slot(std::size_t index);
+  const runtime::Ref &file_scope_slot(std::size_t index) const;
+
+  void assign_slot(runtime::Ref &slot);
+  void mutate_slot(runtime::Ref &slot);
+
   void execute_loop(std::size_t target_frames);
 
   void execute_op_return(const bytecode::OpReturn &op);
@@ -51,9 +60,6 @@ private:
   void execute_op_less_equal(const bytecode::OpLessEqual &op);
   void execute_op_jump(const bytecode::OpJump &op);
   void execute_op_jump_if_false(const bytecode::OpTest &op);
-  void execute_op_define_global(
-      const bytecode::OpDefineGlobal &op, const bytecode::Chunk &chunk
-  );
   void execute_op_get_global(
       const bytecode::OpGetGlobal &op, const bytecode::Chunk &chunk
   );
@@ -91,7 +97,8 @@ private:
   bool debug;
   runtime::GCStorage gc_storage;
   std::vector<runtime::Ref> stack;
-  std::map<std::string, runtime::Ref> globals;
+  std::vector<runtime::Ref> file_scope_slots;
+  std::map<std::string, std::size_t> file_scope_indices;
 
   std::vector<CallFrame> frames;
   const std::vector<bytecode::Chunk> *current_chunks = nullptr;

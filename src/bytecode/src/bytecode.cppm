@@ -30,9 +30,6 @@ struct OpLess {};
 struct OpLessEqual {};
 struct OpNot {};
 
-struct OpDefineGlobal {
-  std::size_t name_index;
-};
 struct OpGetGlobal {
   std::size_t name_index;
 };
@@ -101,7 +98,6 @@ using Instruction = std::variant<
     OpLess,
     OpLessEqual,
     OpNot,
-    OpDefineGlobal,
     OpGetGlobal,
     OpSetGlobal,
     OpGetLocal,
@@ -209,15 +205,6 @@ export {
             },
             [&](const l3::bytecode::OpNot &) {
               return std::format_to(out, "OP_NOT\n");
-            },
-            [&](const l3::bytecode::OpDefineGlobal &op) {
-              return std::format_to(
-                  out,
-                  "{:<16} {:4d} '{}'\n",
-                  "OP_DEFINE_GLOBAL",
-                  op.name_index,
-                  chunk.constants[op.name_index]
-              );
             },
             [&](const l3::bytecode::OpGetGlobal &op) {
               return std::format_to(
