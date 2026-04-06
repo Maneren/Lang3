@@ -612,20 +612,13 @@ void Compiler::compile_for_loop(const ast::ForLoop &loop) {
   emit(OpCall{1});
   const auto len_idx = add_local("_for_len");
 
-  emit(OpConstant{make_constant(runtime::Value{runtime::Primitive{0L}})});
+  emit(OpConstant{make_constant(runtime::Value{runtime::Primitive{-1L}})});
   const auto index_idx = add_local("_for_index");
 
-  std::size_t loop_start = current_instruction_offset();
+  const auto control_jump = emit_jump(OpJump{});
 
-  emit(OpGetLocal{index_idx});
-  emit(OpGetLocal{len_idx});
-  emit(OpLess{});
+  const auto body_offset = current_instruction_offset();
 
-  const std::size_t exit_jump = emit_jump(OpTest{});
-  emit(OpPop{});
-
-  // Snapshot locals before the inner scope so continue pops everything from the
-  // inner scope (loop variable + body locals) without mutating `locals`.
   loop_body_locals_snapshot.push_back(locals.size());
 
   begin_scope();
@@ -639,23 +632,19 @@ void Compiler::compile_for_loop(const ast::ForLoop &loop) {
   end_scope();
   loop_body_locals_snapshot.pop_back();
 
-  // continue target: after end_scope(), before the increment block.
-  const auto continue_target = current_instruction_offset();
-  loop_continues_stack.push_back(continue_target);
+  const auto control_offset = current_instruction_offset();
 
-  emit(OpGetLocal{index_idx});
   emit(
-      OpConstant{make_constant(
-          runtime::Value{runtime::Primitive{static_cast<std::int64_t>(1)}}
-      )}
+      OpForLoop{
+          .control_index = index_idx,
+          .limit_index = len_idx,
+          .body_offset = body_offset,
+          .inclusive = false,
+          .step_index = std::nullopt
+      }
   );
-  emit(OpAdd{});
-  emit(OpSetLocal{index_idx});
 
-  emit_loop(loop_start);
-
-  patch_jump_here(exit_jump);
-  emit(OpPop{});
+  patch_jump(control_jump, control_offset);
 
   end_scope();
 
@@ -664,18 +653,10 @@ void Compiler::compile_for_loop(const ast::ForLoop &loop) {
   }
   break_jumps_stack.pop_back();
 
-  // Patch continue jumps to the continue target (forward jump — already past).
   for (auto jump : continue_jumps_stack.back()) {
-    match::match(
-        current_chunk().code[jump],
-        [&](OpJump &j) { j.offset = continue_target - jump - 1; },
-        [](auto &) {
-          throw std::runtime_error("Expected OpJump at continue site");
-        }
-    );
+    patch_jump(jump, control_offset);
   }
   continue_jumps_stack.pop_back();
-  loop_continues_stack.pop_back();
 }
 
 void Compiler::compile_function_call_statement(const ast::FunctionCall &call) {
@@ -901,19 +882,14 @@ void Compiler::compile_range_for_loop(const ast::RangeForLoop &loop) {
   }
   const auto step_idx = add_local("_range_step");
 
-  const auto loop_start = current_instruction_offset();
-
   emit(OpGetLocal{current_idx});
-  emit(OpGetLocal{end_idx});
+  emit(OpGetLocal{step_idx});
+  emit(OpSubtract{});
+  emit(OpSetLocal{current_idx});
 
-  if (loop.get_range_type() == ast::RangeOperator::Inclusive) {
-    emit(OpLessEqual{});
-  } else {
-    emit(OpLess{});
-  }
+  const auto control_jump = emit_jump(OpJump{});
 
-  const auto exit_jump = emit_jump(OpTest{});
-  emit(OpPop{});
+  const auto body_offset = current_instruction_offset();
 
   loop_body_locals_snapshot.push_back(locals.size());
 
@@ -926,18 +902,19 @@ void Compiler::compile_range_for_loop(const ast::RangeForLoop &loop) {
   end_scope();
   loop_body_locals_snapshot.pop_back();
 
-  // continue target: after end_scope(), before the increment block.
-  const auto continue_target = current_instruction_offset();
+  const auto control_offset = current_instruction_offset();
 
-  emit(OpGetLocal{current_idx});
-  emit(OpGetLocal{step_idx});
-  emit(OpAdd{});
-  emit(OpSetLocal{current_idx});
+  emit(
+      OpForLoop{
+          .control_index = current_idx,
+          .limit_index = end_idx,
+          .body_offset = body_offset,
+          .inclusive = loop.get_range_type() == ast::RangeOperator::Inclusive,
+          .step_index = step_idx
+      }
+  );
 
-  emit_loop(loop_start);
-
-  patch_jump_here(exit_jump);
-  emit(OpPop{});
+  patch_jump(control_jump, control_offset);
 
   end_scope();
 
@@ -947,7 +924,7 @@ void Compiler::compile_range_for_loop(const ast::RangeForLoop &loop) {
   break_jumps_stack.pop_back();
 
   for (auto jump : continue_jumps_stack.back()) {
-    patch_jump(jump, continue_target);
+    patch_jump(jump, control_offset);
   }
   continue_jumps_stack.pop_back();
 }

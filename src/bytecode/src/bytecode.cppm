@@ -44,6 +44,14 @@ struct OpSetLocal {
   std::size_t index;
 };
 
+struct OpForLoop {
+  std::size_t control_index;
+  std::size_t limit_index;
+  std::size_t body_offset = -1UZ;
+  bool inclusive = false;
+  std::optional<std::size_t> step_index;
+};
+
 struct UpvalueInfo {
   bool is_local;
   std::size_t index;
@@ -99,6 +107,7 @@ using Instruction = std::variant<
     OpSetGlobal,
     OpGetLocal,
     OpSetLocal,
+    OpForLoop,
     OpJump,
     OpTest,
     OpCall,
@@ -226,6 +235,19 @@ export {
               [&](const l3::bytecode::OpSetLocal &op) {
                 return std::format_to(
                     out, "{:<16} {:4d}\n", "OP_SET_LOCAL", op.index
+                );
+              },
+              [&](const l3::bytecode::OpForLoop &op) {
+                return std::format_to(
+                    out,
+                    "{:<16} ctrl={:4d} lim={:4d} body={:4d} {} {}\n",
+                    "OP_FOR_LOOP",
+                    op.control_index,
+                    op.limit_index,
+                    op.body_offset,
+                    op.inclusive ? "LE" : "LT",
+                    op.step_index ? std::format("step={:4d}", *op.step_index)
+                                  : "step=const1"
                 );
               },
               [&](const l3::bytecode::OpJump &op) {

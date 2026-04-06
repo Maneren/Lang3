@@ -198,6 +198,7 @@ void BytecodeVM::execute_loop(std::size_t target_frames) {
         [&](const bytecode::OpSetLocal &op) {
           execute_op_set_local(op, frame);
         },
+        [&](const bytecode::OpForLoop &op) { execute_op_for_loop(op, frame); },
         [&](const bytecode::OpMakeArray &op) { execute_op_make_array(op); },
         [&](const bytecode::OpGetIndex &op) { execute_op_get_index(op); },
         [&](const bytecode::OpSetIndex &op) { execute_op_set_index(op); },
@@ -391,6 +392,60 @@ void BytecodeVM::execute_op_set_local(
 }
 
 [[clang::noinline]]
+void BytecodeVM::execute_op_for_loop(
+    const bytecode::OpForLoop &op, CallFrame &frame
+) {
+  const auto control_slot = frame.frame_pointer + op.control_index;
+  const auto limit_slot = frame.frame_pointer + op.limit_index;
+
+  if (!stack[control_slot]->is_primitive() ||
+      !stack[control_slot]->as_primitive()->get().is_integer()) {
+    throw std::runtime_error("for-loop control variable must be an integer");
+  }
+  if (!stack[limit_slot]->is_primitive() ||
+      !stack[limit_slot]->as_primitive()->get().is_integer()) {
+    throw std::runtime_error("for-loop limit value must be an integer");
+  }
+
+  std::int64_t step = 1;
+  if (op.step_index) {
+    const auto step_slot = frame.frame_pointer + *op.step_index;
+    if (!stack[step_slot]->is_primitive() ||
+        !stack[step_slot]->as_primitive()->get().is_integer()) {
+      throw std::runtime_error("for-loop step value must be an integer");
+    }
+    step = stack[step_slot]->as_primitive()->get().as_integer().value();
+  }
+
+  const auto current =
+      stack[control_slot]->as_primitive()->get().as_integer().value();
+  const auto next = current + step;
+  stack[control_slot] =
+      store_value(runtime::Value{runtime::Primitive{static_cast<long>(next)}});
+
+  const auto limit =
+      stack[limit_slot]->as_primitive()->get().as_integer().value();
+
+  const bool keep_running = op.inclusive
+                                ? (step >= 0 ? next <= limit : next >= limit)
+                                : (step >= 0 ? next < limit : next > limit);
+
+  if (keep_running) {
+    frames.back().ip = op.body_offset;
+  }
+
+  debug_print(
+      "FOR_LOOP ctrl={} lim={} step={} next={} body={} take={}",
+      op.control_index,
+      op.limit_index,
+      step,
+      next,
+      op.body_offset,
+      keep_running
+  );
+}
+
+[[clang::noinline]]
 void BytecodeVM::execute_op_make_array(const bytecode::OpMakeArray &op) {
   std::vector<runtime::Ref> elements;
   elements.reserve(op.count);
@@ -434,15 +489,10 @@ void BytecodeVM::execute_op_get_index(const bytecode::OpGetIndex & /*op*/) {
 
 [[clang::noinline]]
 void BytecodeVM::execute_op_set_index(const bytecode::OpSetIndex & /*op*/) {
-  debug_print(
-      "SET_INDEX array={} index={} value={}",
-      stack[stack.size() - 3],
-      stack[stack.size() - 2],
-      stack.back()
-  );
   auto value = stack_pop();
   auto index = stack_pop();
   auto array = stack_pop();
+  debug_print("SET_INDEX array={} index={} value={}", array, index, value);
   if (auto vec_opt = array->as_mut_vector()) {
     if (index->is_primitive() && index->as_primitive()->get().is_integer()) {
       auto idx = index->as_primitive()->get().as_integer().value();

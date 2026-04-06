@@ -75,6 +75,7 @@ private:
   void execute_op_set_global(const bytecode::OpSetGlobal &op);
   void execute_op_get_local(const bytecode::OpGetLocal &op, CallFrame &frame);
   void execute_op_set_local(const bytecode::OpSetLocal &op, CallFrame &frame);
+  void execute_op_for_loop(const bytecode::OpForLoop &op, CallFrame &frame);
   void execute_op_make_array(const bytecode::OpMakeArray &op);
   void execute_op_get_index(const bytecode::OpGetIndex &op);
   void execute_op_set_index(const bytecode::OpSetIndex &op);
