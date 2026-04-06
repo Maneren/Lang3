@@ -56,6 +56,7 @@ private:
   void execute_op_return(const bytecode::OpReturn &op);
   void execute_op_constant(const bytecode::OpConstant &op);
   void execute_op_pop(const bytecode::OpPop &op);
+  void execute_op_duplicate(const bytecode::OpDuplicate &op);
   void execute_op_add(const bytecode::OpAdd &op);
   void execute_op_subtract(const bytecode::OpSubtract &op);
   void execute_op_multiply(const bytecode::OpMultiply &op);

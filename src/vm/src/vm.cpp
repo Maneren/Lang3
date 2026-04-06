@@ -173,6 +173,7 @@ void BytecodeVM::execute_loop(std::size_t target_frames) {
         [&](const bytecode::OpReturn &op) { execute_op_return(op); },
         [&](const bytecode::OpConstant &op) { execute_op_constant(op); },
         [&](const bytecode::OpPop &op) { execute_op_pop(op); },
+        [&](const bytecode::OpDuplicate &op) { execute_op_duplicate(op); },
         [&](const bytecode::OpAdd &op) { execute_op_add(op); },
         [&](const bytecode::OpSubtract &op) { execute_op_subtract(op); },
         [&](const bytecode::OpMultiply &op) { execute_op_multiply(op); },
@@ -236,6 +237,13 @@ void BytecodeVM::execute_op_pop(const bytecode::OpPop & /*op*/) {
   if (!stack.empty()) {
     debug_print("POP value={}", stack_pop());
   }
+}
+
+[[clang::noinline]]
+void BytecodeVM::execute_op_duplicate(const bytecode::OpDuplicate &op) {
+  const auto ref = stack[stack.size() - op.index - 1];
+  debug_print("DUPLICATE value={}", ref);
+  stack.emplace_back(ref);
 }
 
 [[clang::noinline]]

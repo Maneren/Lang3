@@ -825,8 +825,8 @@ void Compiler::compile_operator_assignment(
         if (assign.get_operator() != ast::AssignmentOperator::Assign) {
           compile_variable(idx.get_base());
           compile_expression(idx.get_index());
-          compile_variable(idx.get_base());
-          compile_expression(idx.get_index());
+          emit(OpDuplicate{1});
+          emit(OpDuplicate{});
           emit(OpGetIndex{});
 
           compile_expression(assign.get_expression());

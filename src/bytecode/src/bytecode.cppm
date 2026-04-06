@@ -14,6 +14,9 @@ struct OpConstant {
   std::size_t index;
 };
 struct OpPop {};
+struct OpDuplicate {
+  std::size_t index = 0;
+};
 
 struct OpAdd {};
 struct OpSubtract {};
@@ -90,6 +93,7 @@ using Instruction = std::variant<
     OpReturn,
     OpConstant,
     OpPop,
+    OpDuplicate,
     OpAdd,
     OpSubtract,
     OpMultiply,
@@ -169,6 +173,11 @@ export {
               },
               [&](const l3::bytecode::OpPop &) {
                 return std::format_to(out, "OP_POP\n");
+              },
+              [&](const l3::bytecode::OpDuplicate &op) {
+                return std::format_to(
+                    out, "{:<16} {:4d}\n", "OP_DUPLICATE", op.index
+                );
               },
               [&](const l3::bytecode::OpAdd &) {
                 return std::format_to(out, "OP_ADD\n");
