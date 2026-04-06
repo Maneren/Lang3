@@ -21,8 +21,7 @@ constexpr cli::Parser cli_parser() {
       .long_option("debug-ast-graph")
       .long_flag("debug-vm")
       .long_flag("debug-bytecode")
-      .long_flag("timings")
-      .long_flag("new-vm");
+      .long_flag("timings");
 }
 
 struct Debug {
@@ -33,7 +32,6 @@ struct Debug {
   bool vm = false;
   bool bytecode = false;
   bool timings = false;
-  bool new_vm = false;
 };
 
 using namespace l3;
@@ -94,7 +92,6 @@ int main(int argc, char *argv[]) {
       .vm = debug_flag || args->has_flag("debug-vm"),
       .bytecode = debug_flag || args->has_flag("debug-bytecode"),
       .timings = debug_flag || args->has_flag("timings"),
-      .new_vm = args->has_flag("new-vm")
   };
 
   std::istream *input = &std::cin;
@@ -156,9 +153,9 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  vm::BytecodeVM new_vm{debug.vm};
+  vm::BytecodeVM vm{debug.vm};
   const auto start_time = std::chrono::steady_clock::now();
-  new_vm.execute(program_bytecode);
+  vm.execute(program_bytecode);
 
   if (debug.timings) {
     auto end_time = std::chrono::steady_clock::now();
