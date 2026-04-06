@@ -89,6 +89,7 @@ private:
 
   runtime::Ref stack_pop();
   void stack_push(runtime::Value &&value);
+  void stack_push_new(runtime::NewValue &&value);
 
   template <typename... Args>
   void debug_print(std::format_string<Args...> fmt, Args &&...args);

@@ -10,9 +10,10 @@ namespace l3::compiler {
 
 using namespace l3::bytecode;
 
-Compiler::Compiler(bytecode::ProgramBytecode &program) : program(program) {}
+Compiler::Compiler(ProgramBytecode &program) : program(program) {}
 
 void Compiler::compile(const ast::Program &program) {
+  contexts.emplace_back();
   this->program.chunks.emplace_back();
   current_chunk_id = this->program.chunks.size() - 1;
   for (const auto &stmt : program.get_statements()) {
@@ -21,8 +22,7 @@ void Compiler::compile(const ast::Program &program) {
   if (const auto last = program.get_last_statement(); last) {
     throw std::runtime_error("Unexpected last statement in top-level scope");
   }
-  emit(OpConstant{make_constant({})});
-  emit(OpReturn{});
+  emit(OpReturn{false});
   deduplicate_constants();
 }
 
@@ -50,12 +50,12 @@ std::size_t Compiler::push_context() {
 }
 
 void Compiler::pop_context() {
-  auto ctx = std::move(contexts.back());
-  contexts.pop_back();
+  auto &ctx = contexts.back();
   current_chunk_id = ctx.chunk_id;
   locals = std::move(ctx.locals);
   scope_depth = ctx.scope_depth;
   current_upvalues = std::move(ctx.upvalues);
+  contexts.pop_back();
 }
 
 void Compiler::begin_scope() { scope_depth++; }
@@ -268,6 +268,7 @@ void Compiler::compile_block(const ast::Block &block) {
 }
 
 void Compiler::compile_expression(const ast::Expression &expr) {
+  contexts.back().is_in_expression = true;
   expr.visit(
       [this](const ast::Literal &literal) { compile_literal(literal); },
       [this](const ast::BinaryExpression &binary) {
@@ -291,6 +292,7 @@ void Compiler::compile_expression(const ast::Expression &expr) {
         compile_if_expression(if_expr);
       }
   );
+  contexts.back().is_in_expression = false;
 }
 
 void Compiler::compile_binary_expression(const ast::BinaryExpression &binary) {
@@ -417,10 +419,9 @@ void Compiler::compile_anonymous_function(const ast::AnonymousFunction &func) {
   }
 
   compile_block(func.get_body().get_block());
-  emit(OpConstant{make_constant({})});
-  emit(OpReturn{});
+  emit(OpReturn{false});
 
-  std::vector<UpvalueInfo> upvalue_infos;
+  std::vector<Upvalue> upvalue_infos;
   upvalue_infos.reserve(current_upvalues.size());
   for (const auto &uv : current_upvalues) {
     upvalue_infos.push_back({.is_local = uv.is_local, .index = uv.index});
@@ -450,7 +451,7 @@ void Compiler::compile_function_call(const ast::FunctionCall &call) {
   for (const auto &arg : call.get_arguments()) {
     compile_expression(arg);
   }
-  emit(OpCall{call.get_arguments().size()});
+  emit(OpCall{call.get_arguments().size(), true});
 }
 
 void Compiler::compile_if_expression(const ast::IfExpression &if_expr) {
@@ -562,8 +563,7 @@ void Compiler::compile_declaration(const ast::Declaration &decl) {
       emit(OpConstant{make_constant({})});
     }
 
-    const auto &name = names.front();
-    add_local(name);
+    add_local(names.front());
     return;
   }
   if (!decl.get_expression()) {
@@ -581,8 +581,7 @@ void Compiler::compile_declaration(const ast::Declaration &decl) {
       std::to_string(locals.size())
   };
 
-  std::size_t hidden_name_index = -1UZ;
-  hidden_name_index = add_local(hidden_name);
+  std::size_t hidden_name_index = add_local(hidden_name);
 
   for (std::size_t i = 0; i < names.size(); ++i) {
     emit(OpGetLocal{hidden_name_index});
@@ -609,7 +608,7 @@ void Compiler::compile_for_loop(const ast::ForLoop &loop) {
 
   emit(emit_get_variable(ast::Identifier{"len"}));
   emit(OpGetLocal{coll_idx});
-  emit(OpCall{1});
+  emit(OpCall{1, true});
   const auto len_idx = add_local("_for_len");
 
   emit(OpConstant{make_constant(runtime::Value{runtime::Primitive{-1L}})});
@@ -666,8 +665,7 @@ void Compiler::compile_function_call_statement(const ast::FunctionCall &call) {
     compile_expression(arg);
   }
 
-  emit(OpCall{call.get_arguments().size()});
-  emit(OpPop{});
+  emit(OpCall{call.get_arguments().size(), false});
 }
 
 void Compiler::compile_if_statement(const ast::IfStatement &if_stmt) {
@@ -739,12 +737,9 @@ void Compiler::compile_name_assignment(const ast::NameAssignment &assign) {
 
 void Compiler::compile_named_function(const ast::NamedFunction &func) {
   const auto &name = func.get_name();
-  bool is_local = true;
 
-  if (is_local) {
-    emit(OpConstant{make_constant({})});
-    add_local(name);
-  }
+  emit(OpConstant{make_constant({})});
+  add_local(name);
 
   const auto new_chunk_id = push_context();
 
@@ -754,14 +749,9 @@ void Compiler::compile_named_function(const ast::NamedFunction &func) {
   }
 
   compile_block(func.get_body().get_block());
-  emit(OpConstant{make_constant({})});
-  emit(OpReturn{});
+  emit(OpReturn{false});
 
-  std::vector<UpvalueInfo> upvalue_infos;
-  upvalue_infos.reserve(current_upvalues.size());
-  for (const auto &uv : current_upvalues) {
-    upvalue_infos.emplace_back(uv.is_local, uv.index);
-  }
+  auto upvalue_infos = std::move(current_upvalues);
 
   pop_context();
 
@@ -781,9 +771,7 @@ void Compiler::compile_named_function(const ast::NamedFunction &func) {
     emit(OpClosure{.function_index = id, .upvalues = std::move(upvalue_infos)});
   }
 
-  if (is_local) {
-    emit(OpSetLocal{static_cast<std::size_t>(locals.size() - 1)});
-  }
+  emit(OpSetLocal{locals.size() - 1});
 }
 
 void Compiler::compile_operator_assignment(
@@ -826,7 +814,7 @@ void Compiler::compile_operator_assignment(
           compile_variable(idx.get_base());
           compile_expression(idx.get_index());
           emit(OpDuplicate{1});
-          emit(OpDuplicate{});
+          emit(OpDuplicate{1});
           emit(OpGetIndex{});
 
           compile_expression(assign.get_expression());
@@ -977,12 +965,12 @@ void Compiler::compile_last_statement(const ast::LastStatement &stmt) {
 }
 
 void Compiler::compile_return_statement(const ast::ReturnStatement &ret) {
-  if (ret.get_expression()) {
-    compile_expression(*ret.get_expression());
+  if (const auto &expr = ret.get_expression(); expr) {
+    compile_expression(*expr);
+    emit(OpReturn{true});
   } else {
-    emit(OpConstant{make_constant({})});
+    emit(OpReturn{false});
   }
-  emit(OpReturn{});
 }
 
 void Compiler::compile_break_statement(const ast::BreakStatement & /* brk */) {

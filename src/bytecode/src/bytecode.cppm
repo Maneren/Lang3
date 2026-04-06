@@ -9,7 +9,9 @@ export namespace l3::bytecode {
 // ----------------------------------------------------------------------------
 // Opcodes
 // ----------------------------------------------------------------------------
-struct OpReturn {};
+struct OpReturn {
+  bool has_value = true;
+};
 struct OpConstant {
   std::size_t index;
 };
@@ -55,13 +57,13 @@ struct OpForLoop {
   std::optional<std::size_t> step_index;
 };
 
-struct UpvalueInfo {
+struct Upvalue {
   bool is_local;
   std::size_t index;
 };
 struct OpClosure {
   std::size_t function_index;
-  std::vector<UpvalueInfo> upvalues;
+  std::vector<Upvalue> upvalues;
 };
 struct OpGetUpvalue {
   std::size_t index;
@@ -79,6 +81,7 @@ struct OpTest {
 };
 struct OpCall {
   std::size_t arg_count;
+  bool keep_return_value;
 };
 struct OpMakeArray {
   std::size_t count;
@@ -159,8 +162,10 @@ export {
 
           out = match::match(
               instruction,
-              [&](const l3::bytecode::OpReturn &) {
-                return std::format_to(out, "OP_RETURN\n");
+              [&](const l3::bytecode::OpReturn &op) {
+                return std::format_to(
+                    out, "{:<16} {:5}\n", "OP_RETURN", op.has_value
+                );
               },
               [&](const l3::bytecode::OpConstant &op) {
                 return std::format_to(
@@ -275,7 +280,11 @@ export {
               },
               [&](const l3::bytecode::OpCall &op) {
                 return std::format_to(
-                    out, "{:<16} {:4d}\n", "OP_CALL", op.arg_count
+                    out,
+                    "{:<16} {:4d} {:5}\n",
+                    "OP_CALL",
+                    op.arg_count,
+                    op.keep_return_value
                 );
               },
               [&](const l3::bytecode::OpMakeArray &op) {

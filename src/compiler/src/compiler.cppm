@@ -6,18 +6,20 @@ import l3.bytecode;
 import l3.runtime;
 import utils;
 
+using namespace l3::bytecode;
+
 export namespace l3::compiler {
 
 class Compiler {
 public:
-  Compiler(bytecode::ProgramBytecode &program);
+  Compiler(ProgramBytecode &program);
 
   void compile(const ast::Program &program);
 
 private:
-  bytecode::ProgramBytecode &program;
+  ProgramBytecode &program;
   std::size_t current_chunk_id = 0;
-  bytecode::Chunk &current_chunk();
+  Chunk &current_chunk();
   std::size_t last_instruction_offset();
   std::size_t current_instruction_offset();
 
@@ -28,10 +30,6 @@ private:
   std::vector<Local> locals;
   int scope_depth = 0;
 
-  struct Upvalue {
-    bool is_local;
-    std::size_t index;
-  };
   std::vector<Upvalue> current_upvalues;
 
   struct Context {
@@ -39,6 +37,7 @@ private:
     std::vector<Local> locals;
     int scope_depth;
     std::vector<Upvalue> upvalues;
+    bool is_in_expression = false;
   };
   std::vector<Context> contexts;
 
@@ -48,8 +47,8 @@ private:
     std::size_t index;
   };
   ResolvedVariable resolve_variable(const ast::Identifier &name);
-  bytecode::Instruction emit_get_variable(const ast::Identifier &name);
-  bytecode::Instruction emit_set_variable(const ast::Identifier &name);
+  Instruction emit_get_variable(const ast::Identifier &name);
+  Instruction emit_set_variable(const ast::Identifier &name);
 
   std::size_t add_local(const ast::Identifier &name);
   std::vector<std::vector<std::size_t>> break_jumps_stack;
@@ -70,13 +69,13 @@ private:
   std::optional<std::size_t>
   resolve_upvalue(const ast::Identifier &name, std::size_t context_index);
 
-  void emit(const bytecode::Instruction &instruction, std::size_t line = 0);
+  void emit(const Instruction &instruction, std::size_t line = 0);
   std::size_t make_constant(runtime::Value &&value);
   void deduplicate_constants();
   void emit_loop(std::size_t loop_start);
   void patch_jump(std::size_t jump_offset, std::size_t target);
   void patch_jump_here(std::size_t jump_offset);
-  std::size_t emit_jump(const bytecode::Instruction &instruction);
+  std::size_t emit_jump(const Instruction &instruction);
 
   void compile_block(const ast::Block &block);
   void compile_expression(const ast::Expression &expr);

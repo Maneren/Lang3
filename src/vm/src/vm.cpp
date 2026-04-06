@@ -40,7 +40,11 @@ runtime::Ref BytecodeVM::stack_pop() {
 }
 
 void BytecodeVM::stack_push(runtime::Value &&value) {
-  stack.emplace_back(gc_storage.emplace(std::move(value)));
+  stack.emplace_back(store_value(std::move(value)));
+}
+
+void BytecodeVM::stack_push_new(runtime::NewValue &&value) {
+  stack.emplace_back(store_new_value(std::move(value)));
 }
 
 std::optional<runtime::Ref>
@@ -152,6 +156,11 @@ void BytecodeVM::execute(bytecode::ProgramBytecode &program) {
   frames.emplace_back();
   execute_loop(0);
   current_program = nullptr;
+
+  if (stack.size() > 0) {
+    std::println(std::cerr, "{}", stack);
+    throw std::runtime_error("stack not empty");
+  }
 }
 
 [[clang::noinline]]
@@ -216,13 +225,22 @@ void BytecodeVM::execute_loop(std::size_t target_frames) {
 }
 
 [[clang::noinline]]
-void BytecodeVM::execute_op_return(const bytecode::OpReturn & /*op*/) {
-  auto result = stack_pop();
-  debug_print("RETURN value={}", result);
+void BytecodeVM::execute_op_return(const bytecode::OpReturn &op) {
+  std::optional<runtime::Ref> result;
+  if (op.has_value) {
+    result = stack_pop();
+    debug_print("RETURN value={}", result);
+  } else {
+    debug_print("RETURN");
+  }
+
   auto fp = frames.back().frame_pointer;
   frames.pop_back();
   stack.erase(stack.begin() + static_cast<std::ptrdiff_t>(fp), stack.end());
-  stack.push_back(result);
+
+  if (result) {
+    stack.push_back(*result);
+  }
 }
 
 [[clang::noinline]]
@@ -472,27 +490,8 @@ void BytecodeVM::execute_op_get_index(const bytecode::OpGetIndex & /*op*/) {
   );
   auto index = stack_pop();
   auto array = stack_pop();
-  if (auto vec_opt = array->as_vector()) {
-    if (index->is_primitive() && index->as_primitive()->get().is_integer()) {
-      auto idx = index->as_primitive()->get().as_integer().value();
-      if (idx < 0 || idx >= static_cast<std::int64_t>(vec_opt->get().size())) {
-        throw std::runtime_error("Array index out of bounds");
-      }
-      stack.push_back(vec_opt->get()[static_cast<std::size_t>(idx)]);
-      return;
-    }
-  } else if (auto str_opt = array->as_string()) {
-    if (index->is_primitive() && index->as_primitive()->get().is_integer()) {
-      auto idx = index->as_primitive()->get().as_integer().value();
-      if (idx < 0 || idx >= static_cast<std::int64_t>(str_opt->get().size())) {
-        throw std::runtime_error("String index out of bounds");
-      }
-      std::string s(1, str_opt->get()[static_cast<std::size_t>(idx)]);
-      stack_push(std::move(s));
-      return;
-    }
-  }
-  throw std::runtime_error("Invalid container or index for OpGetIndex");
+
+  stack_push_new(array->index(*index));
 }
 
 [[clang::noinline]]
@@ -501,75 +500,65 @@ void BytecodeVM::execute_op_set_index(const bytecode::OpSetIndex & /*op*/) {
   auto index = stack_pop();
   auto array = stack_pop();
   debug_print("SET_INDEX array={} index={} value={}", array, index, value);
-  if (auto vec_opt = array->as_mut_vector()) {
-    if (index->is_primitive() && index->as_primitive()->get().is_integer()) {
-      auto idx = index->as_primitive()->get().as_integer().value();
-      if (idx < 0 || idx >= static_cast<std::int64_t>(vec_opt->get().size())) {
-        throw std::runtime_error("Array index out of bounds");
-      }
-      vec_opt->get()[static_cast<std::size_t>(idx)] = value;
-      stack.push_back(value);
-      return;
-    }
-  }
-  throw std::runtime_error("Invalid container or index for OpSetIndex");
+
+  array->index_mut(*index) = value;
 }
 
 [[clang::noinline]]
 void BytecodeVM::execute_op_call(const bytecode::OpCall &op) {
-  std::vector<runtime::Ref> args;
-  args.reserve(op.arg_count);
-  for (std::size_t i = 0; i < op.arg_count; ++i) {
-    args.push_back(stack_pop());
-  }
-  std::ranges::reverse(args);
+  std::vector<runtime::Ref> args(stack.end() - op.arg_count, stack.end());
+  stack.erase(stack.end() - op.arg_count, stack.end());
 
   auto func_ref = stack_pop();
-  debug_print("CALL func={} arg_count={}", func_ref, op.arg_count);
+  debug_print("CALL func={} args={}", func_ref, args);
 
-  if (auto func_opt = func_ref->as_function()) {
-    const auto &func_ptr = func_opt->get();
+  const auto func_opt = func_ref->as_function();
 
-    if (auto builtin_opt = func_ptr->as_builtin_function()) {
-      auto result = builtin_opt->get().invoke(args);
-      stack.push_back(result);
-    } else if (auto bc_opt = func_ptr->as_bytecode_function()) {
-      const auto &bc_func = bc_opt->get();
-      auto total_args = bc_func.curried_args.size() + args.size();
-
-      if (total_args < bc_func.arity) {
-        debug_print("CALL curry: have={} need={}", total_args, bc_func.arity);
-        auto new_func = bc_func;
-        new_func.curried_args.insert(
-            new_func.curried_args.end(), args.begin(), args.end()
-        );
-        stack_push(runtime::Function{std::move(new_func)});
-      } else if (total_args == bc_func.arity) {
-        std::size_t fp = stack.size();
-        for (const auto &arg : bc_func.curried_args) {
-          stack.push_back(arg);
-        }
-        for (const auto &arg : args) {
-          stack.push_back(arg);
-        }
-        frames.push_back(
-            {.chunk_id = bc_func.id,
-             .ip = 0,
-             .frame_pointer = fp,
-             .closure = func_ref}
-        );
-      } else {
-        throw std::runtime_error(
-            "Arity mismatch: " + bc_func.name + " expected " +
-            std::to_string(bc_func.arity) + " got " + std::to_string(total_args)
-        );
-      }
-    } else {
-      std::unreachable();
-    }
-  } else {
+  if (!func_opt) {
     throw std::runtime_error("Attempted to call a non-function value");
   }
+
+  const auto &func_ptr = func_opt->get();
+
+  func_ptr->visit(
+      [&](const runtime::BuiltinFunction &func) {
+        auto result = func.invoke(args);
+        if (op.keep_return_value) {
+          stack.push_back(std::move(result));
+        }
+      },
+      [&](const runtime::BytecodeFunctionId &bc_func) {
+        auto total_args = bc_func.curried_args.size() + args.size();
+
+        if (total_args < bc_func.arity) {
+          debug_print("CALL curry: have={} need={}", total_args, bc_func.arity);
+          auto new_func = bc_func;
+          new_func.curried_args.append_range(args);
+          stack_push(runtime::Function{std::move(new_func)});
+        } else if (total_args == bc_func.arity) {
+          std::size_t fp = stack.size();
+          for (const auto &arg : bc_func.curried_args) {
+            stack.push_back(arg);
+          }
+          for (const auto &arg : args) {
+            stack.push_back(arg);
+          }
+          // execute the function
+          frames.push_back(
+              {.chunk_id = bc_func.id,
+               .ip = 0,
+               .frame_pointer = fp,
+               .closure = func_ref}
+          );
+        } else {
+          throw std::runtime_error(
+              "Arity mismatch: " + bc_func.name + " expected " +
+              std::to_string(bc_func.arity) + " got " +
+              std::to_string(total_args)
+          );
+        }
+      }
+  );
 }
 
 [[clang::noinline]]
