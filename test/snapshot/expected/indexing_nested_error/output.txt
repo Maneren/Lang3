@@ -1,0 +1,2 @@
+4
+RuntimeError: cannot index a int value

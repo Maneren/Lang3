@@ -10,3 +10,4 @@ add_custom_target(tests
 add_custom_target(all_tests)
 
 add_subdirectory(unit)
+add_subdirectory(snapshot)

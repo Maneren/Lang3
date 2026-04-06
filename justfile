@@ -30,6 +30,10 @@ run config="Debug" +args="": (build config executable)
 
 test config="Debug": (build config "tests")
 
+snapshot-test config="Debug": (build config "snapshot_validate")
+
+snapshot-update config="Debug": (build config "snapshot_update")
+
 clean:
     rm -rf {{ builddir }}
 

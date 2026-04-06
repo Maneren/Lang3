@@ -1,0 +1,20 @@
+== Chunk 0 ==
+0000 | OP_CONSTANT         0 '10'
+0001 | OP_CONSTANT         1 '20'
+0002 | OP_CONSTANT         2 '30'
+0003 | OP_MAKE_ARRAY       3
+0004 | OP_CONSTANT         3 '"1"'
+0005 | OP_GET_GLOBAL       4 '"println"'
+0006 | OP_GET_LOCAL        0
+0007 | OP_CONSTANT         5 '0'
+0008 | OP_GET_INDEX
+0009 | OP_CALL             1 false
+0010 | OP_GET_GLOBAL       4 '"println"'
+0011 | OP_GET_LOCAL        0
+0012 | OP_GET_LOCAL        1
+0013 | OP_GET_INDEX
+0014 | OP_CALL             1 false
+0015 | OP_GET_GLOBAL       4 '"println"'
+0016 | OP_CONSTANT         6 '"unreachable"'
+0017 | OP_CALL             1 false
+0018 | OP_RETURN        false
