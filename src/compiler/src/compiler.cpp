@@ -22,7 +22,8 @@ void Compiler::compile(const ast::Program &program) {
   if (const auto last = program.get_last_statement(); last) {
     throw std::runtime_error("Unexpected last statement in top-level scope");
   }
-  emit(OpReturn{false});
+  emit(OpConstant{make_constant({})});
+  emit(OpReturn{});
   deduplicate_constants();
 }
 
@@ -419,7 +420,8 @@ void Compiler::compile_anonymous_function(const ast::AnonymousFunction &func) {
   compile_block(func.get_body().get_block());
 
   if (!std::holds_alternative<OpReturn>(current_chunk().code.back())) {
-    emit(OpReturn{false});
+    emit(OpConstant{make_constant({})});
+    emit(OpReturn{});
   }
 
   std::vector<Upvalue> used_upvalues;
@@ -746,7 +748,8 @@ void Compiler::compile_named_function(const ast::NamedFunction &func) {
   compile_block(func.get_body().get_block());
 
   if (!std::holds_alternative<OpReturn>(current_chunk().code.back())) {
-    emit(OpReturn{false});
+    emit(OpConstant{make_constant({})});
+    emit(OpReturn{});
   }
 
   auto used_upvalues = std::move(current_upvalues);
@@ -961,10 +964,10 @@ void Compiler::compile_last_statement(const ast::LastStatement &stmt) {
 void Compiler::compile_return_statement(const ast::ReturnStatement &ret) {
   if (const auto &expr = ret.get_expression(); expr) {
     compile_expression(*expr);
-    emit(OpReturn{true});
   } else {
-    emit(OpReturn{false});
+    emit(OpConstant{make_constant({})});
   }
+  emit(OpReturn{});
 }
 
 void Compiler::compile_break_statement(const ast::BreakStatement & /* brk */) {

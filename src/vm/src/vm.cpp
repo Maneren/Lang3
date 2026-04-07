@@ -144,9 +144,9 @@ BytecodeVM::evaluate(runtime::Ref function, runtime::L3Args arguments) {
           if (total_args < bc_func.arity) {
             auto new_func = bc_func;
             new_func.curried_args.append_range(arguments);
-            stack.push_back(store_value(
+            return store_value(
                 runtime::Value{runtime::Function{std::move(new_func)}}
-            ));
+            );
           }
           if (total_args == bc_func.arity) {
             auto previous_frames = frames.size();
@@ -200,7 +200,7 @@ void BytecodeVM::execute(bytecode::ProgramBytecode &program) {
   execute_loop(0);
   current_program = nullptr;
 
-  if (stack.size() > 0) {
+  if (stack.size() != 1 || stack.back()->compare(runtime::Value{}) != 0) {
     std::println(std::cerr, "{}", stack);
     throw std::runtime_error("stack not empty");
   }
@@ -268,22 +268,16 @@ void BytecodeVM::execute_loop(std::size_t target_frames) {
 }
 
 [[clang::noinline]]
-void BytecodeVM::execute_op_return(const bytecode::OpReturn &op) {
-  std::optional<runtime::Ref> result;
-  if (op.has_value) {
-    result = stack_pop();
-    debug_print("RETURN value={}", result);
-  } else {
-    debug_print("RETURN");
-  }
+void BytecodeVM::execute_op_return(const bytecode::OpReturn &) {
+  const auto result = stack_pop();
+
+  debug_print("RETURN value={}", result);
 
   auto fp = frames.back().frame_pointer;
   frames.pop_back();
   stack.erase(stack.begin() + static_cast<std::ptrdiff_t>(fp), stack.end());
 
-  if (result) {
-    stack.push_back(*result);
-  }
+  stack.push_back(result);
 }
 
 [[clang::noinline]]
@@ -573,54 +567,14 @@ void BytecodeVM::execute_op_call(const bytecode::OpCall &op) {
   auto func_ref = stack_pop();
   debug_print("CALL func={} args={}", func_ref, args);
 
-  const auto func_opt = func_ref->as_function();
-
-  if (!func_opt) {
+  if (!func_ref->is_function()) {
     throw std::runtime_error("Attempted to call a non-function value");
   }
 
-  const auto &func_ptr = func_opt->get();
-
-  func_ptr->visit(
-      [&](const runtime::BuiltinFunction &func) {
-        auto result = func.invoke(args);
-        if (op.keep_return_value) {
-          stack.push_back(result);
-        }
-      },
-      [&](const runtime::BytecodeFunctionId &bc_func) {
-        auto total_args = bc_func.curried_args.size() + args.size();
-
-        if (total_args > bc_func.arity) {
-          throw std::runtime_error(
-              "Arity mismatch: " + bc_func.name + " expected " +
-              std::to_string(bc_func.arity) + " got " +
-              std::to_string(total_args)
-          );
-        }
-
-        if (total_args < bc_func.arity) {
-          debug_print("CALL curry: have={} need={}", total_args, bc_func.arity);
-          auto new_func = bc_func;
-          new_func.curried_args.append_range(args);
-          stack_push(runtime::Function{std::move(new_func)});
-          return;
-        }
-
-        std::size_t fp = stack.size();
-
-        stack.append_range(bc_func.curried_args);
-        stack.append_range(args);
-
-        // execute the function
-        frames.push_back(
-            {.chunk_id = bc_func.id,
-             .ip = 0,
-             .frame_pointer = fp,
-             .closure = func_ref}
-        );
-      }
-  );
+  const auto result = evaluate(func_ref, std::move(args));
+  if (op.keep_return_value) {
+    stack.push_back(result);
+  }
 }
 
 namespace {

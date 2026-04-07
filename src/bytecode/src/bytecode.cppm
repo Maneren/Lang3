@@ -9,9 +9,7 @@ export namespace l3::bytecode {
 // ----------------------------------------------------------------------------
 // Opcodes
 // ----------------------------------------------------------------------------
-struct OpReturn {
-  bool has_value = true;
-};
+struct OpReturn {};
 struct OpConstant {
   std::size_t index = -1UZ;
 };
@@ -166,10 +164,8 @@ export {
 
           out = match::match(
               instruction,
-              [&](const l3::bytecode::OpReturn &op) {
-                return std::format_to(
-                    out, "{:<10} {:5}\n", "RETURN", op.has_value
-                );
+              [&](const l3::bytecode::OpReturn &) {
+                return std::format_to(out, "RETURN\n");
               },
               [&](const l3::bytecode::OpConstant &op) {
                 return std::format_to(
