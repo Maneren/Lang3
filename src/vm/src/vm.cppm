@@ -51,6 +51,21 @@ private:
 
   void assign_slot(runtime::Ref &slot);
 
+  [[nodiscard]] CallFrame &current_frame();
+  [[nodiscard]] const CallFrame &current_frame() const;
+  [[nodiscard]] std::size_t current_frame_pointer() const;
+  [[nodiscard]] std::size_t frame_absolute_slot(std::size_t offset) const;
+
+  [[nodiscard]] runtime::GCValue &constant_at(std::size_t index);
+  [[nodiscard]] const runtime::GCValue &constant_at(std::size_t index) const;
+
+  [[nodiscard]] runtime::Ref &stack_at(std::size_t index);
+  [[nodiscard]] const runtime::Ref &stack_at(std::size_t index) const;
+  [[nodiscard]] runtime::Ref &stack_local(std::size_t offset);
+  [[nodiscard]] const runtime::Ref &stack_local(std::size_t offset) const;
+  [[nodiscard]] runtime::Ref &stack_top(std::size_t offset = 0);
+  [[nodiscard]] const runtime::Ref &stack_top(std::size_t offset = 0) const;
+
   void execute_loop(std::size_t target_frames);
 
   void execute_op_return(const bytecode::OpReturn &op);
