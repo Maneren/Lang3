@@ -31,9 +31,6 @@ void GCValue::mark() {
       },
       [](Value::function_type &func) {
         if (auto bc_opt = func->as_mut_bytecode_function()) {
-          for (auto &uv : bc_opt->get().upvalues) {
-            uv.get_gc_mut().mark();
-          }
           for (auto &ca : bc_opt->get().curried_args) {
             ca.get_gc_mut().mark();
           }

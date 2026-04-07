@@ -60,7 +60,7 @@ struct OpForLoop {
 };
 
 struct Upvalue {
-  bool is_local;
+  bool is_local = true;
   std::size_t index = -1UZ;
 };
 struct OpClosure {

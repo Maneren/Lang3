@@ -424,10 +424,14 @@ void Compiler::compile_anonymous_function(const ast::AnonymousFunction &func) {
   compile_block(func.get_body().get_block());
   emit(OpReturn{false});
 
-  std::vector<Upvalue> upvalue_infos;
-  upvalue_infos.reserve(current_upvalues.size());
+  if (!std::holds_alternative<OpReturn>(current_chunk().code.back())) {
+    emit(OpReturn{false});
+  }
+
+  std::vector<Upvalue> used_upvalues;
+  used_upvalues.reserve(current_upvalues.size());
   for (const auto &uv : current_upvalues) {
-    upvalue_infos.push_back({.is_local = uv.is_local, .index = uv.index});
+    used_upvalues.push_back({.is_local = uv.is_local, .index = uv.index});
   }
 
   pop_context();
@@ -442,10 +446,10 @@ void Compiler::compile_anonymous_function(const ast::AnonymousFunction &func) {
       }}
   );
 
-  if (upvalue_infos.empty()) {
+  if (used_upvalues.empty()) {
     emit(OpConstant{id});
   } else {
-    emit(OpClosure{.function_index = id, .upvalues = std::move(upvalue_infos)});
+    emit(OpClosure{.function_index = id, .upvalues = std::move(used_upvalues)});
   }
 }
 
@@ -754,24 +758,28 @@ void Compiler::compile_named_function(const ast::NamedFunction &func) {
   compile_block(func.get_body().get_block());
   emit(OpReturn{false});
 
-  auto upvalue_infos = std::move(current_upvalues);
+  if (!std::holds_alternative<OpReturn>(current_chunk().code.back())) {
+    emit(OpReturn{false});
+  }
+
+  auto used_upvalues = std::move(current_upvalues);
 
   pop_context();
 
-  std::size_t id = make_constant(
+  const auto id = make_constant(
       runtime::Function{runtime::BytecodeFunctionId{
           .id = new_chunk_id,
           .name = name.get_name(),
           .arity = args.size(),
-          .upvalues = std::vector<runtime::Ref>(),
-          .curried_args = std::vector<runtime::Ref>()
+          .upvalues = {},
+          .curried_args = {}
       }}
   );
 
-  if (upvalue_infos.empty()) {
+  if (used_upvalues.empty()) {
     emit(OpConstant{id});
   } else {
-    emit(OpClosure{.function_index = id, .upvalues = std::move(upvalue_infos)});
+    emit(OpClosure{.function_index = id, .upvalues = std::move(used_upvalues)});
   }
 
   emit(OpSetLocal{locals.size() - 1});

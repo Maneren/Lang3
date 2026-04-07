@@ -33,7 +33,7 @@ struct BytecodeFunctionId {
   std::size_t id;
   std::string name;
   std::size_t arity;
-  std::vector<Ref> upvalues;
+  std::vector<std::size_t> upvalues;
   std::vector<Ref> curried_args;
 };
 

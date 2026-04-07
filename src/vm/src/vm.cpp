@@ -63,10 +63,7 @@ void BytecodeVM::define_global(std::string_view name, runtime::Ref value) {
   global_symbols.emplace(name, value);
 }
 
-void BytecodeVM::assign_slot(runtime::Ref &slot) {
-  slot = stack.back();
-  stack.pop_back();
-}
+void BytecodeVM::assign_slot(runtime::Ref &slot) { slot = stack_pop(); }
 
 template <typename... Args>
 void BytecodeVM::debug_print(std::format_string<Args...> fmt, Args &&...args) {
@@ -514,8 +511,9 @@ void BytecodeVM::execute_op_set_index(const bytecode::OpSetIndex & /*op*/) {
 
 [[clang::noinline]]
 void BytecodeVM::execute_op_call(const bytecode::OpCall &op) {
-  std::vector<runtime::Ref> args(stack.end() - op.arg_count, stack.end());
-  stack.erase(stack.end() - op.arg_count, stack.end());
+  auto args_base_ptr = stack.end() - static_cast<std::ptrdiff_t>(op.arg_count);
+  std::vector<runtime::Ref> args(args_base_ptr, stack.end());
+  stack.erase(args_base_ptr, stack.end());
 
   auto func_ref = stack_pop();
   debug_print("CALL func={} args={}", func_ref, args);
@@ -532,82 +530,87 @@ void BytecodeVM::execute_op_call(const bytecode::OpCall &op) {
       [&](const runtime::BuiltinFunction &func) {
         auto result = func.invoke(args);
         if (op.keep_return_value) {
-          stack.push_back(std::move(result));
+          stack.push_back(result);
         }
       },
       [&](const runtime::BytecodeFunctionId &bc_func) {
         auto total_args = bc_func.curried_args.size() + args.size();
 
-        if (total_args < bc_func.arity) {
-          debug_print("CALL curry: have={} need={}", total_args, bc_func.arity);
-          auto new_func = bc_func;
-          new_func.curried_args.append_range(args);
-          stack_push(runtime::Function{std::move(new_func)});
-        } else if (total_args == bc_func.arity) {
-          std::size_t fp = stack.size();
-          for (const auto &arg : bc_func.curried_args) {
-            stack.push_back(arg);
-          }
-          for (const auto &arg : args) {
-            stack.push_back(arg);
-          }
-          // execute the function
-          frames.push_back(
-              {.chunk_id = bc_func.id,
-               .ip = 0,
-               .frame_pointer = fp,
-               .closure = func_ref}
-          );
-        } else {
+        if (total_args > bc_func.arity) {
           throw std::runtime_error(
               "Arity mismatch: " + bc_func.name + " expected " +
               std::to_string(bc_func.arity) + " got " +
               std::to_string(total_args)
           );
         }
+
+        if (total_args < bc_func.arity) {
+          debug_print("CALL curry: have={} need={}", total_args, bc_func.arity);
+          auto new_func = bc_func;
+          new_func.curried_args.append_range(args);
+          stack_push(runtime::Function{std::move(new_func)});
+          return;
+        }
+
+        std::size_t fp = stack.size();
+
+        stack.append_range(bc_func.curried_args);
+        stack.append_range(args);
+
+        // execute the function
+        frames.push_back(
+            {.chunk_id = bc_func.id,
+             .ip = 0,
+             .frame_pointer = fp,
+             .closure = func_ref}
+        );
       }
   );
 }
+
+namespace {
+runtime::BytecodeFunctionId &get_mut_bytecode_function(runtime::Value &value) {
+  return value.as_mut_function()->get()->as_mut_bytecode_function()->get();
+}
+
+const runtime::BytecodeFunctionId &
+get_bytecode_function(const runtime::Value &value) {
+  return value.as_function()->get()->as_bytecode_function()->get();
+}
+} // namespace
 
 [[clang::noinline]]
 void BytecodeVM::execute_op_closure(
     const bytecode::OpClosure &op, CallFrame &frame
 ) {
-  const auto &chunk_val = current_program->constants[op.function_index];
-  if (auto func_opt = chunk_val.get_value().as_function()) {
-    if (auto bc_opt = func_opt->get()->as_bytecode_function()) {
-      auto func_id = bc_opt->get();
-      for (const auto &uv_info : op.upvalues) {
-        if (uv_info.is_local) {
-          func_id.upvalues.push_back(
-              stack[frame.frame_pointer + uv_info.index]
-          );
-        } else {
-          func_id.upvalues.push_back(frame.closure->get()
-                                         .as_mut_function()
-                                         ->get()
-                                         ->as_mut_bytecode_function()
-                                         ->get()
-                                         .upvalues[uv_info.index]);
-        }
-      }
-      stack_push(runtime::Function{std::move(func_id)});
-      debug_print("CLOSURE function={}", stack.back());
+  auto function = get_mut_bytecode_function(
+      current_program->constants[op.function_index].get_value_mut()
+  );
+
+  auto &upvalues = function.upvalues;
+
+  for (const auto &[local, index] : op.upvalues) {
+    if (local) {
+      upvalues.push_back(frame.frame_pointer + index);
+    } else {
+      const auto &current_upvalues =
+          get_bytecode_function(**frame.closure).upvalues;
+      upvalues.push_back(current_upvalues[index]);
     }
   }
+  stack_push(runtime::Function{std::move(function)});
+  debug_print("CLOSURE function={}", stack.back());
 }
 
 [[clang::noinline]]
 void BytecodeVM::execute_op_get_upvalue(
     const bytecode::OpGetUpvalue &op, CallFrame &frame
 ) {
-  auto val = frame.closure->get()
-                 .as_mut_function()
-                 ->get()
-                 ->as_mut_bytecode_function()
-                 ->get()
-                 .upvalues[op.index];
-  debug_print("GET_UPVALUE index={} value={}", op.index, val);
+  const auto &upvalues = get_bytecode_function(**frame.closure).upvalues;
+  debug_print("upvalues: {}", upvalues);
+  const auto ptr = upvalues[op.index];
+  const auto val = stack[ptr];
+  debug_print("GET_UPVALUE index={} ptr={} value={}", op.index, ptr, val);
   stack.push_back(val);
 }
 
@@ -615,14 +618,9 @@ void BytecodeVM::execute_op_get_upvalue(
 void BytecodeVM::execute_op_set_upvalue(
     const bytecode::OpSetUpvalue &op, CallFrame &frame
 ) {
-  auto val = stack.back();
-  debug_print("SET_UPVALUE index={} value={}", op.index, val);
-  frame.closure->get()
-      .as_mut_function()
-      ->get()
-      ->as_mut_bytecode_function()
-      ->get()
-      .upvalues[op.index] = val;
+  debug_print("SET_UPVALUE index={}", op.index, stack.back());
+  get_mut_bytecode_function(**frame.closure).upvalues[op.index] =
+      stack.size() - 1;
 }
 
 } // namespace l3::vm
