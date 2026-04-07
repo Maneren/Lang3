@@ -85,7 +85,7 @@ struct OpJumpIf {
 };
 struct OpCall {
   std::size_t arg_count = -1UZ;
-  bool keep_return_value = false;
+  bool keep_return_value = true;
 };
 struct OpMakeArray {
   std::size_t count = -1UZ;

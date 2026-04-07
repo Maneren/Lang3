@@ -448,11 +448,12 @@ void Compiler::compile_anonymous_function(const ast::AnonymousFunction &func) {
 }
 
 void Compiler::compile_function_call(const ast::FunctionCall &call) {
-  compile_variable(ast::Variable{ast::Identifier{call.get_name().get_name()}});
-  for (const auto &arg : call.get_arguments()) {
+  compile_variable(ast::Variable{ast::Identifier{call.get_name()}});
+  const auto &args = call.get_arguments();
+  for (const auto &arg : args) {
     compile_expression(arg);
   }
-  emit(OpCall{call.get_arguments().size(), true});
+  emit(OpCall{.arg_count = args.size()});
 }
 
 void Compiler::compile_if_expression(const ast::IfExpression &if_expr) {
@@ -660,7 +661,11 @@ void Compiler::compile_function_call_statement(const ast::FunctionCall &call) {
     compile_expression(arg);
   }
 
-  emit(OpCall{call.get_arguments().size(), false});
+  emit(
+      OpCall{
+          .arg_count = call.get_arguments().size(), .keep_return_value = false
+      }
+  );
 }
 
 void Compiler::compile_if_statement(const ast::IfStatement &if_stmt) {
