@@ -71,7 +71,7 @@ private:
   void execute_op_less(const bytecode::OpLess &op);
   void execute_op_less_equal(const bytecode::OpLessEqual &op);
   void execute_op_jump(const bytecode::OpJump &op);
-  void execute_op_jump_if_false(const bytecode::OpTest &op);
+  void execute_op_jump_if(const bytecode::OpJumpIf &op);
   void execute_op_get_global(const bytecode::OpGetGlobal &op);
   void execute_op_set_global(const bytecode::OpSetGlobal &op);
   void execute_op_get_local(const bytecode::OpGetLocal &op, CallFrame &frame);

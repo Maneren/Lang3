@@ -243,7 +243,7 @@ void Compiler::patch_jump(std::size_t jump_offset, std::size_t target) {
   match::match(
       current_chunk().code[jump_offset],
       [=](OpJump &jump) { jump.offset = target; },
-      [=](OpTest &jump) { jump.offset = target; },
+      [=](OpJumpIf &jump) { jump.offset = target; },
       [](const auto &) {
         throw std::runtime_error("Attempting to patch a non-jump instruction");
       }
@@ -345,20 +345,14 @@ void Compiler::compile_logical_expression(
 
   switch (logical.get_op()) {
   case ast::LogicalOperator::And: {
-    std::size_t jump = emit_jump(OpTest{});
-    emit(OpPop{});
+    std::size_t jump = emit_jump(OpJumpIf{.keep_jump = true});
     compile_expression(logical.get_rhs());
     patch_jump_here(jump);
   } break;
-  case ast::LogicalOperator::Or: { // Logical OR
-    std::size_t jump_if_false = emit_jump(OpTest{});
-    std::size_t jump_to_end = emit_jump(OpJump{});
-
-    patch_jump_here(jump_if_false);
-    emit(OpPop{});
+  case ast::LogicalOperator::Or: {
+    std::size_t jump = emit_jump(OpJumpIf{.expected = true, .keep_jump = true});
     compile_expression(logical.get_rhs());
-
-    patch_jump_here(jump_to_end);
+    patch_jump_here(jump);
   } break;
   }
 }
@@ -403,8 +397,9 @@ void Compiler::compile_comparison(const ast::Comparison &comparison) {
     }
 
     if (i < comps.size() - 1) {
-      jumps.push_back(emit_jump(OpTest{}));
-      emit(OpPop{});
+      jumps.push_back(
+          emit_jump(OpJumpIf{.expected = false, .keep_jump = true})
+      );
     }
   }
 
@@ -422,7 +417,6 @@ void Compiler::compile_anonymous_function(const ast::AnonymousFunction &func) {
   }
 
   compile_block(func.get_body().get_block());
-  emit(OpReturn{false});
 
   if (!std::holds_alternative<OpReturn>(current_chunk().code.back())) {
     emit(OpReturn{false});
@@ -462,39 +456,33 @@ void Compiler::compile_function_call(const ast::FunctionCall &call) {
 }
 
 void Compiler::compile_if_expression(const ast::IfExpression &if_expr) {
-  std::vector<std::size_t> jump_to_ends;
+  std::vector<std::size_t> jumps_to_end;
 
   const auto &base_if = if_expr.get_base_if();
 
   compile_expression(base_if.get_condition());
-  std::size_t then_jump = emit_jump(OpTest{});
-  emit(OpPop{});
+  std::size_t negative_jump = emit_jump(OpJumpIf{});
 
   compile_block(base_if.get_block());
 
-  emit(OpConstant{make_constant({})});
-  jump_to_ends.push_back(emit_jump(OpJump{}));
+  jumps_to_end.push_back(emit_jump(OpJump{}));
 
-  patch_jump_here(then_jump);
-  emit(OpPop{});
+  patch_jump_here(negative_jump);
 
   for (const auto &elif : if_expr.get_elseif().get_elseifs()) {
     compile_expression(elif.get_condition());
-    std::size_t elif_jump = emit_jump(OpTest{});
+    std::size_t elif_jump = emit_jump(OpJumpIf{});
 
-    emit(OpPop{});
     compile_block(elif.get_block());
-    emit(OpConstant{make_constant({})});
-    jump_to_ends.push_back(emit_jump(OpJump{}));
+
+    jumps_to_end.push_back(emit_jump(OpJump{}));
 
     patch_jump_here(elif_jump);
-    emit(OpPop{});
   }
 
   compile_block(if_expr.get_else_block());
-  emit(OpConstant{make_constant({})});
 
-  for (auto jump : jump_to_ends) {
+  for (auto jump : jumps_to_end) {
     patch_jump_here(jump);
   }
 }
@@ -680,26 +668,21 @@ void Compiler::compile_if_statement(const ast::IfStatement &if_stmt) {
 
   const auto &base_if = if_stmt.get_base_if();
   compile_expression(base_if.get_condition());
-  std::size_t then_jump = emit_jump(OpTest{});
-
-  emit(OpPop{});
+  std::size_t negative_jump = emit_jump(OpJumpIf{});
 
   compile_block(base_if.get_block());
   jump_to_ends.push_back(emit_jump(OpJump{}));
 
-  patch_jump_here(then_jump);
-  emit(OpPop{});
+  patch_jump_here(negative_jump);
 
   for (const auto &elif : if_stmt.get_elseif().get_elseifs()) {
     compile_expression(elif.get_condition());
-    std::size_t elif_jump = emit_jump(OpTest{});
+    std::size_t negative_jump = emit_jump(OpJumpIf{});
 
-    emit(OpPop{});
     compile_block(elif.get_block());
     jump_to_ends.push_back(emit_jump(OpJump{}));
 
-    patch_jump_here(elif_jump);
-    emit(OpPop{});
+    patch_jump_here(negative_jump);
   }
 
   if (auto else_block = if_stmt.get_else_block(); else_block) {
@@ -756,7 +739,6 @@ void Compiler::compile_named_function(const ast::NamedFunction &func) {
   }
 
   compile_block(func.get_body().get_block());
-  emit(OpReturn{false});
 
   if (!std::holds_alternative<OpReturn>(current_chunk().code.back())) {
     emit(OpReturn{false});
@@ -936,9 +918,7 @@ void Compiler::compile_while_loop(const ast::While &loop) {
 
   compile_expression(loop.get_condition());
 
-  const auto exit_jump = emit_jump(OpTest{});
-
-  emit(OpPop{});
+  const auto exit_jump = emit_jump(OpJumpIf{});
 
   // Snapshot locals before the body scope so continue can compute how many
   // body-scope locals to pop.
@@ -950,15 +930,13 @@ void Compiler::compile_while_loop(const ast::While &loop) {
 
   patch_jump_here(exit_jump);
 
-  emit(OpPop{});
-
   for (auto jump : break_jumps_stack.back()) {
     patch_jump_here(jump);
   }
   break_jumps_stack.pop_back();
 
   for (auto jump : continue_jumps_stack.back()) {
-    current_chunk().code[jump] = OpJump{loop_start};
+    patch_jump(jump, loop_start);
   }
   continue_jumps_stack.pop_back();
 }

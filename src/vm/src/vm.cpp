@@ -196,7 +196,7 @@ void BytecodeVM::execute_loop(std::size_t target_frames) {
         [&](const bytecode::OpLess &op) { execute_op_less(op); },
         [&](const bytecode::OpLessEqual &op) { execute_op_less_equal(op); },
         [&](const bytecode::OpJump &op) { execute_op_jump(op); },
-        [&](const bytecode::OpTest &op) { execute_op_jump_if_false(op); },
+        [&](const bytecode::OpJumpIf &op) { execute_op_jump_if(op); },
         [&](const bytecode::OpGetGlobal &op) { execute_op_get_global(op); },
         [&](const bytecode::OpSetGlobal &op) { execute_op_set_global(op); },
         [&](const bytecode::OpGetLocal &op) {
@@ -363,13 +363,24 @@ void BytecodeVM::execute_op_jump(const bytecode::OpJump &op) {
 }
 
 [[clang::noinline]]
-void BytecodeVM::execute_op_jump_if_false(const bytecode::OpTest &op) {
-  const bool take = stack.back()->is_falsy();
+void BytecodeVM::execute_op_jump_if(const bytecode::OpJumpIf &op) {
+  const bool jump = stack.back()->is_truthy() == op.expected;
+  const auto pop = jump ? !op.keep_jump : !op.keep_stay;
+
   debug_print(
-      "TEST condition={} take={} target={}", stack.back(), take, op.offset
+      "JUMP_IF condition={} == {} target={} pop={}",
+      stack.back(),
+      op.expected,
+      op.offset,
+      pop
   );
-  if (take) {
+
+  if (jump) {
     frames.back().ip = op.offset;
+  }
+
+  if (pop) {
+    stack_pop();
   }
 }
 

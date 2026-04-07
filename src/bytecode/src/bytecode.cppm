@@ -77,9 +77,11 @@ struct OpSetUpvalue {
 struct OpJump {
   std::size_t offset = -1UZ;
 };
-struct OpTest {
-  bool pop = true;
+struct OpJumpIf {
   std::size_t offset = -1UZ;
+  bool expected = false;
+  bool keep_stay = false;
+  bool keep_jump = false;
 };
 struct OpCall {
   std::size_t arg_count = -1UZ;
@@ -118,7 +120,7 @@ using Instruction = std::variant<
     OpSetLocal,
     OpForLoop,
     OpJump,
-    OpTest,
+    OpJumpIf,
     OpCall,
     OpMakeArray,
     OpGetIndex,
