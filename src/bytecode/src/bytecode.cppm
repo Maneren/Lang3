@@ -13,7 +13,7 @@ struct OpReturn {
   bool has_value = true;
 };
 struct OpConstant {
-  std::size_t index;
+  std::size_t index = -1UZ;
 };
 struct OpPop {
   std::size_t count = 1;
@@ -38,22 +38,22 @@ struct OpLessEqual {};
 struct OpNot {};
 
 struct OpGetGlobal {
-  std::size_t name_index;
+  std::size_t name_index = -1UZ;
 };
 struct OpSetGlobal {
-  std::size_t name_index;
+  std::size_t name_index = -1UZ;
 };
 
 struct OpGetLocal {
-  std::size_t index;
+  std::size_t index = -1UZ;
 };
 struct OpSetLocal {
-  std::size_t index;
+  std::size_t index = -1UZ;
 };
 
 struct OpForLoop {
-  std::size_t control_index;
-  std::size_t limit_index;
+  std::size_t control_index = -1UZ;
+  std::size_t limit_index = -1UZ;
   std::size_t body_offset = -1UZ;
   bool inclusive = false;
   std::optional<std::size_t> step_index;
@@ -61,17 +61,17 @@ struct OpForLoop {
 
 struct Upvalue {
   bool is_local;
-  std::size_t index;
+  std::size_t index = -1UZ;
 };
 struct OpClosure {
-  std::size_t function_index;
+  std::size_t function_index = -1UZ;
   std::vector<Upvalue> upvalues;
 };
 struct OpGetUpvalue {
-  std::size_t index;
+  std::size_t index = -1UZ;
 };
 struct OpSetUpvalue {
-  std::size_t index;
+  std::size_t index = -1UZ;
 };
 
 struct OpJump {
@@ -82,11 +82,11 @@ struct OpTest {
   std::size_t offset = -1UZ;
 };
 struct OpCall {
-  std::size_t arg_count;
-  bool keep_return_value;
+  std::size_t arg_count = -1UZ;
+  bool keep_return_value = false;
 };
 struct OpMakeArray {
-  std::size_t count;
+  std::size_t count = -1UZ;
 };
 struct OpGetIndex {};
 struct OpSetIndex {};
