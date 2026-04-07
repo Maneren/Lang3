@@ -191,25 +191,24 @@ std::size_t Compiler::make_constant(runtime::Value &&value) {
 
 void Compiler::deduplicate_constants() {
   std::vector<std::size_t> index_map(program.constants.size(), 0UZ);
-  std::unordered_map<std::string, std::size_t> string_indices;
   std::vector<runtime::GCValue> deduped_constants;
-  deduped_constants.reserve(program.constants.size());
 
   for (std::size_t old_index = 0; old_index < program.constants.size();
        ++old_index) {
     auto &constant = program.constants[old_index];
-    if (const auto string_value = constant.get_value().as_string()) {
-      const auto [it, inserted] =
-          string_indices.emplace(string_value->get(), deduped_constants.size());
-      if (inserted) {
-        deduped_constants.emplace_back(std::string{it->first});
-      }
-      index_map[old_index] = it->second;
-      continue;
+    const auto &value = constant.get_value();
+    auto it =
+        std::ranges::find_if(deduped_constants, [&value](const auto &other) {
+          return value.compare(other.get_value()) == 0;
+        });
+    if (it != deduped_constants.end()) {
+      index_map[old_index] = static_cast<std::size_t>(
+          std::distance(deduped_constants.begin(), it)
+      );
+    } else {
+      index_map[old_index] = deduped_constants.size();
+      deduped_constants.emplace_back(std::move(constant));
     }
-
-    index_map[old_index] = deduped_constants.size();
-    deduped_constants.emplace_back(std::move(constant));
   }
 
   for (auto &chunk : program.chunks) {
