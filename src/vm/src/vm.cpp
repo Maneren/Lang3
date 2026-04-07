@@ -251,9 +251,17 @@ void BytecodeVM::execute_op_constant(const bytecode::OpConstant &op) {
 }
 
 [[clang::noinline]]
-void BytecodeVM::execute_op_pop(const bytecode::OpPop & /*op*/) {
-  if (!stack.empty()) {
+void BytecodeVM::execute_op_pop(const bytecode::OpPop &op) {
+  if (stack.empty() || stack.size() == frames.back().frame_pointer) {
+    throw std::runtime_error("stack underflow");
+  }
+
+  if (op.count == 1) {
     debug_print("POP value={}", stack_pop());
+  } else {
+    auto base = stack.end() - static_cast<std::ptrdiff_t>(op.count);
+    debug_print("POP values={}", std::vector(base, stack.end()));
+    stack.erase(base, stack.end());
   }
 }
 

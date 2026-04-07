@@ -62,9 +62,13 @@ void Compiler::begin_scope() { scope_depth++; }
 
 void Compiler::end_scope() {
   scope_depth--;
+  std::size_t count = 0;
   while (!locals.empty() && locals.back().depth > scope_depth) {
-    emit(OpPop{});
+    count++;
     locals.pop_back();
+  }
+  if (count > 0) {
+    emit(OpPop{.count = count});
   }
 }
 
@@ -986,9 +990,7 @@ void Compiler::
   }
 
   const auto body_locals = locals.size() - loop_body_locals_snapshot.back();
-  for (auto i = 0UZ; i < body_locals; ++i) {
-    emit(OpPop{});
-  }
+  emit(OpPop{.count = body_locals});
   continue_jumps_stack.back().push_back(emit_jump(OpJump{}));
 }
 

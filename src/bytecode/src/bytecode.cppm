@@ -15,7 +15,9 @@ struct OpReturn {
 struct OpConstant {
   std::size_t index;
 };
-struct OpPop {};
+struct OpPop {
+  std::size_t count = 1;
+};
 struct OpDuplicate {
   std::size_t index = 0;
 };
