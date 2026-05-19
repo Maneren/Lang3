@@ -78,7 +78,11 @@ l3::runtime::Ref builtin_int(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
     throw l3::runtime::RuntimeError("int() takes at most two arguments");
   }
 
-  int base = 10;
+  constexpr long INT_DEFAULT_BASE = 10;
+  constexpr long INT_MAX_BASE = 36;
+  constexpr long INT_MIN_BASE = 2;
+
+  int base = INT_DEFAULT_BASE;
   if (args.size() == 2) {
     auto base_int =
         args[1]->as_primitive().and_then(&l3::runtime::Primitive::as_integer);
@@ -88,7 +92,7 @@ l3::runtime::Ref builtin_int(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
       );
     }
 
-    if (*base_int < 2 || *base_int > 36) {
+    if (*base_int < INT_MIN_BASE || *base_int > INT_MAX_BASE) {
       throw l3::runtime::RuntimeError("int() takes a base between 2 and 36");
     }
 
@@ -104,9 +108,8 @@ l3::runtime::Ref builtin_int(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
     });
   } else if (auto string_opt = arg->as_string()) {
     const auto &string = string_opt->get();
-    auto result = std::from_chars(
-        string.data(), string.data() + string.size(), value, base
-    );
+    auto result =
+        std::from_chars(&*string.begin(), &*string.end(), value, base);
     if (result.ec != std::errc{}) {
       throw l3::runtime::RuntimeError(
           "invalid integer literal '{}' in base {}", string, base
