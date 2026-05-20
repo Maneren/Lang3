@@ -111,7 +111,7 @@ const runtime::Ref &BytecodeVM::stack_top(std::size_t offset) const {
 
 template <typename... Args>
 void BytecodeVM::debug_print(std::format_string<Args...> fmt, Args &&...args) {
-  if (debug) {
+  if (debug) [[unlikely]] {
     std::println(std::cerr, fmt, std::forward<Args>(args)...);
   }
 }
