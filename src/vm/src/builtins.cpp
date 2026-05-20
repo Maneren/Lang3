@@ -363,7 +363,7 @@ l3::runtime::Ref builtin_map(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
   l3::runtime::Value::vector_type result;
   result.reserve(list.size());
   for (const auto &item : list) {
-    result.push_back(vm.evaluate(args[0], {item}));
+    result.push_back(vm.evaluate(args[0], std::array{item}));
   }
 
   return vm.store_value(std::move(result));
@@ -389,7 +389,7 @@ builtin_filter(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
   l3::runtime::Value::vector_type result;
   for (const auto &item : list) {
     if (static_cast<vm::BytecodeVM *>(&vm)
-            ->evaluate(args[0], {item})
+            ->evaluate(args[0], std::array{item})
             ->is_truthy()) {
       result.push_back(item);
     }
@@ -484,7 +484,7 @@ builtin_count(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
   std::int64_t count = 0;
   for (const auto &item : list) {
     if (static_cast<vm::BytecodeVM *>(&vm)
-            ->evaluate(args[0], {item})
+            ->evaluate(args[0], std::array{item})
             ->is_truthy()) {
       ++count;
     }
