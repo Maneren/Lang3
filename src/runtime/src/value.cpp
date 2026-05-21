@@ -50,11 +50,7 @@ Value Value::add(const Value &other) const {
         return {std::move(result)};
       },
       [&other, this](const auto &, const auto &) -> Value {
-        throw UnsupportedOperation(
-            "add between {} and {} not supported",
-            type_name(),
-            other.type_name()
-        );
+        throw UnsupportedOperation("addition", type_name(), other.type_name());
       }
   );
 }
@@ -67,18 +63,17 @@ void Value::add_assign(const Value &other) {
         lhs.insert(lhs.end(), rhs.begin(), rhs.end());
       },
       [&other, this](auto &, const auto &) {
-        throw UnsupportedOperation(
-            "add between {} and {} not supported",
-            type_name(),
-            other.type_name()
-        );
+        throw UnsupportedOperation("addition", type_name(), other.type_name());
       }
   );
 }
 
 Value Value::sub(const Value &other) const {
   return binary_op(
-      "subtract", *this, other, [](const Primitive &lhs, const Primitive &rhs) {
+      "subtraction",
+      *this,
+      other,
+      [](const Primitive &lhs, const Primitive &rhs) {
         return Value{lhs - rhs};
       }
   );
@@ -134,9 +129,7 @@ Value Value::mul(const Value &other) const {
       },
       [&other, this](const auto &, const auto &) -> Value {
         throw UnsupportedOperation(
-            "multiply between {} and {} not supported",
-            type_name(),
-            other.type_name()
+            "multiplication", type_name(), other.type_name()
         );
       }
   );
@@ -151,9 +144,7 @@ void Value::mul_assign(const Value &other) {
       },
       [&other, this](auto &, const auto &) {
         throw UnsupportedOperation(
-            "multiplication between {} and {} not supported",
-            type_name(),
-            other.type_name()
+            "multiplication", type_name(), other.type_name()
         );
       }
   );
@@ -161,7 +152,7 @@ void Value::mul_assign(const Value &other) {
 
 Value Value::div(const Value &other) const {
   return binary_op(
-      "divide", *this, other, [](const Primitive &lhs, const Primitive &rhs) {
+      "division", *this, other, [](const Primitive &lhs, const Primitive &rhs) {
         return Value{lhs / rhs};
       }
   );
