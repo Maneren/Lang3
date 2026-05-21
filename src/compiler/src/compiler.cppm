@@ -77,6 +77,8 @@ private:
   void patch_jump_here(std::size_t jump_offset);
   std::size_t emit_jump(const Instruction &instruction);
 
+  void compile_statements(std::ranges::input_range auto &statements);
+
   void compile_block(const ast::Block &block);
   void compile_expression(const ast::Expression &expr);
   void compile_variable(const ast::Variable &variable);

@@ -1,46 +1,43 @@
 == Chunk 0 ==
-0000 | OP_CONSTANT         0 '0'
-0001 | OP_CONSTANT         1 '0'
-0002 | OP_CONSTANT         2 '6'
-0003 | OP_CONSTANT         3 '2'
-0004 | OP_GET_LOCAL        1
-0005 | OP_GET_LOCAL        3
-0006 | OP_SUBTRACT
-0007 | OP_SET_LOCAL        1
-0008 | OP_JUMP            15
-0009 | OP_GET_LOCAL        1
-0010 | OP_GET_LOCAL        0
-0011 | OP_GET_LOCAL        4
-0012 | OP_ADD
-0013 | OP_SET_LOCAL        0
-0014 | OP_POP
-0015 | OP_FOR_LOOP      ctrl=   1 lim=   2 body=   9 LE step=   3
-0016 | OP_POP
-0017 | OP_POP
-0018 | OP_POP
-0019 | OP_GET_GLOBAL       4 '"println"'
-0020 | OP_GET_LOCAL        0
-0021 | OP_CALL             1 false
-0022 | OP_CONSTANT         5 '0'
-0023 | OP_CONSTANT         6 '1'
-0024 | OP_CONSTANT         7 '6'
-0025 | OP_CONSTANT         8 '1'
-0026 | OP_GET_LOCAL        2
-0027 | OP_GET_LOCAL        4
-0028 | OP_SUBTRACT
-0029 | OP_SET_LOCAL        2
-0030 | OP_JUMP            37
-0031 | OP_GET_LOCAL        2
-0032 | OP_GET_LOCAL        1
-0033 | OP_GET_LOCAL        5
-0034 | OP_ADD
-0035 | OP_SET_LOCAL        1
-0036 | OP_POP
-0037 | OP_FOR_LOOP      ctrl=   2 lim=   3 body=  31 LT step=   4
-0038 | OP_POP
-0039 | OP_POP
-0040 | OP_POP
-0041 | OP_GET_GLOBAL       4 '"println"'
-0042 | OP_GET_LOCAL        1
-0043 | OP_CALL             1 false
-0044 | OP_RETURN        false
+0000 | CONSTANT      0 (0)
+0001 | CONSTANT      0 (0)
+0002 | CONSTANT      1 (6)
+0003 | CONSTANT      2 (2)
+0004 | GET_LOCAL     1
+0005 | GET_LOCAL     3
+0006 | SUBTRACT
+0007 | SET_LOCAL     1
+0008 | JUMP         15
+0009 | GET_LOCAL     1
+0010 | GET_LOCAL     0
+0011 | GET_LOCAL     4
+0012 | ADD
+0013 | SET_LOCAL     0
+0014 | POP           1
+0015 | FOR_LOOP   ctrl=   1 lim=   2 body=   9 LE step=   3
+0016 | POP           3
+0017 | GET_GLOBAL    3 '"println"'
+0018 | GET_LOCAL     0
+0019 | CALL          1 false
+0020 | CONSTANT      0 (0)
+0021 | CONSTANT      4 (1)
+0022 | CONSTANT      1 (6)
+0023 | CONSTANT      4 (1)
+0024 | GET_LOCAL     2
+0025 | GET_LOCAL     4
+0026 | SUBTRACT
+0027 | SET_LOCAL     2
+0028 | JUMP         35
+0029 | GET_LOCAL     2
+0030 | GET_LOCAL     1
+0031 | GET_LOCAL     5
+0032 | ADD
+0033 | SET_LOCAL     1
+0034 | POP           1
+0035 | FOR_LOOP   ctrl=   2 lim=   3 body=  29 LT step=   4
+0036 | POP           3
+0037 | GET_GLOBAL    3 '"println"'
+0038 | GET_LOCAL     1
+0039 | CALL          1 false
+0040 | CONSTANT      5 (nil)
+0041 | RETURN

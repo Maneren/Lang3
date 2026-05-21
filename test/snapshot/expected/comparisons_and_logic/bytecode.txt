@@ -1,58 +1,51 @@
 == Chunk 0 ==
-0000 | OP_CONSTANT         0 '5'
-0001 | OP_CONSTANT         1 '8'
-0002 | OP_CONSTANT         2 '8'
-0003 | OP_GET_GLOBAL       3 '"println"'
-0004 | OP_CONSTANT         4 '0'
-0005 | OP_GET_LOCAL        0
-0006 | OP_LESS
-0007 | OP_TEST            12 POP
-0008 | OP_POP
-0009 | OP_GET_LOCAL        0
-0010 | OP_GET_LOCAL        1
-0011 | OP_LESS
-0012 | OP_CALL             1 false
-0013 | OP_GET_GLOBAL       3 '"println"'
-0014 | OP_GET_LOCAL        0
-0015 | OP_GET_LOCAL        1
-0016 | OP_EQUAL
-0017 | OP_CALL             1 false
-0018 | OP_GET_GLOBAL       3 '"println"'
-0019 | OP_GET_LOCAL        1
-0020 | OP_GET_LOCAL        2
-0021 | OP_EQUAL
-0022 | OP_CALL             1 false
-0023 | OP_GET_GLOBAL       3 '"println"'
-0024 | OP_GET_LOCAL        0
-0025 | OP_GET_LOCAL        1
-0026 | OP_EQUAL
-0027 | OP_NOT
-0028 | OP_TEST            39 POP
-0029 | OP_POP
-0030 | OP_GET_LOCAL        1
-0031 | OP_GET_LOCAL        2
-0032 | OP_EQUAL
-0033 | OP_TEST            35 POP
-0034 | OP_JUMP            39
-0035 | OP_POP
-0036 | OP_GET_LOCAL        0
-0037 | OP_GET_LOCAL        1
-0038 | OP_GREATER
-0039 | OP_CALL             1 false
-0040 | OP_GET_LOCAL        0
-0041 | OP_GET_LOCAL        1
-0042 | OP_LESS
-0043 | OP_TEST            49 POP
-0044 | OP_POP
-0045 | OP_CONSTANT         5 '"ok"'
-0046 | OP_RETURN        true 
-0047 | OP_CONSTANT         6 'nil'
-0048 | OP_JUMP            53
-0049 | OP_POP
-0050 | OP_CONSTANT         7 '"bad"'
-0051 | OP_RETURN        true 
-0052 | OP_CONSTANT         8 'nil'
-0053 | OP_GET_GLOBAL       3 '"println"'
-0054 | OP_GET_LOCAL        3
-0055 | OP_CALL             1 false
-0056 | OP_RETURN        false
+0000 | CONSTANT      0 (5)
+0001 | CONSTANT      1 (8)
+0002 | CONSTANT      1 (8)
+0003 | GET_GLOBAL    2 '"println"'
+0004 | CONSTANT      3 (0)
+0005 | GET_LOCAL     0
+0006 | LESS
+0007 | JUMP_IF      11 false keep after jump
+0008 | GET_LOCAL     0
+0009 | GET_LOCAL     1
+0010 | LESS
+0011 | CALL          1 false
+0012 | GET_GLOBAL    2 '"println"'
+0013 | GET_LOCAL     0
+0014 | GET_LOCAL     1
+0015 | EQUAL
+0016 | CALL          1 false
+0017 | GET_GLOBAL    2 '"println"'
+0018 | GET_LOCAL     1
+0019 | GET_LOCAL     2
+0020 | EQUAL
+0021 | CALL          1 false
+0022 | GET_GLOBAL    2 '"println"'
+0023 | GET_LOCAL     0
+0024 | GET_LOCAL     1
+0025 | EQUAL
+0026 | NOT
+0027 | JUMP_IF      35 false keep after jump
+0028 | GET_LOCAL     1
+0029 | GET_LOCAL     2
+0030 | EQUAL
+0031 | JUMP_IF      35 true keep after jump
+0032 | GET_LOCAL     0
+0033 | GET_LOCAL     1
+0034 | GREATER
+0035 | CALL          1 false
+0036 | GET_LOCAL     0
+0037 | GET_LOCAL     1
+0038 | LESS
+0039 | JUMP_IF      43 false
+0040 | CONSTANT      4 ("ok")
+0041 | RETURN
+0042 | JUMP         45
+0043 | CONSTANT      5 ("bad")
+0044 | RETURN
+0045 | GET_GLOBAL    2 '"println"'
+0046 | GET_LOCAL     3
+0047 | CALL          1 false
+0048 | CONSTANT      6 (nil)
+0049 | RETURN

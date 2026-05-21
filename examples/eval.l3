@@ -1,44 +1,11 @@
 #!/bin/env lang3
 
-let mut a = 8 / 2 + 20
-a += 10
-let b = a * 2
+let a = 0
 
-println(a)
-println(b)
+fn c() if a == 5 then return a else a += 1 return c() end end
 
-let first, second = [1, 2]
-
-println(first)
-println(second)
-
-__trigger_gc()
-
-fn factorial(n)
-  if n == 0 then
-    return 1
-  end
-
-  return n * factorial(n - 1)
+fn b()
+  println(c())
 end
 
-fn main()
-  println(factorial(20))
-end
-
-main()
-
-a = 0
-if a then println("a is truthy")
-elif b then println("b is truthy")
-else println("neither a or b is truthy")
-end
-
-let mut i = 0
-while i < 10 do
-  println(random(100))
-  i += 1
-  if i == 5 then
-    break
-  end
-end
+b()

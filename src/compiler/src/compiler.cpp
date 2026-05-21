@@ -2,6 +2,7 @@ module l3.compiler;
 
 import std;
 import l3.ast;
+import l3.ast.printer;
 import l3.bytecode;
 import l3.runtime;
 import utils;
@@ -16,9 +17,7 @@ void Compiler::compile(const ast::Program &program) {
   contexts.emplace_back();
   this->program.chunks.emplace_back();
   current_chunk_id = this->program.chunks.size() - 1;
-  for (const auto &stmt : program.get_statements()) {
-    compile_statement(stmt);
-  }
+  compile_statements(program.get_statements());
   if (const auto last = program.get_last_statement(); last) {
     throw std::runtime_error("Unexpected last statement in top-level scope");
   }
@@ -260,11 +259,26 @@ std::size_t Compiler::emit_jump(const Instruction &instruction) {
   return last_instruction_offset();
 }
 
-void Compiler::compile_block(const ast::Block &block) {
-  begin_scope();
-  for (const auto &stmt : block.get_statements()) {
+void Compiler::compile_statements(std::ranges::input_range auto &statements) {
+  // hoist function declarations
+  for (const auto &stmt : statements) {
+    stmt.visit(
+        [this](const ast::NamedFunction &func) {
+          emit(OpConstant{make_constant({})});
+          add_local(func.get_name());
+        },
+        [](const auto &) {}
+    );
+  }
+
+  for (const auto &stmt : statements) {
     compile_statement(stmt);
   }
+}
+
+void Compiler::compile_block(const ast::Block &block) {
+  begin_scope();
+  compile_statements(block.get_statements());
   if (const auto last = block.get_last_statement(); last) {
     compile_last_statement(last->get());
   }
@@ -735,8 +749,14 @@ void Compiler::compile_name_assignment(const ast::NameAssignment &assign) {
 void Compiler::compile_named_function(const ast::NamedFunction &func) {
   const auto &name = func.get_name();
 
-  emit(OpConstant{make_constant({})});
-  add_local(name);
+  auto local_opt = resolve_local(name);
+  if (!local_opt) {
+    throw std::runtime_error(
+        std::format(
+            "Expected function {} to be already defined", name.get_name()
+        )
+    );
+  }
 
   const auto new_chunk_id = push_context();
 
@@ -772,7 +792,7 @@ void Compiler::compile_named_function(const ast::NamedFunction &func) {
     emit(OpClosure{.function_index = id, .upvalues = std::move(used_upvalues)});
   }
 
-  emit(OpSetLocal{locals.size() - 1});
+  emit(OpSetLocal{*local_opt});
 }
 
 void Compiler::compile_operator_assignment(

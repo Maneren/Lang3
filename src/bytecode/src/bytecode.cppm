@@ -288,7 +288,7 @@ export {
               [&](const l3::bytecode::OpCall &op) {
                 return std::format_to(
                     out,
-                    "{:<10} {:4d} {:5}\n",
+                    "{:<10} {:4d} {}\n",
                     "CALL",
                     op.arg_count,
                     op.keep_return_value

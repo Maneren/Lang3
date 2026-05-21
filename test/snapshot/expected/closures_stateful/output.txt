@@ -1,2 +1,1 @@
-5
 RuntimeError: addition between 'function' and 'int' not supported
