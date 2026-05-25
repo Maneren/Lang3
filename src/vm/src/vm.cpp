@@ -268,7 +268,7 @@ void BytecodeVM::execute_loop(std::size_t target_frames) {
 }
 
 [[clang::noinline]]
-void BytecodeVM::execute_op_return(const bytecode::OpReturn &) {
+void BytecodeVM::execute_op_return(const bytecode::OpReturn & /*op*/) {
   const auto result = stack_pop();
 
   debug_print("RETURN value={}", result);

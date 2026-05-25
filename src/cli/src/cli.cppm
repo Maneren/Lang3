@@ -2,8 +2,6 @@ export module cli;
 
 import std;
 
-namespace {
-
 struct string_hash {
   using hash_type = std::hash<std::string_view>;
   using is_transparent = void;
@@ -44,18 +42,12 @@ private:
   std::size_t i = 0;
 };
 
-namespace {
-
 template <typename T>
   requires requires(T name) { name == name; }
 constexpr bool optional_contains(std::optional<T> opt, T name) {
   return opt.transform(std::bind_front(std::equal_to<>(), name))
       .value_or(false);
 }
-
-} // namespace
-
-} // namespace
 
 export namespace cli {
 
