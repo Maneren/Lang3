@@ -34,6 +34,11 @@ function(set_compiler_and_linker_flags TARGET)
 
         $<$<CONFIG:Release>:$<$<CXX_COMPILER_ID:GNU,Clang>:-flto>>
     )
+    get_property(THIN_ARCHIVE GLOBAL PROPERTY THIN_ARCHIVE)
+    if(THIN_ARCHIVE)
+        set_property(TARGET ${TARGET} APPEND PROPERTY
+            STATIC_LIBRARY_OPTIONS "--thin")
+    endif()
 endfunction()
 
 function(add_include_directories TARGET VISIBILITY DIRS)

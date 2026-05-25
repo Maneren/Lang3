@@ -19,6 +19,9 @@ if(SANITIZERS)
     add_link_options(-fsanitize=address,undefined,leak)
 endif()
 
+option(THIN_ARCHIVE "Create thin archive" ON)
+set_property(GLOBAL PROPERTY THIN_ARCHIVE ${THIN_ARCHIVE})
+
 option(USE_CCACHE "Use ccache" OFF)
 if (USE_CCACHE)
     find_program(CCACHE ccache)
