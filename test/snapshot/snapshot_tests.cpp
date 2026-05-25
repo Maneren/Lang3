@@ -236,8 +236,10 @@ void assert_or_update_snapshot(
   }
 
   const std::string expected = read_text_file(path);
-  EXPECT_EQ(normalize_newlines(expected), normalize_newlines(actual))
-      << "Snapshot mismatch in " << test_name << " for " << path;
+  EXPECT_STREQ(
+      normalize_newlines(expected).data(), normalize_newlines(actual).data()
+  ) << "Snapshot mismatch in "
+    << test_name << " for " << path;
 }
 
 struct SnapshotArtifacts {
