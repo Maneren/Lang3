@@ -602,9 +602,8 @@ void BytecodeVM::execute_op_closure(
     if (local) {
       upvalues.push_back(frame.frame_pointer + index);
     } else {
-      const auto &current_upvalues =
-          get_bytecode_function(**frame.closure).upvalues;
-      upvalues.push_back(current_upvalues[index]);
+      const auto &closure = get_bytecode_function(**frame.closure);
+      upvalues.push_back(closure.upvalues[index]);
     }
   }
   stack_push(runtime::Function{std::move(function)});

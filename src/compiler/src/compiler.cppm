@@ -8,9 +8,22 @@ import utils;
 
 using namespace l3::bytecode;
 
-export namespace l3::compiler {
+namespace l3::compiler {
 
-class Compiler {
+struct Local {
+  ast::Identifier name;
+  int depth = -1;
+};
+
+struct Context {
+  std::vector<Local> locals;
+  std::vector<Upvalue> upvalues;
+  std::size_t chunk_id;
+  int scope_depth = 0;
+  bool is_in_expression = false;
+};
+
+export class Compiler {
 public:
   Compiler(ProgramBytecode &program);
 
@@ -18,35 +31,37 @@ public:
 
 private:
   ProgramBytecode &program;
-  std::size_t current_chunk_id = 0;
   Chunk &current_chunk();
   std::size_t last_instruction_offset();
   std::size_t current_instruction_offset();
 
-  struct Local {
-    ast::Identifier name;
-    int depth;
-  };
-  std::vector<Local> locals;
-  int scope_depth = 0;
-
-  std::vector<Upvalue> current_upvalues;
-
-  struct Context {
-    std::size_t chunk_id;
-    std::vector<Local> locals;
-    int scope_depth;
-    std::vector<Upvalue> upvalues;
-    bool is_in_expression = false;
-  };
   std::vector<Context> contexts;
+
+  struct CompiledFunctionBody {
+    std::vector<Upvalue> upvalues;
+    std::size_t chunk_id;
+  };
 
   enum class VariableType : std::uint8_t { Local, Upvalue, Global };
   struct ResolvedVariable {
     VariableType type;
     std::size_t index;
   };
-  ResolvedVariable resolve_variable(const ast::Identifier &name);
+
+  std::vector<Local> &locals() { return contexts.back().locals; }
+  [[nodiscard]] const std::vector<Local> &locals() const {
+    return contexts.back().locals;
+  }
+
+  std::vector<Upvalue> &upvalues() { return contexts.back().upvalues; }
+  [[nodiscard]] const std::vector<Upvalue> &upvalues() const {
+    return contexts.back().upvalues;
+  }
+
+  int &scope_depth() { return contexts.back().scope_depth; }
+  [[nodiscard]] int scope_depth() const { return contexts.back().scope_depth; }
+
+  ResolvedVariable resolve_variable(const ast::Identifier &identifier);
   Instruction emit_get_variable(const ast::Identifier &name);
   Instruction emit_set_variable(const ast::Identifier &name);
 
@@ -62,12 +77,7 @@ private:
   void end_scope();
 
   std::optional<std::size_t> resolve_local(const ast::Identifier &name);
-  std::optional<std::size_t>
-  resolve_local_in_context(const ast::Identifier &name, const Context &ctx);
-  std::size_t
-  add_upvalue(std::vector<Upvalue> &upvalues, bool is_local, std::size_t index);
-  std::optional<std::size_t>
-  resolve_upvalue(const ast::Identifier &name, std::size_t context_index);
+  std::optional<std::size_t> resolve_upvalue(const ast::Identifier &name);
 
   void emit(const Instruction &instruction, std::size_t line = 0);
   std::size_t make_constant(runtime::Value &&value);
@@ -78,6 +88,7 @@ private:
   std::size_t emit_jump(const Instruction &instruction);
 
   void compile_statements(std::ranges::input_range auto &statements);
+  CompiledFunctionBody compile_function_body(const ast::FunctionBody &body);
 
   void compile_block(const ast::Block &block);
   void compile_expression(const ast::Expression &expr);

@@ -14,9 +14,8 @@ using namespace l3::bytecode;
 Compiler::Compiler(ProgramBytecode &program) : program(program) {}
 
 void Compiler::compile(const ast::Program &program) {
-  contexts.emplace_back();
+  contexts.emplace_back(std::vector<Local>{}, std::vector<Upvalue>{}, 0);
   this->program.chunks.emplace_back();
-  current_chunk_id = this->program.chunks.size() - 1;
   compile_statements(program.get_statements());
   if (const auto last = program.get_last_statement(); last) {
     throw std::runtime_error("Unexpected last statement in top-level scope");
@@ -26,7 +25,9 @@ void Compiler::compile(const ast::Program &program) {
   deduplicate_constants();
 }
 
-Chunk &Compiler::current_chunk() { return program.chunks[current_chunk_id]; }
+Chunk &Compiler::current_chunk() {
+  return program.chunks[contexts.back().chunk_id];
+}
 std::size_t Compiler::last_instruction_offset() {
   return current_instruction_offset() - 1;
 }
@@ -35,37 +36,22 @@ std::size_t Compiler::current_instruction_offset() {
 }
 
 std::size_t Compiler::push_context() {
-  contexts.emplace_back(
-      current_chunk_id,
-      std::move(locals),
-      scope_depth,
-      std::move(current_upvalues)
-  );
-  current_chunk_id = program.chunks.size();
+  const auto chunk_id = program.chunks.size();
+  contexts.emplace_back(std::vector<Local>{}, std::vector<Upvalue>{}, chunk_id);
   program.chunks.emplace_back();
-  locals.clear();
-  scope_depth = 0;
-  current_upvalues.clear();
-  return current_chunk_id;
+  return chunk_id;
 }
 
-void Compiler::pop_context() {
-  auto &ctx = contexts.back();
-  current_chunk_id = ctx.chunk_id;
-  locals = std::move(ctx.locals);
-  scope_depth = ctx.scope_depth;
-  current_upvalues = std::move(ctx.upvalues);
-  contexts.pop_back();
-}
+void Compiler::pop_context() { contexts.pop_back(); }
 
-void Compiler::begin_scope() { scope_depth++; }
+void Compiler::begin_scope() { scope_depth()++; }
 
 void Compiler::end_scope() {
-  scope_depth--;
+  scope_depth()--;
   std::size_t count = 0;
-  while (!locals.empty() && locals.back().depth > scope_depth) {
+  while (!locals().empty() && locals().back().depth > scope_depth()) {
     count++;
-    locals.pop_back();
+    locals().pop_back();
   }
   if (count > 0) {
     emit(OpPop{.count = count});
@@ -73,25 +59,15 @@ void Compiler::end_scope() {
 }
 
 std::size_t Compiler::add_local(const ast::Identifier &name) {
-  auto index = locals.size();
-  locals.emplace_back(name, scope_depth);
+  auto index = locals().size();
+  locals().emplace_back(name, scope_depth());
   return index;
 }
 
-std::optional<std::size_t>
-Compiler::resolve_local(const ast::Identifier &name) {
-  for (const auto &[i, local] :
-       std::views::reverse(utils::ranges::enumerate(locals))) {
-    if (local.name == name) {
-      return i;
-    }
-  }
-  return std::nullopt;
-}
+namespace {
 
-std::optional<std::size_t> Compiler::resolve_local_in_context(
-    const ast::Identifier &name, const Context &ctx
-) {
+std::optional<std::size_t>
+resolve_in_context(const ast::Identifier &name, const Context &ctx) {
   for (const auto &[i, local] :
        std::views::reverse(utils::ranges::enumerate(ctx.locals))) {
     if (local.name == name) {
@@ -101,44 +77,46 @@ std::optional<std::size_t> Compiler::resolve_local_in_context(
   return std::nullopt;
 }
 
-std::size_t Compiler::add_upvalue(
-    std::vector<Upvalue> &upvalues, bool is_local, std::size_t index
-) {
-  for (const auto &[i, uv] : utils::ranges::enumerate(upvalues)) {
-    if (uv.is_local == is_local && uv.index == index) {
-      return i;
-    }
-  }
-  upvalues.push_back({.is_local = is_local, .index = index});
-  return upvalues.size() - 1;
+} // namespace
+
+std::optional<std::size_t>
+Compiler::resolve_local(const ast::Identifier &name) {
+  return resolve_in_context(name, contexts.back());
 }
 
-std::optional<std::size_t> Compiler::resolve_upvalue(
-    const ast::Identifier &name, std::size_t context_index
-) {
-  const auto local = resolve_local_in_context(name, contexts[context_index]);
-
-  if (local) {
-    std::size_t upvalue_idx =
-        (context_index + 1 == contexts.size())
-            ? add_upvalue(current_upvalues, true, *local)
-            : add_upvalue(contexts[context_index + 1].upvalues, true, *local);
-
-    for (std::size_t j = context_index + 2; j <= contexts.size(); j++) {
-      if (j == contexts.size()) {
-        upvalue_idx = add_upvalue(current_upvalues, false, upvalue_idx);
-      } else {
-        upvalue_idx = add_upvalue(contexts[j].upvalues, false, upvalue_idx);
+std::optional<std::size_t>
+Compiler::resolve_upvalue(const ast::Identifier &name) {
+  const auto add_upvalue_to_context =
+      [](bool is_local, std::size_t index, Context &ctx) -> std::size_t {
+    // Add upvalue to upvalues vector if not already present
+    for (const auto &[i, uv] : utils::ranges::enumerate(ctx.upvalues)) {
+      if (uv.is_local == is_local && uv.index == index) {
+        return i;
       }
     }
+    const auto upvalue_idx = ctx.upvalues.size();
+    ctx.upvalues.emplace_back(is_local, index);
     return upvalue_idx;
-  }
+  };
 
-  if (context_index == 0) {
-    return std::nullopt;
-  }
+  // iterate over contexts except the last in reverse order
+  for (const auto &[i, ctx] : std::views::drop(
+           std::views::reverse(utils::ranges::enumerate(contexts)), 1
+       )) {
+    auto index = resolve_in_context(name, ctx);
+    if (!index) {
+      continue;
+    }
 
-  return resolve_upvalue(name, context_index - 1);
+    auto result = add_upvalue_to_context(true, *index, contexts[i + 1]);
+
+    for (std::size_t j = i + 2; j < contexts.size(); ++j) {
+      result = add_upvalue_to_context(false, result, contexts[j]);
+    }
+
+    return result;
+  }
+  return std::nullopt;
 }
 
 Compiler::ResolvedVariable
@@ -147,10 +125,8 @@ Compiler::resolve_variable(const ast::Identifier &identifier) {
     return {.type = Compiler::VariableType::Local, .index = *local_arg};
   }
 
-  if (!contexts.empty()) {
-    if (auto upvalue_arg = resolve_upvalue(identifier, contexts.size() - 1)) {
-      return {.type = Compiler::VariableType::Upvalue, .index = *upvalue_arg};
-    }
+  if (auto upvalue_arg = resolve_upvalue(identifier)) {
+    return {.type = Compiler::VariableType::Upvalue, .index = *upvalue_arg};
   }
 
   return {
@@ -197,14 +173,15 @@ void Compiler::deduplicate_constants() {
   std::vector<std::size_t> index_map(program.constants.size(), 0UZ);
   std::vector<runtime::GCValue> deduped_constants;
 
-  for (std::size_t old_index = 0; old_index < program.constants.size();
-       ++old_index) {
-    auto &constant = program.constants[old_index];
+  for (const auto &[old_index, constant] :
+       utils::ranges::enumerate(program.constants)) {
     const auto &value = constant.get_value();
+
     auto it =
         std::ranges::find_if(deduped_constants, [&value](const auto &other) {
           return value.compare(other.get_value()) == 0;
         });
+
     if (it != deduped_constants.end()) {
       index_map[old_index] = static_cast<std::size_t>(
           std::distance(deduped_constants.begin(), it)
@@ -424,33 +401,13 @@ void Compiler::compile_comparison(const ast::Comparison &comparison) {
 }
 
 void Compiler::compile_anonymous_function(const ast::AnonymousFunction &func) {
-  const auto new_chunk_id = push_context();
-
-  const auto &args = func.get_body().get_parameters();
-  for (const auto &arg : args) {
-    add_local(arg);
-  }
-
-  compile_block(func.get_body().get_block());
-
-  if (!std::holds_alternative<OpReturn>(current_chunk().code.back())) {
-    emit(OpConstant{make_constant({})});
-    emit(OpReturn{});
-  }
-
-  std::vector<Upvalue> used_upvalues;
-  used_upvalues.reserve(current_upvalues.size());
-  for (const auto &uv : current_upvalues) {
-    used_upvalues.push_back({.is_local = uv.is_local, .index = uv.index});
-  }
-
-  pop_context();
+  auto [used_upvalues, new_chunk_id] = compile_function_body(func.get_body());
 
   std::size_t id = make_constant(
       runtime::Function{runtime::BytecodeFunctionId{
           .id = new_chunk_id,
           .name = "<anonymous>",
-          .arity = args.size(),
+          .arity = func.get_arity(),
           .upvalues = {},
           .curried_args = {}
       }}
@@ -589,8 +546,8 @@ void Compiler::compile_declaration(const ast::Declaration &decl) {
   compile_expression(*decl.get_expression());
 
   ast::Identifier hidden_name{
-      "_destruct_" + std::to_string(scope_depth) + "_" +
-      std::to_string(locals.size())
+      "_destruct_" + std::to_string(scope_depth()) + "_" +
+      std::to_string(locals().size())
   };
 
   std::size_t hidden_name_index = add_local(hidden_name);
@@ -620,7 +577,7 @@ void Compiler::compile_for_loop(const ast::ForLoop &loop) {
 
   emit(emit_get_variable(ast::Identifier{"len"}));
   emit(OpGetLocal{coll_idx});
-  emit(OpCall{1, true});
+  emit(OpCall{.arg_count = 1, .keep_return_value = true});
   const auto len_idx = add_local("_for_len");
 
   emit(OpConstant{make_constant(runtime::Value{runtime::Primitive{-1L}})});
@@ -630,7 +587,7 @@ void Compiler::compile_for_loop(const ast::ForLoop &loop) {
 
   const auto body_offset = current_instruction_offset();
 
-  loop_body_locals_snapshot.push_back(locals.size());
+  loop_body_locals_snapshot.push_back(locals().size());
 
   begin_scope();
   emit(OpGetLocal{coll_idx});
@@ -725,8 +682,8 @@ void Compiler::compile_name_assignment(const ast::NameAssignment &assign) {
   }
 
   ast::Identifier hidden_name{
-      "_destruct_assign_" + std::to_string(scope_depth) + "_" +
-      std::to_string(locals.size())
+      "_destruct_assign_" + std::to_string(scope_depth()) + "_" +
+      std::to_string(locals().size())
   };
 
   std::size_t hidden_name_idx = -1UZ;
@@ -746,6 +703,27 @@ void Compiler::compile_name_assignment(const ast::NameAssignment &assign) {
   }
 }
 
+Compiler::CompiledFunctionBody
+Compiler::compile_function_body(const ast::FunctionBody &body) {
+  const auto chunk_id = push_context();
+
+  const auto &args = body.get_parameters();
+  for (const auto &arg : args) {
+    add_local(arg);
+  }
+
+  compile_block(body.get_block());
+
+  if (!std::holds_alternative<OpReturn>(current_chunk().code.back())) {
+    emit(OpConstant{make_constant({})});
+    emit(OpReturn{});
+  }
+
+  auto used_upvalues = std::move(upvalues());
+  pop_context();
+  return {.upvalues = std::move(used_upvalues), .chunk_id = chunk_id};
+}
+
 void Compiler::compile_named_function(const ast::NamedFunction &func) {
   const auto &name = func.get_name();
 
@@ -758,38 +736,26 @@ void Compiler::compile_named_function(const ast::NamedFunction &func) {
     );
   }
 
-  const auto new_chunk_id = push_context();
+  auto [used_upvalues, chunk_id] = compile_function_body(func.get_body());
 
-  const auto &args = func.get_body().get_parameters();
-  for (const auto &arg : args) {
-    add_local(arg);
-  }
-
-  compile_block(func.get_body().get_block());
-
-  if (!std::holds_alternative<OpReturn>(current_chunk().code.back())) {
-    emit(OpConstant{make_constant({})});
-    emit(OpReturn{});
-  }
-
-  auto used_upvalues = std::move(current_upvalues);
-
-  pop_context();
-
-  const auto id = make_constant(
+  const auto constant = make_constant(
       runtime::Function{runtime::BytecodeFunctionId{
-          .id = new_chunk_id,
+          .id = chunk_id,
           .name = name.get_name(),
-          .arity = args.size(),
+          .arity = func.get_arity(),
           .upvalues = {},
           .curried_args = {}
       }}
   );
 
   if (used_upvalues.empty()) {
-    emit(OpConstant{id});
+    emit(OpConstant{constant});
   } else {
-    emit(OpClosure{.function_index = id, .upvalues = std::move(used_upvalues)});
+    emit(
+        OpClosure{
+            .function_index = constant, .upvalues = std::move(used_upvalues)
+        }
+    );
   }
 
   emit(OpSetLocal{*local_opt});
@@ -900,7 +866,7 @@ void Compiler::compile_range_for_loop(const ast::RangeForLoop &loop) {
 
   const auto body_offset = current_instruction_offset();
 
-  loop_body_locals_snapshot.push_back(locals.size());
+  loop_body_locals_snapshot.push_back(locals().size());
 
   begin_scope();
   emit(OpGetLocal{current_idx});
@@ -950,7 +916,7 @@ void Compiler::compile_while_loop(const ast::While &loop) {
 
   // Snapshot locals before the body scope so continue can compute how many
   // body-scope locals to pop.
-  loop_body_locals_snapshot.push_back(locals.size());
+  loop_body_locals_snapshot.push_back(locals().size());
   compile_block(loop.get_body());
   loop_body_locals_snapshot.pop_back();
 
@@ -1003,7 +969,7 @@ void Compiler::
     throw std::runtime_error("Continue statement outside of loop");
   }
 
-  const auto body_locals = locals.size() - loop_body_locals_snapshot.back();
+  const auto body_locals = locals().size() - loop_body_locals_snapshot.back();
   emit(OpPop{.count = body_locals});
   continue_jumps_stack.back().push_back(emit_jump(OpJump{}));
 }

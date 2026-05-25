@@ -26,6 +26,7 @@ public:
     return parameters;
   }
   DEFINE_ACCESSOR_X(block)
+  [[nodiscard]] std::size_t get_arity() const { return parameters.size(); }
 };
 
 class NamedFunction {
@@ -42,6 +43,7 @@ public:
 
   DEFINE_ACCESSOR_X(name);
   DEFINE_ACCESSOR_X(body);
+  [[nodiscard]] std::size_t get_arity() const { return body.get_arity(); }
 };
 
 class AnonymousFunction {
@@ -54,6 +56,7 @@ public:
   AnonymousFunction(FunctionBody &&body, location::Location location = {});
 
   DEFINE_ACCESSOR_X(body);
+  [[nodiscard]] std::size_t get_arity() const { return body.get_arity(); }
 };
 
 } // namespace l3::ast
