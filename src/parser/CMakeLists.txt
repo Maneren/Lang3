@@ -44,23 +44,14 @@ add_custom_command(
   CODEGEN
 )
 
-file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS src/*.cpp)
-file(GLOB_RECURSE HEADERS CONFIGURE_DEPENDS include/*.hpp)
-
-add_library(${LIB_NAME} STATIC
-  ${SOURCES} ${LEXER_CPP} ${PARSER_CPP}
+auto_create_library(${LIB_NAME}
+  SOURCES ${PARSER_CPP} ${LEXER_CPP}
+  PRIVATE_DEPS ast utils
 )
 
 target_sources(${LIB_NAME} PUBLIC
-  FILE_SET HEADERS
-    BASE_DIRS include
-    FILES ${HEADERS}
   FILE_SET parser_header
     TYPE HEADERS
     BASE_DIRS ${GENERATED_INCLUDE}
     FILES ${PARSER_HEADER} ${LOCATION_HEADER}
 )
-
-target_link_libraries(${LIB_NAME} PRIVATE ast location)
-
-set_compiler_and_linker_flags(${LIB_NAME})

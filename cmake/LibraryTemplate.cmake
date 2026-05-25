@@ -1,61 +1,62 @@
 include(${CMAKE_CURRENT_LIST_DIR}/CommonUtils.cmake)
 
-function(create_library TARGET SOURCES)
+function(create_library TARGET)
     cmake_parse_arguments(LIB
-        "STATIC;SHARED;OBJECT;HEADER_ONLY"
-        "VERSION;NAMESPACE;CXX_STD"
-        "PRIVATE_DEPS;PUBLIC_DEPS;INTERFACE_DEPS;HEADER_DEPS;EXTRA_SOURCES"
+        "STATIC;SHARED;OBJECT;INTERFACE"
+        "VERSION;CXX_STD;HEADER_BASE_DIR"
+        "PRIVATE_DEPS;PUBLIC_DEPS;INTERFACE_DEPS;HEADERS;MODULES;SOURCES"
         ${ARGN}
     )
 
-    list(APPEND SOURCES ${LIB_EXTRA_SOURCES})
-
-    set(HEADER_LIBRARY ${TARGET}_headers)
-
-    if (NOT LIB_HEADER_ONLY AND NOT SOURCES)
-        message(FATAL_ERROR "Library ${TARGET} has no sources but is not header-only")
+    if (NOT LIB_INTERFACE AND NOT LIB_SOURCES AND NOT LIB_MODULES)
+        message(FATAL_ERROR
+            "Library ${TARGET} has no sources but is not header-only")
     endif()
 
     if(NOT LIB_CXX_STD)
         set(LIB_CXX_STD ${DEFAULT_CXX_STD})
     endif()
 
-    if(LIB_NAMESPACE)
-        set(TARGET "${LIB_NAMESPACE}::${TARGET}")
-    endif()
-
-    if(LIB_HEADER_ONLY)
+    if(LIB_INTERFACE)
         add_library(${TARGET} INTERFACE)
     elseif(LIB_SHARED)
-        add_library(${TARGET} SHARED ${SOURCES})
+        add_library(${TARGET} SHARED ${LIB_SOURCES})
         set_target_properties(${TARGET} PROPERTIES POSITION_INDEPENDENT_CODE ON)
     elseif(LIB_OBJECT)
-        add_library(${TARGET} OBJECT ${SOURCES})
+        add_library(${TARGET} OBJECT ${LIB_SOURCES})
+    elseif(LIB_STATIC)
+        add_library(${TARGET} STATIC ${LIB_SOURCES})
     else()
-        add_library(${TARGET} STATIC ${SOURCES})
+        add_library(${TARGET} ${LIB_SOURCES})
     endif()
 
-    if(LIB_HEADER_ONLY)
+    if(LIB_MODULES)
+        target_sources(${TARGET} PUBLIC
+            FILE_SET CXX_MODULES
+            FILES ${LIB_MODULES})
+    endif()
+
+    if(LIB_HEADERS)
+        if(NOT LIB_HEADER_BASE_DIR)
+            set(LIB_HEADER_BASE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include)
+        endif()
+
+        target_sources(${TARGET} PUBLIC
+            FILE_SET HEADERS
+            BASE_DIRS ${LIB_HEADER_BASE_DIR}
+            FILES ${LIB_HEADERS})
+    endif()
+
+    if(LIB_INTERFACE)
         if (LIB_PRIVATE_DEPS OR LIB_PUBLIC_DEPS)
             message(FATAL_ERROR
-                "Header-only library '${TARGET}' can't have private or public dependencies")
+                "Header-only '${TARGET}' may only have interface dependencies")
         endif()
         target_link_libraries(${TARGET} INTERFACE "${LIB_INTERFACE_DEPS}")
         target_compile_features(${TARGET} INTERFACE cxx_std_${LIB_CXX_STD})
-        target_include_directories(${TARGET} INTERFACE
-            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-            $<INSTALL_INTERFACE:include>)
     else()
-        add_library(${HEADER_LIBRARY} INTERFACE)
-
-        target_include_directories(${HEADER_LIBRARY} INTERFACE
-            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-            $<INSTALL_INTERFACE:include>)
-        target_include_directories(${TARGET} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-
-        target_link_libraries(${HEADER_LIBRARY} INTERFACE "${LIB_HEADER_DEPS}")
         target_link_libraries(${TARGET}
-            PUBLIC "${LIB_PUBLIC_DEPS}" "${HEADER_LIBRARY}"
+            PUBLIC "${LIB_PUBLIC_DEPS}"
             INTERFACE "${LIB_INTERFACE_DEPS}"
             PRIVATE "${LIB_PRIVATE_DEPS}")
 
@@ -68,12 +69,13 @@ function(create_library TARGET SOURCES)
 endfunction()
 
 function(auto_create_library TARGET)
-    file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS src/*.cpp src/*.c src/*.cxx src/*.cc)
-    file(GLOB_RECURSE HEADERS CONFIGURE_DEPENDS include/*.h include/*.hpp include/*.hxx)
+    file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS src/*.cpp src/*.cxx src/*.cc)
+    file(GLOB_RECURSE MODULES CONFIGURE_DEPENDS src/*.cppm)
+    file(GLOB_RECURSE HEADERS CONFIGURE_DEPENDS include/*.h include/*.hpp)
 
-    if(NOT SOURCES AND HEADERS)
-        create_library(${TARGET} "" HEADER_ONLY ${ARGN})
-    else()
-        create_library(${TARGET} "${SOURCES}" ${ARGN})
-    endif()
+    create_library(${TARGET} ${ARGN}
+        SOURCES "${SOURCES}"
+        MODULES "${MODULES}"
+        HEADERS "${HEADERS}"
+    )
 endfunction()

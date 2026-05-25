@@ -1,17 +1,5 @@
 get_filename_component(LIB_NAME ${CMAKE_CURRENT_SOURCE_DIR} NAME)
 
-file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS src/*.cpp)
-file(GLOB_RECURSE MODULES CONFIGURE_DEPENDS src/*.cppm)
-
-add_library(${LIB_NAME} STATIC
-  ${SOURCES}
+auto_create_library(${LIB_NAME}
+    PRIVATE_DEPS bytecode runtime utils
 )
-
-target_sources(${LIB_NAME} PUBLIC
-  FILE_SET CXX_MODULES
-  FILES ${MODULES}
-)
-
-target_link_libraries(${LIB_NAME} PRIVATE bytecode runtime utils)
-
-set_compiler_and_linker_flags(${LIB_NAME})
