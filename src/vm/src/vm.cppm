@@ -2,6 +2,7 @@ export module l3.vm;
 
 import std;
 import l3.bytecode;
+import l3.location;
 import l3.runtime;
 import utils;
 import :builtins;
@@ -31,7 +32,11 @@ public:
 
   runtime::Ref store_value(runtime::Value &&value);
   runtime::Ref store_new_value(runtime::NewValue &&value);
-  runtime::Ref evaluate(runtime::Ref function, runtime::L3Args arguments);
+  runtime::Ref evaluate(
+      runtime::Ref function,
+      runtime::L3Args arguments,
+      const location::Location &call_location = {}
+  );
 
   std::size_t run_gc();
   void maybe_gc();
@@ -40,6 +45,7 @@ public:
     std::size_t chunk_id = 0;
     std::size_t ip = 0;
     std::size_t frame_pointer = 0;
+    std::optional<location::Location> call_location;
     std::optional<runtime::Ref> closure;
   };
 
@@ -58,6 +64,7 @@ private:
 
   [[nodiscard]] runtime::GCValue &constant_at(std::size_t index);
   [[nodiscard]] const runtime::GCValue &constant_at(std::size_t index) const;
+  [[nodiscard]] const location::Location &current_instruction_location() const;
 
   [[nodiscard]] runtime::Ref &stack_at(std::size_t index);
   [[nodiscard]] const runtime::Ref &stack_at(std::size_t index) const;

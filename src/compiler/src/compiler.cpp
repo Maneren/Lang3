@@ -11,6 +11,21 @@ namespace l3::compiler {
 
 using namespace l3::bytecode;
 
+namespace {
+
+struct LocationScope {
+  std::vector<location::Location> &stack;
+
+  LocationScope(std::vector<location::Location> &stack, location::Location loc)
+      : stack(stack) {
+    stack.push_back(std::move(loc));
+  }
+
+  ~LocationScope() { stack.pop_back(); }
+};
+
+} // namespace
+
 Compiler::Compiler(ProgramBytecode &program) : program(program) {}
 
 void Compiler::compile(const ast::Program &program) {
@@ -33,6 +48,14 @@ std::size_t Compiler::last_instruction_offset() {
 }
 std::size_t Compiler::current_instruction_offset() {
   return current_chunk().code.size();
+}
+
+const location::Location &Compiler::current_location() const {
+  if (location_stack.empty()) {
+    static const location::Location empty{};
+    return empty;
+  }
+  return location_stack.back();
 }
 
 std::size_t Compiler::push_context() {
@@ -159,8 +182,14 @@ Instruction Compiler::emit_set_variable(const ast::Identifier &name) {
   }
 }
 
-void Compiler::emit(const Instruction &instruction, std::size_t line) {
-  current_chunk().write(instruction, line);
+void Compiler::emit(const Instruction &instruction) {
+  current_chunk().write(instruction, current_location());
+}
+
+void Compiler::emit(
+    const Instruction &instruction, const location::Location &location
+) {
+  current_chunk().write(instruction, location);
 }
 
 std::size_t Compiler::make_constant(runtime::Value &&value) {
@@ -232,13 +261,14 @@ void Compiler::patch_jump_here(std::size_t jump_offset) {
 }
 
 std::size_t Compiler::emit_jump(const Instruction &instruction) {
-  current_chunk().write(instruction, 0);
+  current_chunk().write(instruction, current_location());
   return last_instruction_offset();
 }
 
 void Compiler::compile_statements(std::ranges::input_range auto &statements) {
   // hoist function declarations
   for (const auto &stmt : statements) {
+    LocationScope scope(location_stack, stmt.get_location());
     stmt.visit(
         [this](const ast::NamedFunction &func) {
           emit(OpConstant{make_constant({})});
@@ -263,6 +293,7 @@ void Compiler::compile_block(const ast::Block &block) {
 }
 
 void Compiler::compile_expression(const ast::Expression &expr) {
+  LocationScope scope(location_stack, expr.get_location());
   contexts.back().is_in_expression = true;
   expr.visit(
       [this](const ast::Literal &literal) { compile_literal(literal); },
@@ -502,6 +533,7 @@ void Compiler::compile_literal(const ast::Literal &literal) {
 }
 
 void Compiler::compile_statement(const ast::Statement &stmt) {
+  LocationScope scope(location_stack, stmt.get_location());
   stmt.visit(
       [this](const ast::Declaration &decl) { compile_declaration(decl); },
       [this](const ast::ForLoop &loop) { compile_for_loop(loop); },
@@ -705,6 +737,7 @@ void Compiler::compile_name_assignment(const ast::NameAssignment &assign) {
 
 Compiler::CompiledFunctionBody
 Compiler::compile_function_body(const ast::FunctionBody &body) {
+  LocationScope scope(location_stack, body.get_location());
   const auto chunk_id = push_context();
 
   const auto &args = body.get_parameters();
@@ -936,6 +969,7 @@ void Compiler::compile_while_loop(const ast::While &loop) {
 }
 
 void Compiler::compile_last_statement(const ast::LastStatement &stmt) {
+  LocationScope scope(location_stack, stmt.get_location());
   stmt.visit(
       [this](const ast::ReturnStatement &ret) {
         compile_return_statement(ret);

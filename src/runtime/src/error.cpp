@@ -21,14 +21,24 @@ std::string RuntimeError::format_error() const {
   std::string result;
 
   // Format: "ErrorType: message"
-  result += std::format("{}: {}", type(), what());
+  result += std::format("{}: {}", type(), std::runtime_error::what());
 
-  // Add location if available
   if (location_) {
     result += std::format("\n  at {}", location_->get());
   }
 
+  if (!stacktrace.empty()) {
+    result += "\nstacktrace:";
+    for (const auto &frame : std::views::reverse(stacktrace)) {
+      result += std::format(
+          "\n  in {} called at {}", frame.function_name, frame.call_location
+      );
+    }
+  }
+
   return result;
 }
+
+const char *RuntimeError::what() const noexcept { return formatted.c_str(); }
 
 } // namespace l3::runtime

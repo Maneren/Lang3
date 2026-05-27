@@ -7,8 +7,15 @@ import utils;
 
 export namespace l3::runtime {
 
+struct StacktraceFrame {
+  std::string function_name;
+  location::Location call_location;
+};
+
 class RuntimeError : public std::runtime_error {
   utils::optional_cref<location::Location> location_;
+  std::vector<StacktraceFrame> stacktrace;
+  mutable std::string formatted;
 
 public:
   RuntimeError(const std::string &message);
@@ -41,6 +48,12 @@ public:
       location_ = location;
     }
   }
+
+  void set_stacktrace(std::vector<StacktraceFrame> stacktrace) {
+    this->stacktrace = std::move(stacktrace);
+  }
+
+  [[nodiscard]] const char *what() const noexcept override;
 
   [[nodiscard]] std::string format_error() const;
 };

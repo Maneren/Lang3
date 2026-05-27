@@ -7,6 +7,29 @@ import utils;
 
 namespace l3::vm {
 
+namespace {
+
+std::string function_name_for_frame(const BytecodeVM::CallFrame &frame) {
+  if (!frame.closure) {
+    return "<toplevel>";
+  }
+
+  const auto &function_value = frame.closure->get();
+  if (const auto function = function_value.as_function()) {
+    if (const auto bytecode = function->get()->as_bytecode_function()) {
+      return bytecode->get().name;
+    }
+
+    if (const auto builtin = function->get()->as_builtin_function()) {
+      return builtin->get().get_name().get_name();
+    }
+  }
+
+  return "<function>";
+}
+
+} // namespace
+
 BytecodeVM::BytecodeVM(bool debug_) : debug(debug_) {
   for (const auto &[name, body] : l3::builtins::BUILTINS) {
     auto func = store_value(
@@ -33,6 +56,11 @@ runtime::Ref BytecodeVM::store_new_value(runtime::NewValue &&value) {
   );
 }
 
+const location::Location &BytecodeVM::current_instruction_location() const {
+  return current_program->chunks[current_frame().chunk_id]
+      .locations[current_frame().ip - 1];
+}
+
 runtime::Ref BytecodeVM::stack_pop() {
   auto val = stack.back();
   stack.pop_back();
@@ -57,7 +85,7 @@ BytecodeVM::resolve_global(std::string_view name) const {
 
 void BytecodeVM::define_global(std::string_view name, runtime::Ref value) {
   if (auto it = global_symbols.find(name); it != global_symbols.end()) {
-    throw std::runtime_error("Global already defined: " + std::string(name));
+    throw runtime::RuntimeError("Global already defined: {}", name);
   }
 
   global_symbols.emplace(name, value);
@@ -129,8 +157,11 @@ void BytecodeVM::comparison_op(Predicate predicate) {
   stack_push(runtime::Primitive{predicate(a->compare(*b))});
 }
 
-runtime::Ref
-BytecodeVM::evaluate(runtime::Ref function, runtime::L3Args arguments) {
+runtime::Ref BytecodeVM::evaluate(
+    runtime::Ref function,
+    runtime::L3Args arguments,
+    const location::Location &call_location
+) {
   if (auto func_opt = function->as_function()) {
     const auto &func = func_opt->get();
 
@@ -152,7 +183,7 @@ BytecodeVM::evaluate(runtime::Ref function, runtime::L3Args arguments) {
             auto previous_frames = frames.size();
             auto fp = stack.size();
             frames.emplace_back(
-                bc_func.id, 0, fp, std::make_optional(function)
+                bc_func.id, 0, fp, call_location, std::make_optional(function)
             );
             for (const auto &arg : bc_func.curried_args) {
               stack.push_back(arg);
@@ -164,11 +195,11 @@ BytecodeVM::evaluate(runtime::Ref function, runtime::L3Args arguments) {
             return stack_pop();
           }
 
-          throw std::runtime_error("evaluate arity mismatch");
+          throw runtime::RuntimeError("evaluate arity mismatch");
         }
     );
   }
-  throw std::runtime_error("evaluate: not a function");
+  throw runtime::RuntimeError("evaluate: not a function");
 }
 
 std::size_t BytecodeVM::run_gc() {
@@ -197,12 +228,33 @@ void BytecodeVM::maybe_gc() {
 void BytecodeVM::execute(bytecode::ProgramBytecode &program) {
   current_program = &program;
   frames.emplace_back();
-  execute_loop(0);
+  try {
+    execute_loop(0);
+  } catch (runtime::RuntimeError &error) {
+    if (!error.location()) {
+      error.set_location(current_instruction_location());
+    }
+    auto stacktrace =
+        std::views::filter(
+            frames,
+            [](const auto &frame) { return frame.call_location.has_value(); }
+        ) |
+        std::views::transform([](const auto &frame) {
+          return runtime::StacktraceFrame{
+              .function_name = function_name_for_frame(frame),
+              .call_location = *frame.call_location
+          };
+        }) |
+        std::ranges::to<std::vector>();
+    error.set_stacktrace(std::move(stacktrace));
+    current_program = nullptr;
+    throw;
+  }
   current_program = nullptr;
 
   if (stack.size() != 1 || stack.back()->compare(runtime::Value{}) != 0) {
     std::println(std::cerr, "{}", stack);
-    throw std::runtime_error("stack not empty");
+    throw std::runtime_error("stack not empty after program execution");
   }
 }
 
@@ -290,7 +342,7 @@ void BytecodeVM::execute_op_constant(const bytecode::OpConstant &op) {
 [[clang::noinline]]
 void BytecodeVM::execute_op_pop(const bytecode::OpPop &op) {
   if (stack.empty() || stack.size() == current_frame_pointer()) {
-    throw std::runtime_error("stack underflow");
+    throw runtime::RuntimeError("stack underflow");
   }
 
   if (op.count == 1) {
@@ -430,7 +482,7 @@ void BytecodeVM::execute_op_get_global(const bytecode::OpGetGlobal &op) {
   if (auto str_opt = name_val.get_value().as_string()) {
     const auto slot = resolve_global(str_opt->get());
     if (!slot) {
-      throw std::runtime_error("Undefined variable: " + str_opt->get());
+      throw runtime::UndefinedVariableError("{}", str_opt->get());
     }
     const auto &value = *slot;
     debug_print("GET_GLOBAL name={} value={}", str_opt->get(), value);
@@ -444,7 +496,7 @@ void BytecodeVM::execute_op_set_global(const bytecode::OpSetGlobal &op) {
   if (auto str_opt = name_val.get_value().as_string()) {
     auto slot = resolve_global(str_opt->get());
     if (!slot) {
-      throw std::runtime_error("Undefined variable: " + str_opt->get());
+      throw runtime::RuntimeError("Undefined variable: {}", str_opt->get());
     }
     debug_print("SET_GLOBAL name={} value={}", str_opt->get(), stack_top());
     assign_slot(*slot);
@@ -482,11 +534,11 @@ void BytecodeVM::execute_op_for_loop(
 
   if (!stack_at(control_slot)->is_primitive() ||
       !stack_at(control_slot)->as_primitive()->get().is_integer()) {
-    throw std::runtime_error("for-loop control variable must be an integer");
+    throw runtime::RuntimeError("for-loop control variable must be an integer");
   }
   if (!stack_at(limit_slot)->is_primitive() ||
       !stack_at(limit_slot)->as_primitive()->get().is_integer()) {
-    throw std::runtime_error("for-loop limit value must be an integer");
+    throw runtime::RuntimeError("for-loop limit value must be an integer");
   }
 
   std::int64_t step = 1;
@@ -494,7 +546,7 @@ void BytecodeVM::execute_op_for_loop(
     const auto step_slot = frame.frame_pointer + *op.step_index;
     if (!stack_at(step_slot)->is_primitive() ||
         !stack_at(step_slot)->as_primitive()->get().is_integer()) {
-      throw std::runtime_error("for-loop step value must be an integer");
+      throw runtime::RuntimeError("for-loop step value must be an integer");
     }
     step = stack_at(step_slot)->as_primitive()->get().as_integer().value();
   }
@@ -568,10 +620,11 @@ void BytecodeVM::execute_op_call(const bytecode::OpCall &op) {
   debug_print("CALL func={} args={}", func_ref, args);
 
   if (!func_ref->is_function()) {
-    throw std::runtime_error("Attempted to call a non-function value");
+    throw runtime::RuntimeError("Attempted to call a non-function value");
   }
 
-  const auto result = evaluate(func_ref, std::move(args));
+  const auto result =
+      evaluate(func_ref, std::move(args), current_instruction_location());
   if (op.keep_return_value) {
     stack.push_back(result);
   }

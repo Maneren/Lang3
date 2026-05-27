@@ -2,6 +2,7 @@ export module l3.bytecode;
 
 import std;
 import utils;
+import l3.location;
 import l3.runtime;
 
 export namespace l3::bytecode {
@@ -133,8 +134,10 @@ using Instruction = std::variant<
 class Chunk {
 public:
   std::vector<Instruction> code;
+  std::vector<location::Location> locations;
 
-  void write(const Instruction &instruction, std::size_t line);
+  void
+  write(const Instruction &instruction, const location::Location &location);
 };
 
 struct ProgramBytecode {
@@ -155,11 +158,11 @@ export {
       auto out = ctx.out();
 
       for (const auto &[chunk_id, chunk] :
-           std::views::enumerate(program.chunks)) {
+           utils::ranges::enumerate(program.chunks)) {
         out = std::format_to(out, "== Chunk {} ==\n", chunk_id);
 
         for (const auto &[offset, instruction] :
-             std::views::enumerate(chunk.code)) {
+             utils::ranges::enumerate(chunk.code)) {
           out = std::format_to(out, "{:04d} | ", offset);
 
           out = match::match(

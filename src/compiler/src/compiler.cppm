@@ -3,6 +3,7 @@ export module l3.compiler;
 import std;
 import l3.ast;
 import l3.bytecode;
+import l3.location;
 import l3.runtime;
 import utils;
 
@@ -34,8 +35,10 @@ private:
   Chunk &current_chunk();
   std::size_t last_instruction_offset();
   std::size_t current_instruction_offset();
+  [[nodiscard]] const location::Location &current_location() const;
 
   std::vector<Context> contexts;
+  std::vector<location::Location> location_stack;
 
   struct CompiledFunctionBody {
     std::vector<Upvalue> upvalues;
@@ -79,7 +82,8 @@ private:
   std::optional<std::size_t> resolve_local(const ast::Identifier &name);
   std::optional<std::size_t> resolve_upvalue(const ast::Identifier &name);
 
-  void emit(const Instruction &instruction, std::size_t line = 0);
+  void emit(const Instruction &instruction);
+  void emit(const Instruction &instruction, const location::Location &location);
   std::size_t make_constant(runtime::Value &&value);
   void deduplicate_constants();
   void emit_loop(std::size_t loop_start);

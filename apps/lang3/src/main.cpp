@@ -7,6 +7,7 @@ import l3.ast.printer;
 import l3.ast.dot_printer;
 import l3.bytecode;
 import l3.compiler;
+import l3.runtime;
 import l3.vm;
 
 namespace {
@@ -155,7 +156,12 @@ int main(int argc, char *argv[]) {
 
   vm::BytecodeVM vm{debug.vm};
   const auto start_time = std::chrono::steady_clock::now();
-  vm.execute(program_bytecode);
+  try {
+    vm.execute(program_bytecode);
+  } catch (runtime::RuntimeError &error) {
+    std::println(std::cerr, "{}", error.format_error());
+    return EXIT_FAILURE;
+  }
 
   if (debug.timings) {
     auto end_time = std::chrono::steady_clock::now();
