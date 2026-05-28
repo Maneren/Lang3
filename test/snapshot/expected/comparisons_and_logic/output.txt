@@ -2,4 +2,4 @@ true
 false
 true
 true
-RuntimeError: stack not empty
+RuntimeError: stack not empty after program execution

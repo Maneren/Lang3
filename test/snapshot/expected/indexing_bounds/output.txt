@@ -2,4 +2,5 @@
 9
 x
 z
-RuntimeError: index out of bounds
+RuntimeError: ValueError: index out of bounds
+  at indexing_bounds.l3:10.9-16

@@ -231,7 +231,7 @@ void BytecodeVM::execute(bytecode::ProgramBytecode &program) {
   try {
     execute_loop(0);
   } catch (runtime::RuntimeError &error) {
-    if (!error.location()) {
+    if (!error.get_location()) {
       error.set_location(current_instruction_location());
     }
     auto stacktrace =

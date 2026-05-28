@@ -15,7 +15,7 @@ RuntimeError::RuntimeError(const std::string &message)
 RuntimeError::RuntimeError(
     const std::string &message, const location::Location &location
 )
-    : std::runtime_error(message), location_(location) {}
+    : std::runtime_error(message), location(location) {}
 
 std::string RuntimeError::format_error() const {
   std::string result;
@@ -23,8 +23,8 @@ std::string RuntimeError::format_error() const {
   // Format: "ErrorType: message"
   result += std::format("{}: {}", type(), std::runtime_error::what());
 
-  if (location_) {
-    result += std::format("\n  at {}", location_->get());
+  if (location) {
+    result += std::format("\n  at {}", *location);
   }
 
   if (!stacktrace.empty()) {

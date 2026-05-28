@@ -13,7 +13,7 @@ struct StacktraceFrame {
 };
 
 class RuntimeError : public std::runtime_error {
-  utils::optional_cref<location::Location> location_;
+  utils::optional_cref<location::Location> location;
   std::vector<StacktraceFrame> stacktrace;
   mutable std::string formatted;
 
@@ -32,25 +32,25 @@ public:
       Args &&...args
   )
       : std::runtime_error(std::format(message, std::forward<Args>(args)...)),
-        location_(location) {}
+        location(location) {}
 
   [[nodiscard]] constexpr virtual std::string_view type() const {
     return "RuntimeError";
   }
 
   [[nodiscard]] utils::optional_cref<const location::Location>
-  location() const {
-    return location_;
+  get_location() const {
+    return location;
   }
 
   void set_location(const location::Location &location) {
-    if (!location_) {
-      location_ = location;
-    }
+    this->location = location;
+    formatted = format_error();
   }
 
   void set_stacktrace(std::vector<StacktraceFrame> stacktrace) {
     this->stacktrace = std::move(stacktrace);
+    formatted = format_error();
   }
 
   [[nodiscard]] const char *what() const noexcept override;

@@ -21,6 +21,7 @@ const fs::path kExpectedDir = kSnapshotRoot / "expected";
 
 struct SnapshotCase {
   std::string name;
+  std::string filename;
   fs::path input;
 };
 
@@ -61,7 +62,11 @@ std::vector<SnapshotCase> discover_cases() {
     }
 
     cases.push_back(
-        SnapshotCase{.name = std::move(name), .input = entry.path()}
+        SnapshotCase{
+            .name = std::move(name),
+            .filename = relative.generic_string(),
+            .input = entry.path()
+        }
     );
   }
 
@@ -251,7 +256,7 @@ struct SnapshotArtifacts {
 SnapshotArtifacts build_artifacts(const SnapshotCase &test_case) {
   const std::string source = read_text_file(test_case.input);
 
-  auto program_opt = parse_ast(source, test_case.input.generic_string());
+  auto program_opt = parse_ast(source, test_case.filename);
   EXPECT_TRUE(program_opt.has_value())
       << "Parser failed for " << test_case.input;
   if (!program_opt) {
