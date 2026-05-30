@@ -75,8 +75,8 @@ export {
   };
 
   template <>
-  struct std::formatter<l3::runtime::BytecodeFunctionId>
-      : utils::static_formatter<l3::runtime::BytecodeFunctionId> {
+  struct std::formatter<l3::runtime::BytecodeFunction>
+      : utils::static_formatter<l3::runtime::BytecodeFunction> {
     static constexpr auto format(const auto &obj, std::format_context &ctx) {
       return std::format_to(ctx.out(), "function <{}>", obj.name);
     }

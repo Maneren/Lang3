@@ -435,7 +435,7 @@ void Compiler::compile_anonymous_function(const ast::AnonymousFunction &func) {
   auto [used_upvalues, new_chunk_id] = compile_function_body(func.get_body());
 
   std::size_t id = make_constant(
-      runtime::Function{runtime::BytecodeFunctionId{
+      runtime::Function{runtime::BytecodeFunction{
           .id = new_chunk_id,
           .name = "<anonymous>",
           .arity = func.get_arity(),
@@ -772,7 +772,7 @@ void Compiler::compile_named_function(const ast::NamedFunction &func) {
   auto [used_upvalues, chunk_id] = compile_function_body(func.get_body());
 
   const auto constant = make_constant(
-      runtime::Function{runtime::BytecodeFunctionId{
+      runtime::Function{runtime::BytecodeFunction{
           .id = chunk_id,
           .name = name.get_name(),
           .arity = func.get_arity(),

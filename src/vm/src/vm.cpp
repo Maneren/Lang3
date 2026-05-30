@@ -158,7 +158,7 @@ runtime::Ref BytecodeVM::evaluate(
         [&](const runtime::BuiltinFunction &func) {
           return func.invoke(arguments);
         },
-        [&](const runtime::BytecodeFunctionId &bc_func) {
+        [&](const runtime::BytecodeFunction &bc_func) {
           auto total_args = bc_func.curried_args.size() + arguments.size();
 
           if (total_args < bc_func.arity) {
@@ -620,12 +620,12 @@ void BytecodeVM::execute_op_call(const bytecode::OpCall &op) {
 }
 
 namespace {
-runtime::BytecodeFunctionId &
+runtime::BytecodeFunction &
 get_mut_bytecode_function(decltype(BytecodeVM::CallFrame::closure) &value) {
   return value->first;
 }
 
-const runtime::BytecodeFunctionId &
+const runtime::BytecodeFunction &
 get_bytecode_function(const decltype(BytecodeVM::CallFrame::closure) &value) {
   return value->first;
 }

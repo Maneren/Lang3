@@ -29,7 +29,7 @@ public:
   DEFINE_ACCESSOR_X(name);
 };
 
-struct BytecodeFunctionId {
+struct BytecodeFunction {
   std::size_t id;
   std::string name;
   std::size_t arity;
@@ -38,11 +38,11 @@ struct BytecodeFunctionId {
 };
 
 class Function {
-  std::variant<BuiltinFunction, BytecodeFunctionId> inner;
+  std::variant<BuiltinFunction, BytecodeFunction> inner;
 
 public:
   Function(BuiltinFunction &&function);
-  Function(BytecodeFunctionId &&function);
+  Function(BytecodeFunction &&function);
 
   [[nodiscard]] utils::optional_cref<BuiltinFunction>
   as_builtin_function() const {
@@ -52,18 +52,17 @@ public:
     return std::nullopt;
   }
 
-  [[nodiscard]] utils::optional_ref<BytecodeFunctionId>
+  [[nodiscard]] utils::optional_ref<BytecodeFunction>
   as_mut_bytecode_function() {
-    if (auto *bytecode_function = std::get_if<BytecodeFunctionId>(&inner)) {
+    if (auto *bytecode_function = std::get_if<BytecodeFunction>(&inner)) {
       return *bytecode_function;
     }
     return std::nullopt;
   }
 
-  [[nodiscard]] utils::optional_cref<BytecodeFunctionId>
+  [[nodiscard]] utils::optional_cref<BytecodeFunction>
   as_bytecode_function() const {
-    if (const auto *bytecode_function =
-            std::get_if<BytecodeFunctionId>(&inner)) {
+    if (const auto *bytecode_function = std::get_if<BytecodeFunction>(&inner)) {
       return *bytecode_function;
     }
     return std::nullopt;
