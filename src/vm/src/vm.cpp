@@ -14,18 +14,7 @@ std::string function_name_for_frame(const BytecodeVM::CallFrame &frame) {
     return "<toplevel>";
   }
 
-  const auto &function_value = frame.closure->get();
-  if (const auto function = function_value.as_function()) {
-    if (const auto bytecode = function->get()->as_bytecode_function()) {
-      return bytecode->get().name;
-    }
-
-    if (const auto builtin = function->get()->as_builtin_function()) {
-      return builtin->get().get_name().get_name();
-    }
-  }
-
-  return "<function>";
+  return frame.closure->first.name;
 }
 
 } // namespace
@@ -183,7 +172,7 @@ runtime::Ref BytecodeVM::evaluate(
             auto previous_frames = frames.size();
             auto fp = stack.size();
             frames.emplace_back(
-                bc_func.id, 0, fp, call_location, std::make_optional(function)
+                bc_func.id, 0, fp, call_location, std::pair{bc_func, function}
             );
             for (const auto &arg : bc_func.curried_args) {
               stack.push_back(arg);
@@ -211,7 +200,7 @@ std::size_t BytecodeVM::run_gc() {
   }
   for (auto &frame : frames) {
     if (frame.closure) {
-      frame.closure->get_gc_mut().mark();
+      frame.closure->second.get_gc_mut().mark();
     }
   }
   return gc_storage.sweep();
@@ -631,13 +620,14 @@ void BytecodeVM::execute_op_call(const bytecode::OpCall &op) {
 }
 
 namespace {
-runtime::BytecodeFunctionId &get_mut_bytecode_function(runtime::Value &value) {
-  return value.as_mut_function()->get()->as_mut_bytecode_function()->get();
+runtime::BytecodeFunctionId &
+get_mut_bytecode_function(decltype(BytecodeVM::CallFrame::closure) &value) {
+  return value->first;
 }
 
 const runtime::BytecodeFunctionId &
-get_bytecode_function(const runtime::Value &value) {
-  return value.as_function()->get()->as_bytecode_function()->get();
+get_bytecode_function(const decltype(BytecodeVM::CallFrame::closure) &value) {
+  return value->first;
 }
 } // namespace
 
@@ -645,9 +635,12 @@ get_bytecode_function(const runtime::Value &value) {
 void BytecodeVM::execute_op_closure(
     const bytecode::OpClosure &op, CallFrame &frame
 ) {
-  auto function = get_mut_bytecode_function(
-      current_program->constants[op.function_index].get_value_mut()
-  );
+  auto &function = current_program->constants[op.function_index]
+                       .get_value_mut()
+                       .as_mut_function()
+                       ->get()
+                       ->as_mut_bytecode_function()
+                       ->get();
 
   auto &upvalues = function.upvalues;
 
@@ -655,7 +648,7 @@ void BytecodeVM::execute_op_closure(
     if (local) {
       upvalues.push_back(frame.frame_pointer + index);
     } else {
-      const auto &closure = get_bytecode_function(**frame.closure);
+      const auto &closure = get_bytecode_function(frame.closure);
       upvalues.push_back(closure.upvalues[index]);
     }
   }
@@ -667,7 +660,7 @@ void BytecodeVM::execute_op_closure(
 void BytecodeVM::execute_op_get_upvalue(
     const bytecode::OpGetUpvalue &op, CallFrame &frame
 ) {
-  const auto &upvalues = get_bytecode_function(**frame.closure).upvalues;
+  const auto &upvalues = get_bytecode_function(frame.closure).upvalues;
   debug_print("upvalues: {}", upvalues);
   const auto ptr = upvalues[op.index];
   const auto val = stack[ptr];
@@ -680,7 +673,7 @@ void BytecodeVM::execute_op_set_upvalue(
     const bytecode::OpSetUpvalue &op, CallFrame &frame
 ) {
   debug_print("SET_UPVALUE index={}", op.index, stack_top());
-  get_mut_bytecode_function(**frame.closure).upvalues[op.index] =
+  get_mut_bytecode_function(frame.closure).upvalues[op.index] =
       stack.size() - 1;
 }
 

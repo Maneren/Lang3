@@ -46,7 +46,7 @@ public:
     std::size_t ip = 0;
     std::size_t frame_pointer = 0;
     std::optional<location::Location> call_location;
-    std::optional<runtime::Ref> closure;
+    std::optional<std::pair<runtime::BytecodeFunction, runtime::Ref>> closure;
   };
 
   void execute(bytecode::ProgramBytecode &program);
