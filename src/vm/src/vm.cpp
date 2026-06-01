@@ -570,29 +570,26 @@ void BytecodeVM::execute_op_for_loop(
 
 [[clang::noinline]]
 void BytecodeVM::execute_op_make_array(const bytecode::OpMakeArray &op) {
-  std::vector<runtime::Ref> elements;
-  elements.reserve(op.count);
-  for (std::size_t i = 0; i < op.count; ++i) {
-    elements.push_back(stack_pop());
-  }
-  std::ranges::reverse(elements);
+  const auto start = stack.end() - static_cast<std::ptrdiff_t>(op.count);
+  std::vector<runtime::Ref> elements(start, stack.end());
+  stack.erase(start, stack.end());
+  debug_print("MAKE_ARRAY count={} result={}", op.count, elements);
   stack_push(std::move(elements));
-  debug_print("MAKE_ARRAY count={} result={}", op.count, stack_top());
 }
 
 [[clang::noinline]]
 void BytecodeVM::execute_op_get_index(const bytecode::OpGetIndex & /*op*/) {
-  debug_print("GET_INDEX array={} index={}", stack_top(1), stack_top());
-  auto index = stack_pop();
-  auto array = stack_pop();
+  const auto index = stack_pop();
+  const auto array = stack_pop();
 
+  debug_print("GET_INDEX array={} index={}", array, index);
   stack_push_new(array->index(*index));
 }
 
 [[clang::noinline]]
 void BytecodeVM::execute_op_set_index(const bytecode::OpSetIndex & /*op*/) {
-  auto value = stack_pop();
-  auto index = stack_pop();
+  const auto value = stack_pop();
+  const auto index = stack_pop();
   auto array = stack_pop();
   debug_print("SET_INDEX array={} index={} value={}", array, index, value);
 
@@ -619,38 +616,22 @@ void BytecodeVM::execute_op_call(const bytecode::OpCall &op) {
   }
 }
 
-namespace {
-runtime::BytecodeFunction &
-get_mut_bytecode_function(decltype(BytecodeVM::CallFrame::closure) &value) {
-  return value->first;
-}
-
-const runtime::BytecodeFunction &
-get_bytecode_function(const decltype(BytecodeVM::CallFrame::closure) &value) {
-  return value->first;
-}
-} // namespace
-
 [[clang::noinline]]
 void BytecodeVM::execute_op_closure(
     const bytecode::OpClosure &op, CallFrame &frame
 ) {
-  auto &function = current_program->constants[op.function_index]
-                       .get_value_mut()
-                       .as_mut_function()
-                       ->get()
-                       ->as_mut_bytecode_function()
-                       ->get();
-
-  auto &upvalues = function.upvalues;
+  auto function = current_program->constants[op.function_index]
+                      .get_value_mut()
+                      .as_mut_function()
+                      ->get()
+                      ->as_mut_bytecode_function()
+                      ->get();
 
   for (const auto &[local, index] : op.upvalues) {
-    if (local) {
-      upvalues.push_back(frame.frame_pointer + index);
-    } else {
-      const auto &closure = get_bytecode_function(frame.closure);
-      upvalues.push_back(closure.upvalues[index]);
-    }
+    const auto upvalue = local ? frame.frame_pointer + index
+                               : frame.closure->first.upvalues[index];
+
+    function.upvalues.emplace_back(upvalue);
   }
   stack_push(runtime::Function{std::move(function)});
   debug_print("CLOSURE function={}", stack.back());
@@ -660,7 +641,7 @@ void BytecodeVM::execute_op_closure(
 void BytecodeVM::execute_op_get_upvalue(
     const bytecode::OpGetUpvalue &op, CallFrame &frame
 ) {
-  const auto &upvalues = get_bytecode_function(frame.closure).upvalues;
+  const auto &upvalues = frame.closure->first.upvalues;
   debug_print("upvalues: {}", upvalues);
   const auto ptr = upvalues[op.index];
   const auto val = stack[ptr];
@@ -673,8 +654,7 @@ void BytecodeVM::execute_op_set_upvalue(
     const bytecode::OpSetUpvalue &op, CallFrame &frame
 ) {
   debug_print("SET_UPVALUE index={}", op.index, stack_top());
-  get_mut_bytecode_function(frame.closure).upvalues[op.index] =
-      stack.size() - 1;
+  frame.closure->first.upvalues[op.index] = stack.size() - 1;
 }
 
 } // namespace l3::vm
