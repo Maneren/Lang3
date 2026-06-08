@@ -55,8 +55,6 @@ private:
   std::optional<runtime::Ref> resolve_global(std::string_view name) const;
   void define_global(std::string_view name, runtime::Ref value);
 
-  void assign_slot(runtime::Ref &slot);
-
   [[nodiscard]] CallFrame &current_frame();
   [[nodiscard]] const CallFrame &current_frame() const;
   [[nodiscard]] std::size_t current_frame_pointer() const;

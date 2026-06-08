@@ -80,8 +80,6 @@ void BytecodeVM::define_global(std::string_view name, runtime::Ref value) {
   global_symbols.emplace(name, value);
 }
 
-void BytecodeVM::assign_slot(runtime::Ref &slot) { slot = stack_pop(); }
-
 BytecodeVM::CallFrame &BytecodeVM::current_frame() { return frames.back(); }
 
 const BytecodeVM::CallFrame &BytecodeVM::current_frame() const {
@@ -488,7 +486,7 @@ void BytecodeVM::execute_op_set_global(const bytecode::OpSetGlobal &op) {
       throw runtime::RuntimeError("Undefined variable: {}", str_opt->get());
     }
     debug_print("SET_GLOBAL name={} value={}", str_opt->get(), stack_top());
-    assign_slot(*slot);
+    *slot = stack_pop();
   }
 }
 
@@ -511,7 +509,7 @@ void BytecodeVM::execute_op_set_local(
     const bytecode::OpSetLocal &op, CallFrame &frame
 ) {
   debug_print("SET_LOCAL index={} value={}", op.index, stack_top());
-  assign_slot(stack_at(frame.frame_pointer + op.index));
+  stack_at(frame.frame_pointer + op.index) = stack_pop();
 }
 
 [[clang::noinline]]
