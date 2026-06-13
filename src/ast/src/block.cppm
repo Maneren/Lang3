@@ -20,13 +20,7 @@ public:
   Block &with_statement(Statement &&statement);
 
   DEFINE_ACCESSOR_X(statements)
-  [[nodiscard]] utils::optional_cref<LastStatement> get_last_statement() const {
-    if (last_statement) {
-      return std::cref(*last_statement);
-    }
-
-    return std::nullopt;
-  }
+  [[nodiscard]] utils::optional_cref<LastStatement> get_last_statement() const;
 };
 
 class Program : public Block {

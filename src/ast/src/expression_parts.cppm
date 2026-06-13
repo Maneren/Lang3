@@ -71,15 +71,7 @@ public:
 class Comparison {
   enum class Type : std::uint8_t { Equality, Inequality };
 
-  constexpr static Type get_type(ComparisonOperator op) {
-    switch (op) {
-    case ComparisonOperator::Equal:
-    case ComparisonOperator::NotEqual:
-      return Type::Equality;
-    default:
-      return Type::Inequality;
-    }
-  }
+  static Type get_type(ComparisonOperator op);
 
   std::unique_ptr<Expression> start;
   std::vector<std::pair<ComparisonOperator, Expression>> comparisons;

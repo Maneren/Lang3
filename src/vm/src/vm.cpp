@@ -47,6 +47,10 @@ runtime::Ref BytecodeVM::store_new_value(runtime::NewValue &&value) {
   );
 }
 
+auto &&BytecodeVM::current_frame(this auto &&self) {
+  return self.frames.back();
+}
+
 const location::Location &BytecodeVM::current_instruction_location() const {
   return current_program->chunks[current_frame().chunk_id]
       .locations[current_frame().ip - 1];
@@ -90,12 +94,6 @@ void BytecodeVM::define_global(std::string_view name, runtime::Ref value) {
   global_symbols.emplace(name, value);
 }
 
-BytecodeVM::CallFrame &BytecodeVM::current_frame() { return frames.back(); }
-
-const BytecodeVM::CallFrame &BytecodeVM::current_frame() const {
-  return frames.back();
-}
-
 std::size_t BytecodeVM::current_frame_pointer() const {
   return current_frame().frame_pointer;
 }
@@ -104,12 +102,8 @@ std::size_t BytecodeVM::frame_absolute_slot(std::size_t offset) const {
   return current_frame_pointer() + offset;
 }
 
-runtime::GCValue &BytecodeVM::constant_at(std::size_t index) {
-  return current_program->constants[index];
-}
-
-const runtime::GCValue &BytecodeVM::constant_at(std::size_t index) const {
-  return current_program->constants[index];
+auto &&BytecodeVM::constant_at(this auto &&self, std::size_t index) {
+  return self.current_program->constants[index];
 }
 
 auto &&BytecodeVM::stack_at(this auto &&self, std::size_t index) {

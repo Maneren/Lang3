@@ -41,4 +41,14 @@ std::string RuntimeError::format_error() const {
 
 const char *RuntimeError::what() const noexcept { return formatted.c_str(); }
 
+void RuntimeError::set_location(const location::Location &loc) {
+  location = loc;
+  formatted = format_error();
+}
+
+void RuntimeError::set_stacktrace(std::vector<StacktraceFrame> st) {
+  stacktrace = std::move(st);
+  formatted = format_error();
+}
+
 } // namespace l3::runtime

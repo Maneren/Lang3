@@ -55,13 +55,11 @@ private:
   std::optional<runtime::Ref> resolve_global(std::string_view name) const;
   void define_global(std::string_view name, runtime::Ref value);
 
-  [[nodiscard]] CallFrame &current_frame();
-  [[nodiscard]] const CallFrame &current_frame() const;
+  [[nodiscard]] auto &&current_frame(this auto &&self);
   [[nodiscard]] std::size_t current_frame_pointer() const;
   [[nodiscard]] std::size_t frame_absolute_slot(std::size_t offset) const;
 
-  [[nodiscard]] runtime::GCValue &constant_at(std::size_t index);
-  [[nodiscard]] const runtime::GCValue &constant_at(std::size_t index) const;
+  [[nodiscard]] auto &&constant_at(this auto &&self, std::size_t index);
   [[nodiscard]] const location::Location &current_instruction_location() const;
 
   [[nodiscard]] auto &&stack_at(this auto &&self, std::size_t index);
@@ -70,8 +68,7 @@ private:
 
   void execute_loop(std::size_t target_frames);
 
-  template <typename T>
-  void execute_op(const T &op, CallFrame &frame);
+  template <typename T> void execute_op(const T &op, CallFrame &frame);
 
   void execute_op(const bytecode::OpReturn &op, CallFrame &);
   void execute_op(const bytecode::OpConstant &op, CallFrame &);

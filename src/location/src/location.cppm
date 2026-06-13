@@ -18,18 +18,9 @@ struct Position {
   )
       : filename(f), line(l), column(c) {}
 
-  void initialize(filename_type fn, counter_type l = 1, counter_type c = 1) {
-    filename = fn;
-    line = l;
-    column = c;
-  }
+  void initialize(filename_type fn, counter_type l = 1, counter_type c = 1);
 
-  void lines(counter_type count = 1) {
-    if (count != 0) {
-      column = 1;
-      line = add_(line, count, 1);
-    }
-  }
+  void lines(counter_type count = 1);
 
   void columns(counter_type count = 1) { column = add_(column, count, 1); }
 
@@ -78,10 +69,7 @@ struct Location {
   Location(const Position &b, const Position &e) : begin(b), end(e) {}
   Location(const Position &p = Position{}) : begin(p), end(p) {}
 
-  void initialize(filename_type f, counter_type l = 1, counter_type c = 1) {
-    begin.initialize(f, l, c);
-    end = begin;
-  }
+  void initialize(filename_type f, counter_type l = 1, counter_type c = 1);
 
   void step() { begin = end; }
   void columns(counter_type count = 1) { end += count; }

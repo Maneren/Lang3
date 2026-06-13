@@ -28,11 +28,11 @@ struct LocationScope {
 
 Compiler::Compiler(ProgramBytecode &program) : program(program) {}
 
-void Compiler::compile(const ast::Program &program) {
+void Compiler::compile(const ast::Program &ast_program) {
   contexts.emplace_back(std::vector<Local>{}, std::vector<Upvalue>{}, 0);
-  this->program.chunks.emplace_back();
-  compile_statements(program.get_statements());
-  if (const auto last = program.get_last_statement(); last) {
+  program.chunks.emplace_back();
+  compile_statements(ast_program.get_statements());
+  if (const auto last = ast_program.get_last_statement(); last) {
     throw std::runtime_error("Unexpected last statement in top-level scope");
   }
   emit(OpConstant{make_constant({})});
@@ -48,6 +48,16 @@ std::size_t Compiler::last_instruction_offset() {
 }
 std::size_t Compiler::current_instruction_offset() {
   return current_chunk().code.size();
+}
+
+auto &&Compiler::locals(this auto &&self) {
+  return self.contexts.back().locals;
+}
+auto &&Compiler::upvalues(this auto &&self) {
+  return self.contexts.back().upvalues;
+}
+auto &&Compiler::scope_depth(this auto &&self) {
+  return self.contexts.back().scope_depth;
 }
 
 const location::Location &Compiler::current_location() const {
@@ -103,7 +113,7 @@ resolve_in_context(const ast::Identifier &name, const Context &ctx) {
 } // namespace
 
 std::optional<std::size_t>
-Compiler::resolve_local(const ast::Identifier &name) {
+Compiler::resolve_local(const ast::Identifier &name) const {
   return resolve_in_context(name, contexts.back());
 }
 

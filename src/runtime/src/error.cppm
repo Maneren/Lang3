@@ -43,15 +43,8 @@ public:
     return location;
   }
 
-  void set_location(const location::Location &location) {
-    this->location = location;
-    formatted = format_error();
-  }
-
-  void set_stacktrace(std::vector<StacktraceFrame> stacktrace) {
-    this->stacktrace = std::move(stacktrace);
-    formatted = format_error();
-  }
+  void set_location(const location::Location &location);
+  void set_stacktrace(std::vector<StacktraceFrame> stacktrace);
 
   [[nodiscard]] const char *what() const noexcept override;
 

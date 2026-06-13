@@ -19,4 +19,11 @@ Block &Block::with_statement(Statement &&statement) {
 Program::Program() = default;
 Program::Program(Block &&block) : Block(std::move(block)) {}
 
+utils::optional_cref<LastStatement> Block::get_last_statement() const {
+  if (last_statement) {
+    return std::cref(*last_statement);
+  }
+  return std::nullopt;
+}
+
 } // namespace l3::ast

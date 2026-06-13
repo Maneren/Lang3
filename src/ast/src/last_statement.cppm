@@ -24,20 +24,8 @@ public:
   ReturnStatement &operator=(ReturnStatement &&) noexcept;
   ~ReturnStatement();
 
-  utils::optional_cref<Expression> get_expression() const {
-    return expression.transform(
-        [](const auto &expression) -> std::reference_wrapper<const Expression> {
-          return expression;
-        }
-    );
-  }
-  utils::optional_ref<Expression> get_expression_mut() {
-    return expression.transform(
-        [](auto &expression) -> std::reference_wrapper<Expression> {
-          return expression;
-        }
-    );
-  }
+  utils::optional_cref<Expression> get_expression() const;
+  utils::optional_ref<Expression> get_expression_mut();
 };
 
 struct BreakStatement {

@@ -51,18 +51,9 @@ private:
     std::size_t index;
   };
 
-  std::vector<Local> &locals() { return contexts.back().locals; }
-  [[nodiscard]] const std::vector<Local> &locals() const {
-    return contexts.back().locals;
-  }
-
-  std::vector<Upvalue> &upvalues() { return contexts.back().upvalues; }
-  [[nodiscard]] const std::vector<Upvalue> &upvalues() const {
-    return contexts.back().upvalues;
-  }
-
-  int &scope_depth() { return contexts.back().scope_depth; }
-  [[nodiscard]] int scope_depth() const { return contexts.back().scope_depth; }
+  auto &&locals(this auto &&self);
+  auto &&upvalues(this auto &&self);
+  auto &&scope_depth(this auto &&self);
 
   ResolvedVariable resolve_variable(const ast::Identifier &identifier);
   Instruction emit_get_variable(const ast::Identifier &name);
@@ -79,7 +70,7 @@ private:
   void begin_scope();
   void end_scope();
 
-  std::optional<std::size_t> resolve_local(const ast::Identifier &name);
+  std::optional<std::size_t> resolve_local(const ast::Identifier &name) const;
   std::optional<std::size_t> resolve_upvalue(const ast::Identifier &name);
 
   void emit(const Instruction &instruction);

@@ -69,7 +69,8 @@ builtin_input(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
   return l3::runtime::Value(std::move(input));
 }
 
-l3::runtime::Value builtin_int(l3::vm::BytecodeVM & /*vm*/, l3::runtime::L3Args args) {
+l3::runtime::Value
+builtin_int(l3::vm::BytecodeVM & /*vm*/, l3::runtime::L3Args args) {
   if (args.empty()) {
     throw l3::runtime::RuntimeError("int() takes at least one arguments");
   }
@@ -124,7 +125,8 @@ l3::runtime::Value builtin_int(l3::vm::BytecodeVM & /*vm*/, l3::runtime::L3Args 
   return l3::runtime::Value(l3::runtime::Primitive{value});
 }
 
-l3::runtime::Value builtin_str(l3::vm::BytecodeVM & /*vm*/, l3::runtime::L3Args args) {
+l3::runtime::Value
+builtin_str(l3::vm::BytecodeVM & /*vm*/, l3::runtime::L3Args args) {
   if (args.size() != 1) {
     throw l3::runtime::RuntimeError("str() takes one arguments");
   }
@@ -151,7 +153,9 @@ builtin_head(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
 
     auto head = *vec->front();
     auto rest = l3::runtime::Value(
-        std::make_shared<std::vector<l3::runtime::Ref>>(vec->begin() + 1, vec->end())
+        std::make_shared<std::vector<l3::runtime::Ref>>(
+            vec->begin() + 1, vec->end()
+        )
     );
 
     auto result = std::make_shared<std::vector<l3::runtime::Ref>>();
@@ -195,7 +199,9 @@ builtin_tail(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
 
     auto tail = *vec->back();
     auto rest = l3::runtime::Value(
-        std::make_shared<std::vector<l3::runtime::Ref>>(vec->begin(), vec->end() - 1)
+        std::make_shared<std::vector<l3::runtime::Ref>>(
+            vec->begin(), vec->end() - 1
+        )
     );
 
     auto result = std::make_shared<std::vector<l3::runtime::Ref>>();
@@ -223,7 +229,8 @@ builtin_tail(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
   throw l3::runtime::TypeError("tail() takes only vector and string values");
 }
 
-l3::runtime::Value builtin_len(l3::vm::BytecodeVM & /*vm*/, l3::runtime::L3Args args) {
+l3::runtime::Value
+builtin_len(l3::vm::BytecodeVM & /*vm*/, l3::runtime::L3Args args) {
   if (args.size() != 1) {
     throw l3::runtime::RuntimeError("len() takes exactly one arguments");
   }
@@ -232,14 +239,14 @@ l3::runtime::Value builtin_len(l3::vm::BytecodeVM & /*vm*/, l3::runtime::L3Args 
         if (!vec) {
           return l3::runtime::Value(l3::runtime::Primitive{std::int64_t{0}});
         }
-        return l3::runtime::Value(l3::runtime::Primitive{
-            static_cast<std::int64_t>(vec->size())
-        });
+        return l3::runtime::Value(
+            l3::runtime::Primitive{static_cast<std::int64_t>(vec->size())}
+        );
       },
       [](const l3::runtime::Value::string_type &str) -> l3::runtime::Value {
-        return l3::runtime::Value(l3::runtime::Primitive{
-            static_cast<std::int64_t>(str.size())
-        });
+        return l3::runtime::Value(
+            l3::runtime::Primitive{static_cast<std::int64_t>(str.size())}
+        );
       },
       [](const auto &) -> l3::runtime::Value {
         throw l3::runtime::TypeError("len() does not support {} values");
@@ -356,7 +363,8 @@ builtin_sleep(l3::vm::BytecodeVM & /*vm*/, l3::runtime::L3Args args) {
   return l3::runtime::Value();
 }
 
-l3::runtime::Value builtin_map(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
+l3::runtime::Value
+builtin_map(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
   if (args.size() != 2) {
     throw l3::runtime::TypeError("map() takes exactly 2 arguments");
   }
@@ -372,7 +380,8 @@ l3::runtime::Value builtin_map(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args)
   }
   const auto &list = list_opt->get();
 
-  auto result = std::make_shared<l3::runtime::Value::vector_type::element_type>();
+  auto result =
+      std::make_shared<l3::runtime::Value::vector_type::element_type>();
   result->reserve(list->size());
   for (const auto &item : *list) {
     result->push_back(vm.store_value(vm.evaluate(args[0], std::array{*item})));
@@ -398,7 +407,8 @@ builtin_filter(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
   }
   const auto &list = list_opt->get();
 
-  auto result = std::make_shared<l3::runtime::Value::vector_type::element_type>();
+  auto result =
+      std::make_shared<l3::runtime::Value::vector_type::element_type>();
   for (const auto &item : *list) {
     if (vm.evaluate(args[0], std::array{*item}).is_truthy()) {
       result->push_back(item);

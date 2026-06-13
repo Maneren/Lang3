@@ -45,28 +45,13 @@ public:
   Function(BytecodeFunction &&function);
 
   [[nodiscard]] utils::optional_cref<BuiltinFunction>
-  as_builtin_function() const {
-    if (const auto *builtin_function = std::get_if<BuiltinFunction>(&inner)) {
-      return *builtin_function;
-    }
-    return std::nullopt;
-  }
+  as_builtin_function() const;
 
   [[nodiscard]] utils::optional_ref<BytecodeFunction>
-  as_mut_bytecode_function() {
-    if (auto *bytecode_function = std::get_if<BytecodeFunction>(&inner)) {
-      return *bytecode_function;
-    }
-    return std::nullopt;
-  }
+  as_mut_bytecode_function();
 
   [[nodiscard]] utils::optional_cref<BytecodeFunction>
-  as_bytecode_function() const {
-    if (const auto *bytecode_function = std::get_if<BytecodeFunction>(&inner)) {
-      return *bytecode_function;
-    }
-    return std::nullopt;
-  }
+  as_bytecode_function() const;
 
   VISIT(inner);
 };
