@@ -112,26 +112,16 @@ const runtime::GCValue &BytecodeVM::constant_at(std::size_t index) const {
   return current_program->constants[index];
 }
 
-runtime::Value &BytecodeVM::stack_at(std::size_t index) { return stack[index]; }
-
-const runtime::Value &BytecodeVM::stack_at(std::size_t index) const {
-  return stack[index];
+auto &&BytecodeVM::stack_at(this auto &&self, std::size_t index) {
+  return self.stack[index];
 }
 
-runtime::Value &BytecodeVM::stack_local(std::size_t offset) {
-  return stack_at(frame_absolute_slot(offset));
+auto &&BytecodeVM::stack_local(this auto &&self, std::size_t offset) {
+  return self.stack_at(self.frame_absolute_slot(offset));
 }
 
-const runtime::Value &BytecodeVM::stack_local(std::size_t offset) const {
-  return stack_at(frame_absolute_slot(offset));
-}
-
-runtime::Value &BytecodeVM::stack_top(std::size_t offset) {
-  return stack_at(stack.size() - offset - 1);
-}
-
-const runtime::Value &BytecodeVM::stack_top(std::size_t offset) const {
-  return stack_at(stack.size() - offset - 1);
+auto &&BytecodeVM::stack_top(this auto &&self, std::size_t offset) {
+  return self.stack_at(self.stack.size() - offset - 1);
 }
 
 template <typename... Args>

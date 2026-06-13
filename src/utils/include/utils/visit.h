@@ -1,9 +1,8 @@
 #pragma once
 
 #define VISIT(name)                                                            \
-  auto visit(auto &&...visitor) const -> decltype(auto) {                      \
-    return match::match(name, std::forward<decltype(visitor)>(visitor)...);    \
-  }                                                                            \
-  auto visit(auto &&...visitor) -> decltype(auto) {                            \
-    return match::match(name, std::forward<decltype(visitor)>(visitor)...);    \
+  auto visit(this auto &&self, auto &&...visitor) {                            \
+    return match::match(                                                       \
+        self.name, std::forward<decltype(visitor)>(visitor)...                 \
+    );                                                                         \
   }

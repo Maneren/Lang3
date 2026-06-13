@@ -64,12 +64,9 @@ private:
   [[nodiscard]] const runtime::GCValue &constant_at(std::size_t index) const;
   [[nodiscard]] const location::Location &current_instruction_location() const;
 
-  [[nodiscard]] runtime::Value &stack_at(std::size_t index);
-  [[nodiscard]] const runtime::Value &stack_at(std::size_t index) const;
-  [[nodiscard]] runtime::Value &stack_local(std::size_t offset);
-  [[nodiscard]] const runtime::Value &stack_local(std::size_t offset) const;
-  [[nodiscard]] runtime::Value &stack_top(std::size_t offset = 0);
-  [[nodiscard]] const runtime::Value &stack_top(std::size_t offset = 0) const;
+  [[nodiscard]] auto &&stack_at(this auto &&self, std::size_t index);
+  [[nodiscard]] auto &&stack_local(this auto &&self, std::size_t offset);
+  [[nodiscard]] auto &&stack_top(this auto &&self, std::size_t offset = 0);
 
   void execute_loop(std::size_t target_frames);
 
