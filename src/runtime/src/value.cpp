@@ -303,8 +303,6 @@ bool Value::is_truthy() const {
   );
 }
 
-Value Value::copy() const { return *this; }
-
 Value::Value() : inner{std::make_shared<HeapValue>(Nil{})} {}
 Value::Value(Nil /*unused*/) : inner{std::make_shared<HeapValue>(Nil{})} {}
 Value::Value(Primitive primitive) : inner{primitive} {}

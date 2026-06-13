@@ -375,7 +375,7 @@ l3::runtime::Value builtin_map(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args)
   auto result = std::make_shared<l3::runtime::Value::vector_type::element_type>();
   result->reserve(list->size());
   for (const auto &item : *list) {
-    result->push_back(vm.store_value(vm.evaluate(args[0], std::array{item->copy()})));
+    result->push_back(vm.store_value(vm.evaluate(args[0], std::array{*item})));
   }
 
   return l3::runtime::Value(std::move(result));
@@ -400,7 +400,7 @@ builtin_filter(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
 
   auto result = std::make_shared<l3::runtime::Value::vector_type::element_type>();
   for (const auto &item : *list) {
-    if (vm.evaluate(args[0], std::array{item->copy()}).is_truthy()) {
+    if (vm.evaluate(args[0], std::array{*item}).is_truthy()) {
       result->push_back(item);
     }
   }
@@ -493,7 +493,7 @@ builtin_count(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
 
   std::int64_t count = 0;
   for (const auto &item : *list) {
-    if (vm.evaluate(args[0], std::array{item->copy()}).is_truthy()) {
+    if (vm.evaluate(args[0], std::array{*item}).is_truthy()) {
       ++count;
     }
   }

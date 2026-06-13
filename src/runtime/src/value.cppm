@@ -140,8 +140,6 @@ public:
 
   [[nodiscard]] std::string_view type_name() const;
 
-  [[nodiscard]] Value copy() const;
-
   DEFINE_ACCESSOR_X(inner)
 };
 

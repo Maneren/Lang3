@@ -69,7 +69,7 @@ void BytecodeVM::stack_push(const runtime::Value &value) {
 void BytecodeVM::stack_push_new(runtime::NewValue &&value) {
   match::match(
       std::move(value),
-      [this](runtime::Ref ref) { stack.emplace_back(ref->copy()); },
+      [this](runtime::Ref ref) { stack.emplace_back(*ref); },
       [this](runtime::Value &&value) { stack.emplace_back(std::move(value)); }
   );
 }
@@ -645,7 +645,7 @@ void BytecodeVM::execute_op_call(const bytecode::OpCall &op) {
   std::vector<runtime::Value> args;
   args.reserve(op.arg_count);
   for (auto it = args_base_ptr; it != stack.end(); ++it) {
-    args.push_back(it->copy());
+    args.push_back(*it);
   }
   stack.erase(args_base_ptr, stack.end());
 
