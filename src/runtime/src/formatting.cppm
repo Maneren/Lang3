@@ -105,14 +105,33 @@ export {
       : utils::static_formatter<l3::runtime::Value> {
     static constexpr auto format(const auto &value, std::format_context &ctx) {
       return value.visit(
-          [&ctx](const l3::runtime::Function &function) {
-            return std::format_to(ctx.out(), "{}", function);
+          [&ctx](const l3::runtime::Value::function_type &function) {
+            if (function) {
+              return std::format_to(ctx.out(), "{}", *function);
+            }
+            return std::format_to(ctx.out(), "nil");
           },
           [&ctx](const l3::runtime::Value::string_type &value) {
             return std::format_to(ctx.out(), R"("{}")", value);
           },
-          [&ctx](const auto &value) {
-            return std::format_to(ctx.out(), "{}", value);
+          [&ctx](const l3::runtime::Primitive &primitive) {
+            return std::format_to(ctx.out(), "{}", primitive);
+          },
+          [&ctx](const l3::runtime::Nil &) {
+            return std::format_to(ctx.out(), "nil");
+          },
+          [&ctx](const l3::runtime::Value::vector_type &vec) {
+            if (!vec) {
+              return std::format_to(ctx.out(), "nil");
+            }
+            auto out = std::format_to(ctx.out(), "[");
+            for (std::size_t i = 0; i < vec->size(); ++i) {
+              if (i > 0) {
+                out = std::format_to(out, ", ");
+              }
+              out = std::format_to(out, "{}", *(*vec)[i]);
+            }
+            return std::format_to(out, "]");
           }
       );
     }
@@ -132,8 +151,27 @@ export {
           [&ctx](const l3::runtime::Value::string_type &value) {
             return std::format_to(ctx.out(), "{}", value);
           },
-          [&ctx](const auto &value) {
-            return std::format_to(ctx.out(), "{}", value);
+          [&ctx](const l3::runtime::Nil &) {
+            return std::format_to(ctx.out(), "nil");
+          },
+          [&ctx](const l3::runtime::Value::function_type &function) {
+            if (function) {
+              return std::format_to(ctx.out(), "{}", *function);
+            }
+            return std::format_to(ctx.out(), "nil");
+          },
+          [&ctx](const l3::runtime::Value::vector_type &vec) {
+            if (!vec) {
+              return std::format_to(ctx.out(), "nil");
+            }
+            auto out = std::format_to(ctx.out(), "[");
+            for (std::size_t i = 0; i < vec->size(); ++i) {
+              if (i > 0) {
+                out = std::format_to(out, ", ");
+              }
+              out = std::format_to(out, "{}", *(*vec)[i]);
+            }
+            return std::format_to(out, "]");
           }
       );
     }

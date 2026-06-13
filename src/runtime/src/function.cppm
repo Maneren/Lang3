@@ -10,11 +10,11 @@ export namespace l3::runtime {
 
 class Value;
 
-using L3Args = std::span<const Ref>;
+using L3Args = std::span<const Value>;
 
 class BuiltinFunction {
 public:
-  using Body = std::function<Ref(L3Args)>;
+  using Body = std::function<Value(L3Args)>;
 
 private:
   Identifier name;
@@ -24,7 +24,7 @@ public:
   BuiltinFunction(Identifier &&name, Body body)
       : name{std::move(name)}, body{std::move(body)} {}
 
-  [[nodiscard]] Ref invoke(L3Args args) const { return body(args); }
+  [[nodiscard]] Value invoke(L3Args args) const;
 
   DEFINE_ACCESSOR_X(name);
 };

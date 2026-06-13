@@ -44,10 +44,29 @@ Value Value::add(const Value &other) const {
       [](const Primitive &lhs, const Primitive &rhs) -> Value {
         return {lhs + rhs};
       },
-      []<ValueContainer T>(const T &lhs, const T &rhs) -> Value {
-        auto result = lhs;
-        result.insert(result.end(), rhs.begin(), rhs.end());
-        return {std::move(result)};
+      [](const std::shared_ptr<HeapValue> &lhs,
+         const std::shared_ptr<HeapValue> &rhs) -> Value {
+        return match::match(
+            std::forward_as_tuple(lhs->get_inner(), rhs->get_inner()),
+            [](const Value::vector_type &lv,
+               const Value::vector_type &rv) -> Value {
+              if (!lv || !rv) {
+                throw UnsupportedOperation(
+                    "addition between invalid containers not supported"
+                );
+              }
+              auto result = std::make_shared<std::vector<Ref>>(*lv);
+              result->insert(result->end(), rv->begin(), rv->end());
+              return {std::move(result)};
+            },
+            [](const Value::string_type &ls,
+               const Value::string_type &rs) -> Value { return {ls + rs}; },
+            [](const auto &, const auto &) -> Value {
+              throw UnsupportedOperation(
+                  "addition between different types not supported"
+              );
+            }
+        );
       },
       [&other, this](const auto &, const auto &) -> Value {
         throw UnsupportedOperation("addition", type_name(), other.type_name());
@@ -59,8 +78,24 @@ void Value::add_assign(const Value &other) {
   match::match(
       std::forward_as_tuple(inner, other.inner),
       [](Primitive &lhs, const Primitive &rhs) { lhs = lhs + rhs; },
-      []<ValueContainer T>(T &lhs, const T &rhs) {
-        lhs.insert(lhs.end(), rhs.begin(), rhs.end());
+      [](std::shared_ptr<HeapValue> &lhs,
+         const std::shared_ptr<HeapValue> &rhs) {
+        match::match(
+            std::forward_as_tuple(lhs->get_inner(), rhs->get_inner()),
+            [](Value::vector_type &lv, const Value::vector_type &rv) {
+              if (!lv || !rv)
+                return;
+              lv->insert(lv->end(), rv->begin(), rv->end());
+            },
+            [](Value::string_type &ls, const Value::string_type &rs) {
+              ls.insert(ls.end(), rs.begin(), rs.end());
+            },
+            [](auto &, const auto &) {
+              throw UnsupportedOperation(
+                  "addition between different types not supported"
+              );
+            }
+        );
       },
       [&other, this](auto &, const auto &) {
         throw UnsupportedOperation("addition", type_name(), other.type_name());
@@ -81,8 +116,40 @@ Value Value::sub(const Value &other) const {
 
 namespace {
 
+void multiply_vector_inplace(
+    Value::vector_type &vec, const Primitive &primitive
+) {
+  if (!vec)
+    return;
+  const auto count_opt = primitive.as_integer();
+  if (!count_opt) {
+    throw UnsupportedOperation("container multiplication requires an integer");
+  }
+  if (*count_opt <= 0) {
+    throw UnsupportedOperation(
+        "container can be multiplied only by a positive integer"
+    );
+  }
+  const auto count = static_cast<std::size_t>(*count_opt);
+
+  vec->reserve(count * vec->size());
+
+  const auto span = std::span(*vec);
+  for (std::size_t i = 0; i < count - 1; ++i) {
+    vec->insert(vec->end(), span.begin(), span.end());
+  }
+};
+
+auto multiply_vector(
+    const Value::vector_type &vec, const Primitive &primitive
+) {
+  auto result = std::make_shared<std::vector<Ref>>(*vec);
+  multiply_vector_inplace(result, primitive);
+  return result;
+}
+
 void multiply_container_inplace(
-    ValueContainer auto &container, const Primitive &primitive
+    Value::string_type &container, const Primitive &primitive
 ) {
   const auto count_opt = primitive.as_integer();
   if (!count_opt) {
@@ -97,8 +164,6 @@ void multiply_container_inplace(
 
   container.reserve(count * container.size());
 
-  // Since we reserve the space, the container won't reallocate and as such
-  // iterators won't be invalidated
   const auto span = std::span(container);
   for (std::size_t i = 0; i < count - 1; ++i) {
     container.insert(container.end(), span.begin(), span.end());
@@ -106,7 +171,7 @@ void multiply_container_inplace(
 };
 
 auto multiply_container(
-    const ValueContainer auto &container, const Primitive &primitive
+    const Value::string_type &container, const Primitive &primitive
 ) {
   auto result = container;
   multiply_container_inplace(result, primitive);
@@ -121,11 +186,35 @@ Value Value::mul(const Value &other) const {
       [](const Primitive &lhs, const Primitive &rhs) -> Value {
         return {lhs * rhs};
       },
-      [](const Primitive &count_prim, const ValueContainer auto &vec) -> Value {
-        return multiply_container(vec, count_prim);
+      [](const Primitive &count_prim,
+         const std::shared_ptr<HeapValue> &rhs) -> Value {
+        return match::match(
+            rhs->get_inner(),
+            [&](const Value::vector_type &vec) -> Value {
+              return multiply_vector(vec, count_prim);
+            },
+            [&](const Value::string_type &str) -> Value {
+              return multiply_container(str, count_prim);
+            },
+            [](const auto &) -> Value {
+              throw UnsupportedOperation("multiplication not supported");
+            }
+        );
       },
-      [](const ValueContainer auto &vec, const Primitive &count_prim) -> Value {
-        return multiply_container(vec, count_prim);
+      [](const std::shared_ptr<HeapValue> &lhs,
+         const Primitive &count_prim) -> Value {
+        return match::match(
+            lhs->get_inner(),
+            [&](const Value::vector_type &vec) -> Value {
+              return multiply_vector(vec, count_prim);
+            },
+            [&](const Value::string_type &str) -> Value {
+              return multiply_container(str, count_prim);
+            },
+            [](const auto &) -> Value {
+              throw UnsupportedOperation("multiplication not supported");
+            }
+        );
       },
       [&other, this](const auto &, const auto &) -> Value {
         throw UnsupportedOperation(
@@ -139,8 +228,17 @@ void Value::mul_assign(const Value &other) {
   match::match(
       std::forward_as_tuple(inner, other.inner),
       [](Primitive &lhs, const Primitive &rhs) { lhs = lhs * rhs; },
-      [](ValueContainer auto &lhs, const Primitive &rhs) {
-        multiply_container_inplace(lhs, rhs);
+      [](std::shared_ptr<HeapValue> &lhs, const Primitive &rhs) {
+        match::match(
+            lhs->get_inner(),
+            [&](Value::vector_type &vec) { multiply_vector_inplace(vec, rhs); },
+            [&](Value::string_type &str) {
+              multiply_container_inplace(str, rhs);
+            },
+            [](auto &) {
+              throw UnsupportedOperation("multiplication not supported");
+            }
+        );
       },
       [&other, this](auto &, const auto &) {
         throw UnsupportedOperation(
@@ -167,13 +265,23 @@ Value Value::mod(const Value &other) const {
 }
 
 std::partial_ordering Value::compare(const Value &other) const {
-  return binary_op<false>(
-      "compare",
-      *this,
-      other,
+  return match::match(
+      std::forward_as_tuple(inner, other.inner),
       []<typename T>(const T &lhs, const T &rhs) -> std::partial_ordering
         requires requires(T lhs, T rhs) { lhs <=> rhs; }
       { return lhs <=> rhs; },
+      [](const std::shared_ptr<HeapValue> &lhs,
+         const std::shared_ptr<HeapValue> &rhs) -> std::partial_ordering {
+        return match::match(
+            std::forward_as_tuple(lhs->get_inner(), rhs->get_inner()),
+            []<typename T>(const T & l, const T & r) -> std::partial_ordering
+              requires requires { l <=> r; }
+            { return l <=> r; },
+            [](const auto &, const auto &) -> std::partial_ordering {
+              return std::partial_ordering::unordered;
+            }
+            );
+      },
       [](const auto &, const auto &) -> std::partial_ordering {
         return std::partial_ordering::unordered;
       }
@@ -190,27 +298,48 @@ bool Value::is_truthy() const {
             "function?"
         );
       },
-      [](const ValueContainer auto &value) { return !value.empty(); }
+      [](const vector_type &value) -> bool { return value && !value->empty(); },
+      [](const string_type &value) { return !value.empty(); }
   );
 }
 
-Value::Value() : inner{Nil{}} {}
-Value::Value(Nil /*unused*/) : inner{Nil{}} {}
+Value Value::copy() const { return *this; }
+
+Value::Value() : inner{std::make_shared<HeapValue>(Nil{})} {}
+Value::Value(Nil /*unused*/) : inner{std::make_shared<HeapValue>(Nil{})} {}
 Value::Value(Primitive primitive) : inner{primitive} {}
 Value::Value(Function &&function)
-    : inner{std::make_unique<Function>(std::move(function))} {}
-Value::Value(vector_type &&vector) : inner{std::move(vector)} {}
-Value::Value(string_type &&string) : inner{std::move(string)} {}
+    : inner{std::make_shared<HeapValue>(std::shared_ptr<Function>{
+          std::make_shared<Function>(std::move(function))
+      })} {}
+Value::Value(const Function &function)
+    : inner{std::make_shared<HeapValue>(
+          std::shared_ptr<Function>{std::make_shared<Function>(function)}
+      )} {}
+Value::Value(vector_type &&vector)
+    : inner{std::make_shared<HeapValue>(std::move(vector))} {}
+Value::Value(string_type &&string)
+    : inner{std::make_shared<HeapValue>(std::move(string))} {}
 
-bool Value::is_nil() const { return std::holds_alternative<Nil>(inner); }
+bool Value::is_nil() const {
+  return visit(
+      [](const Nil &) { return true; }, [](const auto &) { return false; }
+  );
+}
 bool Value::is_function() const {
-  return std::holds_alternative<function_type>(inner);
+  return visit(
+      [](const function_type &) { return true; },
+      [](const auto &) { return false; }
+  );
 }
 bool Value::is_primitive() const {
   return std::holds_alternative<Primitive>(inner);
 }
 bool Value::is_string() const {
-  return std::holds_alternative<string_type>(inner);
+  return visit(
+      [](const string_type &) { return true; },
+      [](const auto &) { return false; }
+  );
 }
 
 namespace {
@@ -236,13 +365,14 @@ std::size_t value_to_index(const Value &value) {
 NewValue Value::index(const Value &index_value) const {
   return index(value_to_index(index_value));
 }
+
 NewValue Value::index(std::size_t index) const {
   return visit(
       [&index](const vector_type &values) -> NewValue {
-        if (index >= values.size()) {
+        if (!values || index >= values->size()) {
           throw ValueError("index out of bounds");
         }
-        return values[index];
+        return (*values)[index];
       },
       [&index](const string_type &string) -> NewValue {
         if (index >= string.size()) {
@@ -260,13 +390,14 @@ NewValue Value::index(std::size_t index) const {
 Ref &Value::index_mut(const Value &index) {
   return index_mut(value_to_index(index));
 }
+
 Ref &Value::index_mut(std::size_t index) {
   return visit(
       [&index](vector_type &values) -> Ref & {
-        if (index >= values.size()) {
+        if (!values || index >= values->size()) {
           throw ValueError("index out of bounds");
         }
-        return values[index];
+        return (*values)[index];
       },
       [this](const auto & /*value*/) -> Ref & {
         throw TypeError("cannot mutaly index a {} value", type_name());
@@ -341,9 +472,12 @@ opt_string_type Value::as_mut_string() {
 namespace {
 
 Value slice_vector(const Value::vector_type &vector, Slice slice) {
+  if (!vector) {
+    throw ValueError("cannot slice an invalid vector");
+  }
   const auto [start_opt, end_opt] = slice;
   auto start = start_opt.value_or(0);
-  auto size = vector.size();
+  auto size = vector->size();
   auto end = end_opt.value_or(size);
 
   if (start > end) {
@@ -363,8 +497,11 @@ Value slice_vector(const Value::vector_type &vector, Slice slice) {
   if (std::cmp_greater(start, size)) {
     throw ValueError("start index out of bounds");
   }
-  return {Value::vector_type(vector.begin() + start, vector.begin() + end)};
+  return {std::make_shared<std::vector<Ref>>(
+      vector->begin() + start, vector->begin() + end
+  )};
 }
+
 Value slice_string(Slice slice, const std::string &string) {
   const auto [start_opt, end_opt] = slice;
   auto start = start_opt.value_or(0);

@@ -11,7 +11,7 @@ export namespace l3::builtins {
 
 extern const std::initializer_list<std::pair<
     std::string_view,
-    runtime::Ref (*)(l3::vm::BytecodeVM &, runtime::L3Args)>>
+    runtime::Value (*)(l3::vm::BytecodeVM &, runtime::L3Args)>>
     BUILTINS;
 
 } // namespace l3::builtins

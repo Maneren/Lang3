@@ -7,21 +7,13 @@ import :ref_value;
 
 export namespace l3::runtime {
 
-// Abstraction over vector and string
-template <typename T>
-concept ValueContainer = requires(T &container) {
-  { container.size() } -> std::convertible_to<std::size_t>;
-  { container.empty() } -> std::convertible_to<bool>;
-  { container.reserve(std::size_t{}) } -> std::convertible_to<void>;
-};
-
 struct Nil {
   std::strong_ordering operator<=>(Nil /*unused*/) const {
     return std::strong_ordering::equal;
   };
 };
 
-using L3Args = std::span<const Ref>;
+using L3Args = std::span<const Value>;
 
 using NewValue = std::variant<Ref, Value>;
 
@@ -29,27 +21,47 @@ struct Slice {
   std::optional<std::int64_t> start, end;
 };
 
+class Value;
+
+class HeapValue {
+  std::variant<
+      Nil,
+      std::shared_ptr<Function>,
+      std::shared_ptr<std::vector<Ref>>,
+      std::string>
+      inner;
+
+public:
+  template <typename T>
+    requires(!std::is_same_v<T, HeapValue>)
+  HeapValue(T &&t) : inner(std::forward<T>(t)) {}
+
+  VISIT(inner)
+  DEFINE_ACCESSOR_X(inner);
+};
+
 class Value {
 public:
-  using function_type = std::unique_ptr<Function>;
-  using vector_type = std::vector<Ref>;
+  using function_type = std::shared_ptr<Function>;
+  using vector_type = std::shared_ptr<std::vector<Ref>>;
   using string_type = std::string;
 
 private:
-  std::variant<Nil, Primitive, function_type, vector_type, string_type> inner;
+  std::variant<Primitive, std::shared_ptr<HeapValue>> inner;
 
 public:
   Value();
 
-  Value(const Value &) = delete;
+  Value(const Value &) = default;
   Value(Value &&) = default;
-  Value &operator=(const Value &) = delete;
+  Value &operator=(const Value &) = default;
   Value &operator=(Value &&) = default;
   ~Value() = default;
 
   Value(Nil /*unused*/);
   Value(Primitive primitive);
   Value(Function &&function);
+  Value(const Function &function);
   Value(vector_type &&vector);
   Value(string_type &&string);
 
@@ -65,7 +77,41 @@ public:
   [[nodiscard]] Value not_op() const;
   [[nodiscard]] Value negative() const;
 
-  VISIT(inner);
+  auto visit(auto &&...visitor) -> decltype(auto) {
+    return std::visit(
+        match::Overloaded{
+            [&](Primitive &p) -> decltype(auto) {
+              return match::Overloaded{
+                  std::forward<decltype(visitor)>(visitor)...
+              }(p);
+            },
+            [&](std::shared_ptr<HeapValue> &h) -> decltype(auto) {
+              return match::match(
+                  h->get_inner_mut(),
+                  std::forward<decltype(visitor)>(visitor)...
+              );
+            }
+        },
+        inner
+    );
+  }
+  auto visit(auto &&...visitor) const -> decltype(auto) {
+    return std::visit(
+        match::Overloaded{
+            [&](const Primitive &p) -> decltype(auto) {
+              return match::Overloaded{
+                  std::forward<decltype(visitor)>(visitor)...
+              }(p);
+            },
+            [&](const std::shared_ptr<HeapValue> &h) -> decltype(auto) {
+              return match::match(
+                  h->get_inner(), std::forward<decltype(visitor)>(visitor)...
+              );
+            }
+        },
+        inner
+    );
+  }
 
   [[nodiscard]] bool is_nil() const;
   [[nodiscard]] bool is_function() const;
@@ -93,6 +139,8 @@ public:
   [[nodiscard]] Value slice(Slice slice) const;
 
   [[nodiscard]] std::string_view type_name() const;
+
+  [[nodiscard]] Value copy() const;
 
   DEFINE_ACCESSOR_X(inner)
 };

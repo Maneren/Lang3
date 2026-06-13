@@ -32,8 +32,8 @@ public:
 
   runtime::Ref store_value(runtime::Value &&value);
   runtime::Ref store_new_value(runtime::NewValue &&value);
-  runtime::Ref evaluate(
-      runtime::Ref function,
+  runtime::Value evaluate(
+      const runtime::Value &function,
       runtime::L3Args arguments,
       const location::Location &call_location = {}
   );
@@ -46,7 +46,7 @@ public:
     std::size_t ip = 0;
     std::size_t frame_pointer = 0;
     std::optional<location::Location> call_location;
-    std::optional<std::pair<runtime::BytecodeFunction, runtime::Ref>> closure;
+    std::optional<std::pair<runtime::BytecodeFunction, runtime::Value>> closure;
   };
 
   void execute(bytecode::ProgramBytecode &program);
@@ -64,12 +64,12 @@ private:
   [[nodiscard]] const runtime::GCValue &constant_at(std::size_t index) const;
   [[nodiscard]] const location::Location &current_instruction_location() const;
 
-  [[nodiscard]] runtime::Ref &stack_at(std::size_t index);
-  [[nodiscard]] const runtime::Ref &stack_at(std::size_t index) const;
-  [[nodiscard]] runtime::Ref &stack_local(std::size_t offset);
-  [[nodiscard]] const runtime::Ref &stack_local(std::size_t offset) const;
-  [[nodiscard]] runtime::Ref &stack_top(std::size_t offset = 0);
-  [[nodiscard]] const runtime::Ref &stack_top(std::size_t offset = 0) const;
+  [[nodiscard]] runtime::Value &stack_at(std::size_t index);
+  [[nodiscard]] const runtime::Value &stack_at(std::size_t index) const;
+  [[nodiscard]] runtime::Value &stack_local(std::size_t offset);
+  [[nodiscard]] const runtime::Value &stack_local(std::size_t offset) const;
+  [[nodiscard]] runtime::Value &stack_top(std::size_t offset = 0);
+  [[nodiscard]] const runtime::Value &stack_top(std::size_t offset = 0) const;
 
   void execute_loop(std::size_t target_frames);
 
@@ -107,7 +107,8 @@ private:
   void
   execute_op_set_upvalue(const bytecode::OpSetUpvalue &op, CallFrame &frame);
 
-  runtime::Ref stack_pop();
+  runtime::Value stack_pop();
+  void stack_push(const runtime::Value &value);
   void stack_push(runtime::Value &&value);
   void stack_push_new(runtime::NewValue &&value);
 
@@ -120,7 +121,7 @@ private:
 
   bool debug;
   runtime::GCStorage gc_storage;
-  std::vector<runtime::Ref> stack;
+  std::vector<runtime::Value> stack;
   std::unordered_map<std::string, runtime::Ref, string_hash, std::equal_to<>>
       global_symbols;
 

@@ -25,8 +25,10 @@ void GCValue::mark() {
 
   get_value_mut().visit(
       [](Value::vector_type &vector) {
-        for (auto &item : vector) {
-          item.get_gc_mut().mark();
+        if (vector) {
+          for (auto &item : *vector) {
+            item.get_gc_mut().mark();
+          }
         }
       },
       [](Value::function_type &func) {
