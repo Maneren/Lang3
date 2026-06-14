@@ -146,7 +146,7 @@ runtime::Value BytecodeVM::evaluate(
   if (auto func_opt = function.as_function()) {
     const auto &func = func_opt->get();
 
-    return func->visit(
+    return func.visit(
         [&](const runtime::BuiltinFunction &func) {
           return func.invoke(arguments);
         },
@@ -191,13 +191,11 @@ std::size_t BytecodeVM::run_gc() {
   for (auto &ref : stack) {
     if (auto vec_opt = ref.as_vector()) {
       const auto &vec = vec_opt->get();
-      if (vec) {
-        for (auto &item : *vec) {
-          const_cast<runtime::Ref &>(item).get_gc_mut().mark();
-        }
+      for (auto &item : vec) {
+        const_cast<runtime::Ref &>(item).get_gc_mut().mark();
       }
     } else if (auto func_opt = ref.as_function()) {
-      func_opt->get()->visit(
+      func_opt->get().visit(
           [](const runtime::BuiltinFunction &) {},
           [](const runtime::BytecodeFunction &bc_func) {
             for (auto &arg : const_cast<std::vector<runtime::Ref> &>(
@@ -216,13 +214,11 @@ std::size_t BytecodeVM::run_gc() {
     if (frame.closure) {
       if (auto vec_opt = frame.closure->second.as_vector()) {
         const auto &vec = vec_opt->get();
-        if (vec) {
-          for (auto &ref : *vec) {
-            const_cast<runtime::Ref &>(ref).get_gc_mut().mark();
-          }
+        for (auto &r : vec) {
+          const_cast<runtime::Ref &>(r).get_gc_mut().mark();
         }
       } else if (auto func_opt = frame.closure->second.as_function()) {
-        func_opt->get()->visit(
+        func_opt->get().visit(
             [](const runtime::BuiltinFunction &) {},
             [](const runtime::BytecodeFunction &bc_func) {
               for (auto &arg : const_cast<std::vector<runtime::Ref> &>(
@@ -574,10 +570,10 @@ void BytecodeVM::execute_op(const bytecode::OpForLoop &op, CallFrame &frame) {
 void BytecodeVM::
     execute_op(const bytecode::OpMakeArray &op, CallFrame & /*frame*/) {
   const auto start = stack.end() - static_cast<std::ptrdiff_t>(op.count);
-  auto elements = std::make_shared<std::vector<runtime::Ref>>();
-  elements->reserve(op.count);
+  auto elements = std::vector<runtime::Ref>{};
+  elements.reserve(op.count);
   for (auto it = start; it != stack.end(); ++it) {
-    elements->push_back(store_value(std::move(*it)));
+    elements.push_back(store_value(std::move(*it)));
   }
   stack.erase(start, stack.end());
   debug_print("MAKE_ARRAY count={}", op.count);
@@ -637,7 +633,7 @@ void BytecodeVM::execute_op(const bytecode::OpClosure &op, CallFrame &frame) {
                       .get_value_mut()
                       .as_mut_function()
                       ->get()
-                      ->as_mut_bytecode_function()
+                      .as_mut_bytecode_function()
                       ->get();
 
   for (const auto &[local, index] : op.upvalues) {

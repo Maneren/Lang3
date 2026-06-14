@@ -24,11 +24,7 @@ struct Slice {
 class Value;
 
 class HeapValue {
-  std::variant<
-      Nil,
-      std::shared_ptr<Function>,
-      std::shared_ptr<std::vector<Ref>>,
-      std::string>
+  std::variant<Nil, std::unique_ptr<Function>, std::vector<Ref>, std::string>
       inner;
 
 public:
@@ -36,14 +32,19 @@ public:
     requires(!std::is_same_v<T, HeapValue>)
   HeapValue(T &&t) : inner(std::forward<T>(t)) {}
 
+  HeapValue(Function &&func)
+      : inner(std::make_unique<Function>(std::move(func))) {}
+
   VISIT(inner)
   DEFINE_ACCESSOR_X(inner);
+
+  friend class Value;
 };
 
 class Value {
 public:
-  using function_type = std::shared_ptr<Function>;
-  using vector_type = std::shared_ptr<std::vector<Ref>>;
+  using function_type = Function;
+  using vector_type = std::vector<Ref>;
   using string_type = std::string;
 
 private:
@@ -86,9 +87,20 @@ public:
               }(p);
             },
             [&](std::shared_ptr<HeapValue> &h) -> decltype(auto) {
-              return match::match(
-                  h->get_inner_mut(),
-                  std::forward<decltype(visitor)>(visitor)...
+              return std::visit(
+                  match::Overloaded{
+                      [&](std::unique_ptr<Function> &func) -> decltype(auto) {
+                        return match::Overloaded{
+                            std::forward<decltype(visitor)>(visitor)...
+                        }(*func);
+                      },
+                      [&](auto &other) -> decltype(auto) {
+                        return match::Overloaded{
+                            std::forward<decltype(visitor)>(visitor)...
+                        }(other);
+                      }
+                  },
+                  h->get_inner_mut()
               );
             }
         },
@@ -104,8 +116,21 @@ public:
               }(p);
             },
             [&](const std::shared_ptr<HeapValue> &h) -> decltype(auto) {
-              return match::match(
-                  h->get_inner(), std::forward<decltype(visitor)>(visitor)...
+              return std::visit(
+                  match::Overloaded{
+                      [&](const std::unique_ptr<Function> &func)
+                          -> decltype(auto) {
+                        return match::Overloaded{
+                            std::forward<decltype(visitor)>(visitor)...
+                        }(*func);
+                      },
+                      [&](const auto &other) -> decltype(auto) {
+                        return match::Overloaded{
+                            std::forward<decltype(visitor)>(visitor)...
+                        }(other);
+                      }
+                  },
+                  h->get_inner()
               );
             }
         },

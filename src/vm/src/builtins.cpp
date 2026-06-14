@@ -147,20 +147,18 @@ builtin_head(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
 
   if (const auto &vector_opt = argument.as_vector()) {
     const auto &vec = vector_opt->get();
-    if (!vec || vec->empty()) {
+    if (vec.empty()) {
       throw l3::runtime::RuntimeError("head() takes a non-empty vector");
     }
 
-    auto head = *vec->front();
+    auto head = *vec.front();
     auto rest = l3::runtime::Value(
-        std::make_shared<std::vector<l3::runtime::Ref>>(
-            vec->begin() + 1, vec->end()
-        )
+        std::vector<l3::runtime::Ref>(vec.begin() + 1, vec.end())
     );
 
-    auto result = std::make_shared<std::vector<l3::runtime::Ref>>();
-    result->push_back(vm.store_value(std::move(head)));
-    result->push_back(vm.store_value(std::move(rest)));
+    auto result = std::vector<l3::runtime::Ref>{};
+    result.push_back(vm.store_value(std::move(head)));
+    result.push_back(vm.store_value(std::move(rest)));
     return l3::runtime::Value(std::move(result));
   }
 
@@ -174,9 +172,9 @@ builtin_head(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
     auto head = l3::runtime::Value(std::string{string.front()});
     auto rest = l3::runtime::Value(string.substr(1));
 
-    auto result = std::make_shared<std::vector<l3::runtime::Ref>>();
-    result->push_back(vm.store_value(std::move(head)));
-    result->push_back(vm.store_value(std::move(rest)));
+    auto result = std::vector<l3::runtime::Ref>{};
+    result.push_back(vm.store_value(std::move(head)));
+    result.push_back(vm.store_value(std::move(rest)));
     return l3::runtime::Value(std::move(result));
   }
 
@@ -193,20 +191,18 @@ builtin_tail(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
 
   if (const auto &vector_opt = argument.as_vector()) {
     const auto &vec = vector_opt->get();
-    if (!vec || vec->empty()) {
+    if (vec.empty()) {
       throw l3::runtime::RuntimeError("tail() takes a non-empty vector");
     }
 
-    auto tail = *vec->back();
+    auto tail = *vec.back();
     auto rest = l3::runtime::Value(
-        std::make_shared<std::vector<l3::runtime::Ref>>(
-            vec->begin(), vec->end() - 1
-        )
+        std::vector<l3::runtime::Ref>(vec.begin(), vec.end() - 1)
     );
 
-    auto result = std::make_shared<std::vector<l3::runtime::Ref>>();
-    result->push_back(vm.store_value(std::move(rest)));
-    result->push_back(vm.store_value(std::move(tail)));
+    auto result = std::vector<l3::runtime::Ref>{};
+    result.push_back(vm.store_value(std::move(rest)));
+    result.push_back(vm.store_value(std::move(tail)));
     return l3::runtime::Value(std::move(result));
   }
 
@@ -220,9 +216,9 @@ builtin_tail(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
     auto tail = l3::runtime::Value(std::string{string.back()});
     auto rest = l3::runtime::Value(string.substr(0, string.size() - 1));
 
-    auto result = std::make_shared<std::vector<l3::runtime::Ref>>();
-    result->push_back(vm.store_value(std::move(rest)));
-    result->push_back(vm.store_value(std::move(tail)));
+    auto result = std::vector<l3::runtime::Ref>{};
+    result.push_back(vm.store_value(std::move(rest)));
+    result.push_back(vm.store_value(std::move(tail)));
     return l3::runtime::Value(std::move(result));
   }
 
@@ -236,12 +232,9 @@ builtin_len(l3::vm::BytecodeVM & /*vm*/, l3::runtime::L3Args args) {
   }
   return args[0].visit(
       [](const l3::runtime::Value::vector_type &vec) -> l3::runtime::Value {
-        if (!vec) {
-          return l3::runtime::Value(l3::runtime::Primitive{std::int64_t{0}});
-        }
-        return l3::runtime::Value(
-            l3::runtime::Primitive{static_cast<std::int64_t>(vec->size())}
-        );
+        return l3::runtime::Value(l3::runtime::Primitive{
+            static_cast<std::int64_t>(vec.size())
+        });
       },
       [](const l3::runtime::Value::string_type &str) -> l3::runtime::Value {
         return l3::runtime::Value(
@@ -380,11 +373,10 @@ builtin_map(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
   }
   const auto &list = list_opt->get();
 
-  auto result =
-      std::make_shared<l3::runtime::Value::vector_type::element_type>();
-  result->reserve(list->size());
-  for (const auto &item : *list) {
-    result->push_back(vm.store_value(vm.evaluate(args[0], std::array{*item})));
+  auto result = std::vector<l3::runtime::Ref>{};
+  result.reserve(list.size());
+  for (const auto &item : list) {
+    result.push_back(vm.store_value(vm.evaluate(args[0], std::array{*item})));
   }
 
   return l3::runtime::Value(std::move(result));
@@ -407,11 +399,10 @@ builtin_filter(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
   }
   const auto &list = list_opt->get();
 
-  auto result =
-      std::make_shared<l3::runtime::Value::vector_type::element_type>();
-  for (const auto &item : *list) {
+  auto result = std::vector<l3::runtime::Ref>{};
+  for (const auto &item : list) {
     if (vm.evaluate(args[0], std::array{*item}).is_truthy()) {
-      result->push_back(item);
+      result.push_back(item);
     }
   }
 
@@ -430,12 +421,12 @@ builtin_sum(l3::vm::BytecodeVM & /*vm*/, l3::runtime::L3Args args) {
   }
   const auto &list = list_opt->get();
 
-  if (!list || list->empty()) {
+  if (list.empty()) {
     throw l3::runtime::TypeError("sum() cannot be applied to an empty vector");
   }
 
-  l3::runtime::Value total = *list->front();
-  for (auto item : *list | std::views::drop(1)) {
+  l3::runtime::Value total = *list.front();
+  for (const auto &item : list | std::views::drop(1)) {
     total.add_assign(*item);
   }
 
@@ -454,7 +445,7 @@ builtin_all(l3::vm::BytecodeVM & /*vm*/, l3::runtime::L3Args args) {
   }
   const auto &list = list_opt->get();
 
-  for (auto item : *list) {
+  for (const auto &item : list) {
     if (item->is_falsy()) {
       return l3::runtime::Value(l3::runtime::Primitive{false});
     }
@@ -475,7 +466,7 @@ builtin_any(l3::vm::BytecodeVM & /*vm*/, l3::runtime::L3Args args) {
   }
   const auto &list = list_opt->get();
 
-  for (auto item : *list) {
+  for (const auto &item : list) {
     if (item->is_truthy()) {
       return l3::runtime::Value(l3::runtime::Primitive{true});
     }
@@ -502,7 +493,7 @@ builtin_count(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
   const auto &list = list_opt->get();
 
   std::int64_t count = 0;
-  for (const auto &item : *list) {
+  for (const auto &item : list) {
     if (vm.evaluate(args[0], std::array{*item}).is_truthy()) {
       ++count;
     }
@@ -575,9 +566,9 @@ builtin_range(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
     }
   }
 
-  auto result = std::make_shared<std::vector<l3::runtime::Ref>>();
+  auto result = std::vector<l3::runtime::Ref>{};
   for (std::int64_t i = start; step > 0 ? i < end : i > end; i += step) {
-    result->push_back(vm.store_value(l3::runtime::Primitive{i}));
+    result.push_back(vm.store_value(l3::runtime::Primitive{i}));
   }
   return l3::runtime::Value(std::move(result));
 }

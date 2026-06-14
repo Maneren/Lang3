@@ -25,14 +25,12 @@ void GCValue::mark() {
 
   get_value_mut().visit(
       [](Value::vector_type &vector) {
-        if (vector) {
-          for (auto &item : *vector) {
-            item.get_gc_mut().mark();
-          }
+        for (auto &item : vector) {
+          item.get_gc_mut().mark();
         }
       },
       [](Value::function_type &func) {
-        if (auto bc_opt = func->as_mut_bytecode_function()) {
+        if (auto bc_opt = func.as_mut_bytecode_function()) {
           for (auto &ca : bc_opt->get().curried_args) {
             ca.get_gc_mut().mark();
           }
