@@ -24,8 +24,7 @@ struct Slice {
 class Value;
 
 class HeapValue {
-  std::variant<Nil, std::unique_ptr<Function>, std::vector<Ref>, std::string>
-      inner;
+  std::variant<std::unique_ptr<Function>, std::vector<Ref>, std::string> inner;
 
 public:
   template <typename T>
@@ -48,7 +47,7 @@ public:
   using string_type = std::string;
 
 private:
-  std::variant<Primitive, std::shared_ptr<HeapValue>> inner;
+  std::variant<Nil, Primitive, std::shared_ptr<HeapValue>> inner;
 
 public:
   Value();
@@ -86,6 +85,11 @@ public:
                   std::forward<decltype(visitor)>(visitor)...
               }(p);
             },
+            [&](Nil &nil) -> decltype(auto) {
+              return match::Overloaded{
+                  std::forward<decltype(visitor)>(visitor)...
+              }(nil);
+            },
             [&](std::shared_ptr<HeapValue> &h) -> decltype(auto) {
               return std::visit(
                   match::Overloaded{
@@ -114,6 +118,11 @@ public:
               return match::Overloaded{
                   std::forward<decltype(visitor)>(visitor)...
               }(p);
+            },
+            [&](const Nil &nil) -> decltype(auto) {
+              return match::Overloaded{
+                  std::forward<decltype(visitor)>(visitor)...
+              }(nil);
             },
             [&](const std::shared_ptr<HeapValue> &h) -> decltype(auto) {
               return std::visit(

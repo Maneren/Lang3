@@ -133,8 +133,8 @@ template <typename T> bool is_impl(const Value &v) {
 
 } // namespace
 
-Value::Value() : inner{std::make_shared<HeapValue>(Nil{})} {}
-Value::Value(Nil /*unused*/) : inner{std::make_shared<HeapValue>(Nil{})} {}
+Value::Value() : inner{Nil{}} {}
+Value::Value(Nil /*unused*/) : inner{Nil{}} {}
 Value::Value(Primitive primitive) : inner{primitive} {}
 Value::Value(Function &&function)
     : inner{std::make_shared<HeapValue>(std::move(function))} {}
