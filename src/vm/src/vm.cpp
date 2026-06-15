@@ -609,7 +609,7 @@ void BytecodeVM::execute_op(const bytecode::OpCall &op, CallFrame & /*frame*/) {
   std::vector<runtime::Value> args;
   args.reserve(op.arg_count);
   for (auto it = args_base_ptr; it != stack.end(); ++it) {
-    args.push_back(*it);
+    args.push_back(std::move(*it));
   }
   stack.erase(args_base_ptr, stack.end());
 
