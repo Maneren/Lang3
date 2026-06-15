@@ -188,47 +188,33 @@ runtime::Value BytecodeVM::evaluate(
 }
 
 std::size_t BytecodeVM::run_gc() {
-  for (auto &ref : stack) {
-    if (auto vec_opt = ref.as_vector()) {
-      const auto &vec = vec_opt->get();
-      for (auto &item : vec) {
-        const_cast<runtime::Ref &>(item).get_gc_mut().mark();
-      }
-    } else if (auto func_opt = ref.as_function()) {
-      func_opt->get().visit(
-          [](const runtime::BuiltinFunction &) {},
-          [](const runtime::BytecodeFunction &bc_func) {
-            for (auto &arg : const_cast<std::vector<runtime::Ref> &>(
-                     bc_func.curried_args
-                 )) {
-              arg.get_gc_mut().mark();
+  static const auto mark_value = [](runtime::Value &ref) {
+    ref.visit(
+        [](runtime::Value::vector_type &vec) {
+          for (auto &item : vec) {
+            item.get_gc_mut().mark();
+          }
+        },
+        [](runtime::Value::function_type &func) {
+          if (auto bc_opt = func.as_mut_bytecode_function()) {
+            for (auto &ca : bc_opt->get().curried_args) {
+              ca.get_gc_mut().mark();
             }
           }
-      );
-    }
+        },
+        [](auto & /*value*/) {}
+    );
+  };
+
+  for (auto &value : stack) {
+    mark_value(value);
   }
   for (auto &[_, ref] : global_symbols) {
-    const_cast<runtime::Ref &>(ref).get_gc_mut().mark();
+    ref.get_gc_mut().mark();
   }
   for (auto &frame : frames) {
     if (frame.closure) {
-      if (auto vec_opt = frame.closure->second.as_vector()) {
-        const auto &vec = vec_opt->get();
-        for (auto &r : vec) {
-          const_cast<runtime::Ref &>(r).get_gc_mut().mark();
-        }
-      } else if (auto func_opt = frame.closure->second.as_function()) {
-        func_opt->get().visit(
-            [](const runtime::BuiltinFunction &) {},
-            [](const runtime::BytecodeFunction &bc_func) {
-              for (auto &arg : const_cast<std::vector<runtime::Ref> &>(
-                       bc_func.curried_args
-                   )) {
-                arg.get_gc_mut().mark();
-              }
-            }
-        );
-      }
+      mark_value(frame.closure->second);
     }
   }
   return gc_storage.sweep();
