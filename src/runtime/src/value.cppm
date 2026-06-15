@@ -13,8 +13,6 @@ struct Nil {
   };
 };
 
-using L3Args = std::span<const Value>;
-
 using NewValue = std::variant<Ref, Value>;
 
 struct Slice {
