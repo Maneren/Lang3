@@ -60,10 +60,10 @@ std::optional<ast::Program> parse_ast(
 
   if (debug.timings) {
     auto end_time = std::chrono::steady_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(
         end_time - start_time
     );
-    std::println(std::cerr, "Parsed to AST in {}ms", duration.count());
+    std::println(std::cerr, "Parsed to AST in {}μs", duration.count());
   }
 
   if (result != 0) {
@@ -71,6 +71,24 @@ std::optional<ast::Program> parse_ast(
   }
 
   return program;
+}
+
+bytecode::ProgramBytecode
+compile_ast(const ast::Program &program, const Debug &debug) {
+  const auto start_time = std::chrono::steady_clock::now();
+  bytecode::ProgramBytecode program_bytecode;
+  compiler::Compiler compiler(program_bytecode);
+  compiler.compile(program);
+
+  if (debug.timings) {
+    auto end_time = std::chrono::steady_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(
+        end_time - start_time
+    );
+    std::println(std::cerr, "Compiled to bytecode in {}μs", duration.count());
+  }
+
+  return program_bytecode;
 }
 
 } // namespace
@@ -144,9 +162,7 @@ int main(int argc, char *argv[]) {
     std::println(std::cerr, "=== VM ===");
   }
 
-  bytecode::ProgramBytecode program_bytecode;
-  compiler::Compiler compiler(program_bytecode);
-  compiler.compile(program);
+  auto program_bytecode = compile_ast(program, debug);
 
   if (debug.bytecode) {
     std::print(std::cerr, "{}", program_bytecode);
