@@ -38,14 +38,12 @@
 0036 | GET_LOCAL     0
 0037 | GET_LOCAL     1
 0038 | LESS
-0039 | JUMP_IF      43 false
+0039 | JUMP_IF      42 false
 0040 | CONSTANT      4 ("ok")
-0041 | RETURN
-0042 | JUMP         45
-0043 | CONSTANT      5 ("bad")
-0044 | RETURN
-0045 | GET_GLOBAL    2 '"println"'
-0046 | GET_LOCAL     3
-0047 | CALL          1 false
-0048 | CONSTANT      6 (nil)
-0049 | RETURN
+0041 | JUMP         43
+0042 | CONSTANT      5 ("bad")
+0043 | GET_GLOBAL    2 '"println"'
+0044 | GET_LOCAL     3
+0045 | CALL          1 false
+0046 | CONSTANT      6 (nil)
+0047 | RETURN

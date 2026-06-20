@@ -304,6 +304,7 @@ void Compiler::compile_block(const ast::Block &block) {
 
 void Compiler::compile_expression(const ast::Expression &expr) {
   LocationScope scope(location_stack, expr.get_location());
+  bool prev_in_expression = contexts.back().is_in_expression;
   contexts.back().is_in_expression = true;
   expr.visit(
       [this](const ast::Literal &literal) { compile_literal(literal); },
@@ -328,7 +329,7 @@ void Compiler::compile_expression(const ast::Expression &expr) {
         compile_if_expression(if_expr);
       }
   );
-  contexts.back().is_in_expression = false;
+  contexts.back().is_in_expression = prev_in_expression;
 }
 
 void Compiler::compile_binary_expression(const ast::BinaryExpression &binary) {
@@ -992,12 +993,15 @@ void Compiler::compile_last_statement(const ast::LastStatement &stmt) {
 }
 
 void Compiler::compile_return_statement(const ast::ReturnStatement &ret) {
+  bool was_in_expression = contexts.back().is_in_expression;
   if (const auto &expr = ret.get_expression(); expr) {
     compile_expression(*expr);
   } else {
     emit(OpConstant{make_constant({})});
   }
-  emit(OpReturn{});
+  if (!was_in_expression) {
+    emit(OpReturn{});
+  }
 }
 
 void Compiler::compile_break_statement(const ast::BreakStatement & /* brk */) {
