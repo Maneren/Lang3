@@ -91,46 +91,64 @@ private:
 class Parser {
 public:
   constexpr Parser &
-  flag(std::string_view short_name, std::string_view long_name) {
-    _flags.emplace_back(short_name, long_name);
+  flag(std::string_view short_name, std::string_view long_name, std::string_view description = "") {
+    _flags.emplace_back(short_name, long_name, description);
     return *this;
   }
 
-  constexpr Parser &short_flag(std::string_view short_name) {
-    _flags.emplace_back(short_name, std::nullopt);
+  constexpr Parser &short_flag(std::string_view short_name, std::string_view description = "") {
+    _flags.emplace_back(short_name, std::nullopt, description);
     return *this;
   }
 
-  constexpr Parser &long_flag(std::string_view long_name) {
-    _flags.emplace_back(std::nullopt, long_name);
+  constexpr Parser &long_flag(std::string_view long_name, std::string_view description = "") {
+    _flags.emplace_back(std::nullopt, long_name, description);
     return *this;
   }
 
   constexpr Parser &
-  option(std::string_view short_name, std::string_view long_name) {
-    _options.emplace_back(short_name, long_name);
+  option(std::string_view short_name, std::string_view long_name, std::string_view description = "") {
+    _options.emplace_back(short_name, long_name, description);
     return *this;
   }
 
-  constexpr Parser &short_option(std::string_view short_name) {
-    _options.emplace_back(short_name, std::nullopt);
+  constexpr Parser &short_option(std::string_view short_name, std::string_view description = "") {
+    _options.emplace_back(short_name, std::nullopt, description);
     return *this;
   }
 
-  constexpr Parser &long_option(std::string_view long_name) {
-    _options.emplace_back(std::nullopt, long_name);
+  constexpr Parser &long_option(std::string_view long_name, std::string_view description = "") {
+    _options.emplace_back(std::nullopt, long_name, description);
     return *this;
   }
+
+  constexpr Parser &program_name(std::string name) {
+    _program_name = std::move(name);
+    return *this;
+  }
+
+  constexpr Parser &program_description(std::string description) {
+    _program_description = std::move(description);
+    return *this;
+  }
+
+  [[nodiscard]] std::string generate_help(std::string_view program_name) const;
 
   [[nodiscard]] std::expected<Args, ParseError> parse(
       int argc, const char *const argv[] // NOLINT(modernize-avoid-c-arrays)
   ) const;
 
 private:
-  using NamePair = std::
-      pair<std::optional<std::string_view>, std::optional<std::string_view>>;
-  std::vector<NamePair> _flags;
-  std::vector<NamePair> _options;
+  struct Entry {
+    std::optional<std::string_view> short_name;
+    std::optional<std::string_view> long_name;
+    std::string_view description;
+  };
+
+  std::vector<Entry> _flags;
+  std::vector<Entry> _options;
+  std::string _program_name;
+  std::string _program_description;
 
   [[nodiscard]] bool
   is_flag(std::string_view short_name, std::string_view long_name) const;
@@ -142,12 +160,12 @@ private:
   set_value(Args &args, std::string_view name, std::string_view value) const;
 
   [[nodiscard]] static bool find_in(
-      const std::vector<NamePair> &vec,
+      const std::vector<Entry> &vec,
       std::string_view short_name,
       std::string_view long_name
   );
   [[nodiscard]] static std::string_view
-  get_store_name(std::string_view name, const std::vector<NamePair> &vec);
+  get_store_name(std::string_view name, const std::vector<Entry> &vec);
 
   std::expected<void, ParseError>
   parse_long_option(ParsingContext &context, Args &args) const;

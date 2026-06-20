@@ -14,15 +14,17 @@ namespace {
 
 constexpr cli::Parser cli_parser() {
   return cli::Parser{}
-      .flag("d", "debug")
-      .flag("O", "optimize")
-      .long_flag("debug-lexer")
-      .long_flag("debug-parser")
-      .long_flag("debug-ast")
-      .long_option("debug-ast-graph")
-      .long_flag("debug-vm")
-      .long_flag("debug-bytecode")
-      .long_flag("timings");
+      .program_name("lang3")
+      .program_description("A Lang3 programming language interpreter.")
+      .flag("d", "debug", "Enable all debug options")
+      .flag("O", "optimize", "Enable optimizations")
+      .long_flag("debug-lexer", "Debug the lexer")
+      .long_flag("debug-parser", "Debug the parser")
+      .long_flag("debug-ast", "Debug the AST")
+      .long_option("debug-ast-graph", "Output AST graph to a DOT file")
+      .long_flag("debug-vm", "Debug the VM")
+      .long_flag("debug-bytecode", "Debug the bytecode")
+      .long_flag("timings", "Show execution timings");
 }
 
 struct Debug {
