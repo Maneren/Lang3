@@ -1,4 +1,2 @@
-RuntimeError: UnsupportedOperation: subtraction between function and int not supported
-  at closures_recursive_factory.l3:11.27-39
-stacktrace:
-  in power called at closures_recursive_factory.l3:21.9-18
+25
+64

@@ -47,6 +47,8 @@ public:
     std::size_t frame_pointer = 0;
     std::optional<location::Location> call_location;
     std::optional<std::pair<runtime::BytecodeFunction, runtime::Value>> closure;
+    std::vector<runtime::Value> upvalues;
+    std::unordered_map<std::size_t, runtime::Ref> captured_locals;
   };
 
   void execute(bytecode::ProgramBytecode &program);

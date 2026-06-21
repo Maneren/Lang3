@@ -170,6 +170,10 @@ runtime::Value BytecodeVM::evaluate(
                 call_location,
                 std::pair{bc_func, runtime::Value{function}}
             );
+            auto &new_frame = frames.back();
+            for (const auto &ref : bc_func.captured_upvalue_refs) {
+              new_frame.upvalues.push_back(ref.get());
+            }
             for (const auto &arg : bc_func.curried_args) {
               stack.push_back(*arg);
             }
@@ -188,8 +192,8 @@ runtime::Value BytecodeVM::evaluate(
 }
 
 std::size_t BytecodeVM::run_gc() {
-  static const auto mark_value = [](runtime::Value &ref) {
-    ref.visit(
+  static const auto mark_value = [](runtime::Value &value) {
+    value.visit(
         [](runtime::Value::vector_type &vec) {
           for (auto &item : vec) {
             item.get_gc_mut().mark();
@@ -199,6 +203,9 @@ std::size_t BytecodeVM::run_gc() {
           if (auto bc_opt = func.as_mut_bytecode_function()) {
             for (auto &ca : bc_opt->get().curried_args) {
               ca.get_gc_mut().mark();
+            }
+            for (auto &uv : bc_opt->get().captured_upvalue_refs) {
+              uv.get_gc_mut().mark();
             }
           }
         },
@@ -215,6 +222,12 @@ std::size_t BytecodeVM::run_gc() {
   for (auto &frame : frames) {
     if (frame.closure) {
       mark_value(frame.closure->second);
+    }
+    for (auto &uv : frame.upvalues) {
+      mark_value(uv);
+    }
+    for (auto &[_, ref] : frame.captured_locals) {
+      mark_value(*ref);
     }
   }
   return gc_storage.sweep();
@@ -497,7 +510,12 @@ void BytecodeVM::execute_op(const bytecode::OpGetLocal &op, CallFrame &frame) {
 [[clang::noinline]]
 void BytecodeVM::execute_op(const bytecode::OpSetLocal &op, CallFrame &frame) {
   debug_print("SET_LOCAL index={} value={}", op.index, stack_top());
-  stack_at(frame.frame_pointer + op.index) = stack_pop();
+  auto val = stack_pop();
+  stack_at(frame.frame_pointer + op.index) = val;
+  auto it = frame.captured_locals.find(op.index);
+  if (it != frame.captured_locals.end()) {
+    it->second.get() = val;
+  }
 }
 
 [[clang::noinline]]
@@ -623,10 +641,24 @@ void BytecodeVM::execute_op(const bytecode::OpClosure &op, CallFrame &frame) {
                       ->get();
 
   for (const auto &[local, index] : op.upvalues) {
-    const auto upvalue = local ? frame.frame_pointer + index
-                               : frame.closure->first.upvalues[index];
-
-    function.upvalues.emplace_back(upvalue);
+    if (local) {
+      auto it = frame.captured_locals.find(index);
+      if (it == frame.captured_locals.end()) {
+        it = frame.captured_locals
+                 .emplace(
+                     index,
+                     store_value(
+                         runtime::Value{stack[frame.frame_pointer + index]}
+                     )
+                 )
+                 .first;
+      }
+      function.captured_upvalue_refs.push_back(it->second);
+    } else {
+      function.captured_upvalue_refs.push_back(
+          frame.closure->first.captured_upvalue_refs[index]
+      );
+    }
   }
   stack_push(runtime::Function{std::move(function)});
   debug_print("CLOSURE function={}", stack.back());
@@ -636,11 +668,8 @@ void BytecodeVM::execute_op(const bytecode::OpClosure &op, CallFrame &frame) {
 void BytecodeVM::execute_op(
     const bytecode::OpGetUpvalue &op, CallFrame &frame
 ) {
-  const auto &upvalues = frame.closure->first.upvalues;
-  debug_print("upvalues: {}", upvalues);
-  const auto ptr = upvalues[op.index];
-  const auto &val = stack[ptr];
-  debug_print("GET_UPVALUE index={} ptr={} value={}", op.index, ptr, val);
+  const auto &val = frame.upvalues[op.index];
+  debug_print("GET_UPVALUE index={} value={}", op.index, val);
   stack.push_back(val);
 }
 
@@ -648,8 +677,11 @@ void BytecodeVM::execute_op(
 void BytecodeVM::execute_op(
     const bytecode::OpSetUpvalue &op, CallFrame &frame
 ) {
-  debug_print("SET_UPVALUE index={}", op.index, stack_top());
-  frame.closure->first.upvalues[op.index] = stack.size() - 1;
+  debug_print("SET_UPVALUE index={} value={}", op.index, stack_top());
+  frame.upvalues[op.index] = stack.back();
+  if (frame.closure) {
+    frame.closure->first.captured_upvalue_refs[op.index].get() = stack.back();
+  }
 }
 
 } // namespace l3::vm

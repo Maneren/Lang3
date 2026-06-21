@@ -451,7 +451,8 @@ void Compiler::compile_anonymous_function(const ast::AnonymousFunction &func) {
           .name = "<anonymous>",
           .arity = func.get_arity(),
           .upvalues = {},
-          .curried_args = {}
+          .curried_args = {},
+          .captured_upvalue_refs = {}
       }}
   );
 
@@ -788,7 +789,8 @@ void Compiler::compile_named_function(const ast::NamedFunction &func) {
           .name = name.get_name(),
           .arity = func.get_arity(),
           .upvalues = {},
-          .curried_args = {}
+          .curried_args = {},
+          .captured_upvalue_refs = {}
       }}
   );
 

@@ -1,5 +1,3 @@
 5
-RuntimeError: UnsupportedOperation: addition between 'function' and 'int' not supported
-  at functions_closures.l3:7.12-17
-stacktrace:
-  in <anonymous> called at functions_closures.l3:13.9-20
+12
+10

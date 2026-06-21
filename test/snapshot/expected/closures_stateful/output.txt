@@ -1,4 +1,5 @@
-RuntimeError: UnsupportedOperation: addition between 'function' and 'int' not supported
-  at closures_stateful.l3:5.5-19
-stacktrace:
-  in <anonymous> called at closures_stateful.l3:13.9-14
+1
+6
+12
+9
+13

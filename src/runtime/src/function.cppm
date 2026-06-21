@@ -35,6 +35,7 @@ struct BytecodeFunction {
   std::size_t arity;
   std::vector<std::size_t> upvalues;
   std::vector<Ref> curried_args;
+  std::vector<Ref> captured_upvalue_refs;
 };
 
 class Function {
