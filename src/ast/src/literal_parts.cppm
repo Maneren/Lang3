@@ -8,8 +8,7 @@ export namespace l3::ast {
 struct Nil {
   DEFINE_LOCATION_FIELD()
 
-  constexpr Nil(location::Location location = {})
-      : location_(std::move(location)) {}
+  constexpr Nil(location::Location location = {}) : location_(location) {}
 };
 
 class Boolean {

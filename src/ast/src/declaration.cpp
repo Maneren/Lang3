@@ -4,8 +4,7 @@ import std;
 
 namespace l3::ast {
 
-Declaration::Declaration(location::Location location)
-    : location_(std::move(location)) {}
+Declaration::Declaration(location::Location location) : location_(location) {}
 Declaration::Declaration(
     NameList &&names,
     std::optional<Expression> &&expression,
@@ -13,6 +12,6 @@ Declaration::Declaration(
     location::Location location
 )
     : names(std::move(names)), expression(std::move(expression)),
-      mutability(mutability), location_(std::move(location)) {}
+      mutability(mutability), location_(location) {}
 
 } // namespace l3::ast

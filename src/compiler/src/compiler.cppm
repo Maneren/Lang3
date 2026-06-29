@@ -70,7 +70,8 @@ private:
   void begin_scope();
   void end_scope();
 
-  std::optional<std::size_t> resolve_local(const ast::Identifier &name) const;
+  [[nodiscard]] std::optional<std::size_t>
+  resolve_local(const ast::Identifier &name) const;
   std::optional<std::size_t> resolve_upvalue(const ast::Identifier &name);
 
   void emit(const Instruction &instruction);

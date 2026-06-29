@@ -8,7 +8,7 @@ UnaryExpression::UnaryExpression(
     UnaryOperator op, Expression &&expression, location::Location location
 )
     : op(op), expression(std::make_unique<Expression>(std::move(expression))),
-      location_(std::move(location)) {}
+      location_(location) {}
 
 BinaryExpression::BinaryExpression(
     Expression &&lhs,
@@ -17,8 +17,7 @@ BinaryExpression::BinaryExpression(
     location::Location location
 )
     : lhs(std::make_unique<Expression>(std::move(lhs))), op(op),
-      rhs(std::make_unique<Expression>(std::move(rhs))),
-      location_(std::move(location)) {}
+      rhs(std::make_unique<Expression>(std::move(rhs))), location_(location) {}
 
 LogicalExpression::LogicalExpression(
     Expression &&lhs,
@@ -27,8 +26,7 @@ LogicalExpression::LogicalExpression(
     location::Location location
 )
     : lhs(std::make_unique<Expression>(std::move(lhs))), op(op),
-      rhs(std::make_unique<Expression>(std::move(rhs))),
-      location_(std::move(location)) {}
+      rhs(std::make_unique<Expression>(std::move(rhs))), location_(location) {}
 
 Comparison::Comparison(
     Expression &&left,
@@ -37,7 +35,7 @@ Comparison::Comparison(
     location::Location location
 )
     : start(std::make_unique<Expression>(std::move(left))), type(get_type(op)),
-      location_(std::move(location)) {
+      location_(location) {
   comparisons.emplace_back(op, std::move(right));
 }
 bool Comparison::add_comparison(ComparisonOperator op, Expression &&right) {

@@ -32,14 +32,14 @@ struct BreakStatement {
   DEFINE_LOCATION_FIELD()
 
   constexpr BreakStatement(location::Location location = {})
-      : location_(std::move(location)) {}
+      : location_(location) {}
 };
 
 struct ContinueStatement {
   DEFINE_LOCATION_FIELD()
 
   constexpr ContinueStatement(location::Location location = {})
-      : location_(std::move(location)) {}
+      : location_(location) {}
 };
 
 class LastStatement {

@@ -3,13 +3,13 @@ module l3.ast;
 namespace l3::ast {
 
 IndexExpression::IndexExpression(location::Location location)
-    : location_(std::move(location)) {}
+    : location_(location) {}
 IndexExpression::IndexExpression(
     Variable &&base, Expression &&index, location::Location location
 )
     : base(std::make_unique<Variable>(std::move(base))),
       index(std::make_unique<Expression>(std::move(index))),
-      location_(std::move(location)) {};
+      location_(location) {};
 
 IndexExpression::IndexExpression(IndexExpression &&) noexcept = default;
 IndexExpression &

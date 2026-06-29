@@ -5,11 +5,11 @@ import :expression;
 namespace l3::ast {
 
 ReturnStatement::ReturnStatement(location::Location location)
-    : location_(std::move(location)) {}
+    : location_(location) {}
 ReturnStatement::ReturnStatement(
     Expression &&expression, location::Location location
 )
-    : expression(std::move(expression)), location_(std::move(location)) {}
+    : expression(std::move(expression)), location_(location) {}
 
 ReturnStatement::ReturnStatement(ReturnStatement &&) noexcept = default;
 ReturnStatement &

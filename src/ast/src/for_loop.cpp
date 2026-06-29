@@ -6,8 +6,7 @@ import :identifier;
 
 namespace l3::ast {
 
-ForLoop::ForLoop(location::Location location)
-    : location_(std::move(location)) {}
+ForLoop::ForLoop(location::Location location) : location_(location) {}
 ForLoop::ForLoop(
     Identifier &&variable,
     Expression &&collection,
@@ -16,8 +15,7 @@ ForLoop::ForLoop(
     location::Location location
 )
     : variable(std::move(variable)), collection(std::move(collection)),
-      body(std::move(body)), mutability(mutability),
-      location_(std::move(location)) {}
+      body(std::move(body)), mutability(mutability), location_(location) {}
 
 ForLoop::ForLoop(ForLoop &&) noexcept = default;
 ForLoop &ForLoop::operator=(ForLoop &&) noexcept = default;

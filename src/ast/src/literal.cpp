@@ -18,19 +18,19 @@ char decode_escape(char c) {
 namespace l3::ast {
 
 Boolean::Boolean(bool value, location::Location location)
-    : value(value), location_(std::move(location)) {}
+    : value(value), location_(location) {}
 
 Number::Number(std::int64_t value, location::Location location)
-    : value(value), location_(std::move(location)) {}
+    : value(value), location_(location) {}
 
 Float::Float(std::int64_t integral, location::Location location)
-    : value(static_cast<double>(integral)), location_(std::move(location)) {}
+    : value(static_cast<double>(integral)), location_(location) {}
 Float::Float(
     std::int64_t integral,
     std::int64_t fractional,
     location::Location location
 ) // NOLINT
-    : value(static_cast<double>(integral)), location_(std::move(location)) {
+    : value(static_cast<double>(integral)), location_(location) {
 
   auto frac = static_cast<double>(fractional);
 
@@ -41,7 +41,7 @@ Float::Float(
 }
 
 String::String(const std::string &literal, location::Location location)
-    : location_(std::move(location)) {
+    : location_(location) {
   using namespace std::ranges;
 
   value.reserve(literal.size());

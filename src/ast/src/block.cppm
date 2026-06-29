@@ -15,7 +15,7 @@ class Block {
 public:
   Block();
   Block(Statement &&statement);
-  Block(LastStatement &&lastStatement);
+  Block(LastStatement &&last_statement);
 
   Block &with_statement(Statement &&statement);
 

@@ -18,7 +18,7 @@ struct LocationScope {
 
   LocationScope(std::vector<location::Location> &stack, location::Location loc)
       : stack(stack) {
-    stack.push_back(std::move(loc));
+    stack.push_back(loc);
   }
 
   ~LocationScope() { stack.pop_back(); }
