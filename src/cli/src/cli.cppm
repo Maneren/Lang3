@@ -90,34 +90,44 @@ private:
 
 class Parser {
 public:
-  constexpr Parser &
-  flag(std::string_view short_name, std::string_view long_name, std::string_view description = "") {
+  constexpr Parser &flag(
+      std::string_view short_name,
+      std::string_view long_name,
+      std::string_view description = ""
+  ) {
     _flags.emplace_back(short_name, long_name, description);
     return *this;
   }
 
-  constexpr Parser &short_flag(std::string_view short_name, std::string_view description = "") {
+  constexpr Parser &
+  short_flag(std::string_view short_name, std::string_view description = "") {
     _flags.emplace_back(short_name, std::nullopt, description);
     return *this;
   }
 
-  constexpr Parser &long_flag(std::string_view long_name, std::string_view description = "") {
+  constexpr Parser &
+  long_flag(std::string_view long_name, std::string_view description = "") {
     _flags.emplace_back(std::nullopt, long_name, description);
     return *this;
   }
 
-  constexpr Parser &
-  option(std::string_view short_name, std::string_view long_name, std::string_view description = "") {
+  constexpr Parser &option(
+      std::string_view short_name,
+      std::string_view long_name,
+      std::string_view description = ""
+  ) {
     _options.emplace_back(short_name, long_name, description);
     return *this;
   }
 
-  constexpr Parser &short_option(std::string_view short_name, std::string_view description = "") {
+  constexpr Parser &
+  short_option(std::string_view short_name, std::string_view description = "") {
     _options.emplace_back(short_name, std::nullopt, description);
     return *this;
   }
 
-  constexpr Parser &long_option(std::string_view long_name, std::string_view description = "") {
+  constexpr Parser &
+  long_option(std::string_view long_name, std::string_view description = "") {
     _options.emplace_back(std::nullopt, long_name, description);
     return *this;
   }

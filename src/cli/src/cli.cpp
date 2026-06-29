@@ -24,7 +24,8 @@ ParseError ParseError::value(std::string_view arg) {
 std::expected<Args, ParseError>
 Parser::parse(int argc, const char *const argv[]) const {
   ParsingContext context{std::span{argv, static_cast<std::size_t>(argc)}};
-  auto prog_name = _program_name.empty() ? std::string_view{argv[0]} : std::string_view{_program_name};
+  auto prog_name = _program_name.empty() ? std::string_view{argv[0]}
+                                         : std::string_view{_program_name};
 
   Args args;
   bool positional_only = false;
@@ -116,9 +117,8 @@ bool Parser::find_in(
   });
 }
 
-std::string_view Parser::get_store_name(
-    std::string_view name, const std::vector<Entry> &vec
-) {
+std::string_view
+Parser::get_store_name(std::string_view name, const std::vector<Entry> &vec) {
   for (const auto &entry : vec) {
     if (optional_contains(entry.short_name, name)) {
       return entry.long_name.value_or(name);
@@ -162,7 +162,8 @@ std::string Parser::generate_help(std::string_view program_name) const {
   for (const auto &entry : _options) {
     std::string names;
     if (entry.short_name && entry.long_name) {
-      names = std::format("-{}, --{} <value>", *entry.short_name, *entry.long_name);
+      names =
+          std::format("-{}, --{} <value>", *entry.short_name, *entry.long_name);
     } else if (entry.short_name) {
       names = std::format("-{} <value>", *entry.short_name);
     } else if (entry.long_name) {
