@@ -1,0 +1,40 @@
+#!/bin/env lang3
+
+# Stress test: GC and memory allocation
+# Allocates and discards many vectors and strings in a loop.
+# Shared_ptr overhead: each Value copy/destroy on the stack does
+# atomic ref-count inc/dec. GC also sweeps periodically.
+# With shared_ptr removal + GC improvements: no atomics, faster sweep.
+
+fn bench()
+  let N = 500
+  let mut total_kept = 0
+
+  for iter in 0..50 do
+    let mut big = []
+
+    # Allocate many vectors (triggers GC)
+    for i in 0..N do
+      let mut vec = []
+      for j in 0..100 do
+        vec += [j * i]
+      end
+      big += [vec]
+    end
+
+    # Discard most of them (only keep every 10th)
+    let mut kept = []
+    for i in 0..N do
+      if i / 10 * 10 == i then
+        kept += [big[i]]
+      end
+    end
+
+    total_kept += len(kept)
+    # Discard 'big' and 'kept' — all those vectors become garbage for the GC
+  end
+
+  println(total_kept)
+end
+
+bench()

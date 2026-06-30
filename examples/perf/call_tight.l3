@@ -1,0 +1,21 @@
+#!/bin/env lang3
+
+# Stress test: function call overhead
+# Calls a tiny function in a tight loop.
+# Without call optimization: each call copies arguments through a vector,
+# then erases/repushes them on the stack.
+# With direct stack passing: arguments stay in place, no copying.
+
+fn add(x, y)
+  return x + y
+end
+
+fn bench()
+  let mut sum = 0
+  for i in 0..5000000 do
+    sum += add(i, 1)
+  end
+  println(sum)
+end
+
+bench()

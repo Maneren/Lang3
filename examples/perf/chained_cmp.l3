@@ -1,0 +1,23 @@
+#!/bin/env lang3
+
+# Stress test: chained comparison optimization
+# Every iteration evaluates `0 <= i < N` — without optimization
+# the middle operand `i` is compiled twice (two GET_LOCAL instructions).
+# With the fix, it's compiled once and cached.
+
+fn bench()
+  let N = 10000000
+
+  let mut count = 0
+  for i in 0..N do
+    # Chained comparison whose middle is a local variable
+    # (the simplest case: same GET_LOCAL emitted twice without optimization)
+    if 0 <= i < N then
+      count += 1
+    end
+  end
+
+  println(count)
+end
+
+bench()

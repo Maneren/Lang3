@@ -1,0 +1,50 @@
+#!/bin/env lang3
+
+# Stress test: instruction dispatch throughput
+# Exercises many different opcodes in rapid succession with minimal logic.
+# This stresses std::visit dispatch (29-alternative variant) vs computed-goto.
+# Each iteration executes a mix of: constant load, local access, arithmetic,
+# comparison, jumps, and function calls — all intermixed.
+
+fn inner(a, b)
+  let x = a + b
+  let y = a - b
+  let z = a * b
+  let w = a / (b + 1)
+  if x < y and y < z or z > w then
+    return 1
+  end
+  return 0
+end
+
+fn bench()
+  let N = 2000000
+
+  let mut sum = 0
+  for i in 0..N do
+    # Mix of opcodes:
+    let a = i - i / 100 * 100   # a in [0, 99] without modulus
+    let b = i - i / 50 * 50     # b in [0, 49]
+
+    # Arithmetic (Add, Sub, Mul, Div, Negate)
+    let r1 = (a + b) - (a * b) / (b + 1) - a
+    let r2 = -(a - b) + a * 3 - b / 2
+
+    # Comparison and logic (all 6 comparisons + Not)
+    if a < b and not (a > b) and a <= b and a >= b and a == b then
+      sum = sum + 1
+    end
+
+    # Nested function call (exercises dispatch through call/return)
+    if i - i / 100 * 100 == 0 then
+      sum = sum + inner(a, b)
+    end
+
+    # Global access + arithmetic
+    sum = sum + r1 - r2
+  end
+
+  println(sum)
+end
+
+bench()

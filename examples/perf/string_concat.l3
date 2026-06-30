@@ -1,0 +1,29 @@
+#!/bin/env lang3
+
+# Stress test: string concatenation and comparison
+# Without string interning: every concatenation creates a new std::string,
+# comparisons are O(n) char-by-char.
+# With interning: comparison becomes O(1) pointer comparison.
+# Creates many unique strings then compares them in a tight loop.
+
+fn bench()
+  let N = 50000
+
+  # Build many unique strings
+  let mut strings = []
+  for i in 0..N do
+    strings += [str(i) + "_" + str(i * i)]
+  end
+
+  # Compare each pair (O(n^2) string comparisons — worst case for non-interned)
+  let mut matches = 0
+  for i in 0..(N - 1) do
+    if strings[i] == strings[i + 1] then
+      matches += 1
+    end
+  end
+
+  println(matches)
+end
+
+bench()

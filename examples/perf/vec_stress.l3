@@ -1,0 +1,42 @@
+#!/bin/env lang3
+
+# Stress test: vector indexing and nested value dispatch
+# Exercises the Value::visit() path (double-variant dispatch),
+# shared_ptr traversal, and vector element access.
+# Each vec[i] involves: Ref → GCValue → Value → shared_ptr → HeapValue → vector → Ref → ...
+
+fn bench()
+  let N = 800
+
+  # Build a 2D grid: NxN matrix of values
+  let mut matrix = []
+  for i in 0..N do
+    let mut row = []
+    for j in 0..N do
+      row += [i * j]
+    end
+    matrix += [row]
+  end
+
+  # Transpose: read each element through nested indexing
+  let mut transposed = []
+  for j in 0..N do
+    let mut row = []
+    for i in 0..N do
+      row += [matrix[i][j]]   # double index: get vec[i], then get [j] from it
+    end
+    transposed += [row]
+  end
+
+  # Sum all elements (reads through the transposed matrix)
+  let mut sum = 0
+  for i in 0..N do
+    for j in 0..N do
+      sum += transposed[i][j]
+    end
+  end
+
+  println(sum)
+end
+
+bench()

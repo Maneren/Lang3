@@ -1,0 +1,26 @@
+#!/bin/env lang3
+
+# Stress test: constant folding + arithmetic
+# All arithmetic here involves constants — every expression is foldable
+# at compile time. Measures the speed of peephole arithmetic folding
+# and OpConstant dispatch.
+
+fn bench()
+  let mut sum = 0
+
+  # Loop with foldable constant arithmetic in the loop body
+  for i in 0..3000000 do
+    # 1*2 + 3*4 - 5/5  —  all constants, all foldable to a single constant
+    sum += 1 + 2 + 3 + 4 + 5 + 6 + 7 + 8 + 9 + 10
+
+    # foldable comparison chain (should compile to single bool)
+    let _ = 1 < 2 < 3 < 4 < 5
+
+    # foldable boolean logic
+    let _ = true and true or false and not false
+  end
+
+  println(sum)
+end
+
+bench()

@@ -1,0 +1,34 @@
+#!/bin/env lang3
+
+# Stress test: closure creation and calling
+# Creates many closures (tests OpClosure + upvalue capture).
+# Without peephole: function hoisting emits dead nil-push for each.
+# Without call optimization: each call copies args.
+# OpClosure is the most complex instruction — tests both emission and dispatch.
+
+fn make_adder(x)
+  return fn(y) return x + y end
+end
+
+fn bench()
+  let N = 5000
+
+  # Create many closures (tests OpClosure + upvalue capture)
+  let mut adders = []
+  for i in 0..N do
+    adders += [make_adder(i)]
+  end
+
+  # Call each closure many times
+  let mut total = 0
+  for iter in 0..500 do
+    for i in 0..N do
+      let f = adders[i]
+      total = total + f(iter)
+    end
+  end
+
+  println(total)
+end
+
+bench()
