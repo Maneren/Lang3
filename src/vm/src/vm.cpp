@@ -272,11 +272,7 @@ void BytecodeVM::execute(bytecode::ProgramBytecode &program) {
     throw;
   }
   current_program = nullptr;
-
-  if (stack.size() != 1 || stack.back().compare(runtime::Value{}) != 0) {
-    std::println(std::cerr, "{}", stack);
-    throw std::runtime_error("stack not empty after program execution");
-  }
+  stack.clear();
 }
 
 [[clang::noinline]]
@@ -302,15 +298,8 @@ void BytecodeVM::execute_loop(std::size_t target_frames) {
 [[clang::noinline]]
 void BytecodeVM::
     execute_op(const bytecode::OpReturn & /*op*/, CallFrame & /*frame*/) {
-  auto result = stack_pop();
-
-  debug_print("RETURN value={}", result);
-
-  auto fp = frames.back().frame_pointer;
+  debug_print("RETURN value={}", stack_top());
   frames.pop_back();
-  stack.erase(stack.begin() + static_cast<std::ptrdiff_t>(fp), stack.end());
-
-  stack.push_back(std::move(result));
 }
 
 [[clang::noinline]]
@@ -614,23 +603,83 @@ void BytecodeVM::
 
 [[clang::noinline]]
 void BytecodeVM::execute_op(const bytecode::OpCall &op, CallFrame & /*frame*/) {
-  auto args_base_ptr = stack.end() - static_cast<std::ptrdiff_t>(op.arg_count);
-  std::vector<runtime::Value> args;
-  args.reserve(op.arg_count);
-  for (auto it = args_base_ptr; it != stack.end(); ++it) {
-    args.push_back(std::move(*it));
-  }
-  stack.erase(args_base_ptr, stack.end());
+  const auto func_pos = stack.size() - op.arg_count - 1;
+  auto func_ref = std::move(stack[func_pos]);
+  stack.erase(stack.begin() + static_cast<std::ptrdiff_t>(func_pos));
+  debug_print("CALL func={} argc={}", func_ref, op.arg_count);
 
-  auto func_ref = stack_pop();
-  debug_print("CALL func={} args={}", func_ref, args);
+  const auto base = stack.size() - op.arg_count;
+  const auto args = std::span(
+      stack.end() - static_cast<std::ptrdiff_t>(op.arg_count), op.arg_count
+  );
+
+  const auto clean_args = [&]() {
+    stack.erase(stack.begin() + static_cast<std::ptrdiff_t>(base), stack.end());
+  };
 
   if (!func_ref.is_function()) {
+    clean_args();
     throw runtime::RuntimeError("Attempted to call a non-function value");
   }
 
-  auto result =
-      evaluate(func_ref, std::move(args), current_instruction_location());
+  const auto &func = func_ref.as_function()->get();
+  auto result = func.visit(
+      [&](const runtime::BuiltinFunction &f) -> runtime::Value {
+        auto result = f.invoke(args);
+        return result;
+      },
+      [&](const runtime::BytecodeFunction &bc_func) -> runtime::Value {
+        auto total_args = bc_func.curried_args.size() + op.arg_count;
+
+        if (total_args > bc_func.arity) {
+          throw runtime::RuntimeError("evaluate arity mismatch");
+        }
+
+        if (total_args < bc_func.arity) {
+          auto new_func = bc_func;
+          for (auto &it : args) {
+            new_func.curried_args.push_back(store_value(std::move(it)));
+          }
+          return {runtime::Function{std::move(new_func)}};
+        }
+
+        auto previous_frames = frames.size();
+        auto &new_frame = frames.emplace_back(
+            bc_func.id,
+            0,
+            base,
+            current_instruction_location(),
+            std::pair{bc_func, std::move(func_ref)}
+        );
+        for (const auto &ref : bc_func.captured_upvalue_refs) {
+          new_frame.upvalues.push_back(ref.get());
+        }
+
+        if (!bc_func.curried_args.empty()) {
+          const auto curried_count = bc_func.curried_args.size();
+          stack.resize(stack.size() + curried_count);
+
+          // Move regular arguments to the end.
+          for (std::size_t i = 1; i <= op.arg_count; i++) {
+            stack[stack.size() - i] =
+                std::move(stack[stack.size() - i - curried_count]);
+          }
+
+          // Place curried arguments at the start.
+          for (const auto &[i, arg] :
+               utils::ranges::enumerate(bc_func.curried_args)) {
+            stack[base + i] = *arg;
+          }
+        }
+
+        execute_loop(previous_frames);
+        auto result = stack_pop();
+        return result;
+      }
+  );
+
+  clean_args();
+
   if (op.keep_return_value) {
     stack.push_back(std::move(result));
   }
