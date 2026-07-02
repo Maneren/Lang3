@@ -230,6 +230,11 @@ std::size_t BytecodeVM::run_gc() {
       mark_value(*ref);
     }
   }
+  if (current_program) {
+    for (auto &gc_val : current_program->constants) {
+      gc_val.mark();
+    }
+  }
   return gc_storage.sweep();
 }
 
