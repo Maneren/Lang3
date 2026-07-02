@@ -24,30 +24,28 @@
 0022 | GET_LOCAL     2
 0023 | CONSTANT      7 (4)
 0024 | LESS
-0025 | JUMP_IF      50 false
+0025 | JUMP_IF      48 false
 0026 | GET_LOCAL     2
 0027 | CONSTANT      8 (1)
 0028 | EQUAL
-0029 | JUMP_IF      36 false
+0029 | JUMP_IF      35 false
 0030 | GET_LOCAL     2
 0031 | CONSTANT      8 (1)
 0032 | ADD
 0033 | SET_LOCAL     2
 0034 | JUMP         22
-0035 | JUMP         36
-0036 | GET_LOCAL     2
-0037 | CONSTANT      9 (3)
-0038 | EQUAL
-0039 | JUMP_IF      42 false
-0040 | JUMP         50
-0041 | JUMP         42
-0042 | GET_GLOBAL    2 '"println"'
+0035 | GET_LOCAL     2
+0036 | CONSTANT      9 (3)
+0037 | EQUAL
+0038 | JUMP_IF      40 false
+0039 | JUMP         48
+0040 | GET_GLOBAL    2 '"println"'
+0041 | GET_LOCAL     2
+0042 | CALL          1 false
 0043 | GET_LOCAL     2
-0044 | CALL          1 false
-0045 | GET_LOCAL     2
-0046 | CONSTANT      8 (1)
-0047 | ADD
-0048 | SET_LOCAL     2
-0049 | JUMP         22
-0050 | CONSTANT     10 (nil)
-0051 | RETURN
+0044 | CONSTANT      8 (1)
+0045 | ADD
+0046 | SET_LOCAL     2
+0047 | JUMP         22
+0048 | CONSTANT     10 (nil)
+0049 | RETURN

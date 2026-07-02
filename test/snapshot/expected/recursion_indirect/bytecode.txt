@@ -33,27 +33,25 @@
 0000 | GET_LOCAL     0
 0001 | CONSTANT      1 (0)
 0002 | EQUAL
-0003 | JUMP_IF       7 false
+0003 | JUMP_IF       6 false
 0004 | CONSTANT      2 (true)
 0005 | RETURN
-0006 | JUMP          7
-0007 | GET_UPVALUE    0
-0008 | GET_LOCAL     0
-0009 | CONSTANT      3 (1)
-0010 | SUBTRACT
-0011 | CALL          1 true
-0012 | RETURN
+0006 | GET_UPVALUE    0
+0007 | GET_LOCAL     0
+0008 | CONSTANT      3 (1)
+0009 | SUBTRACT
+0010 | CALL          1 true
+0011 | RETURN
 == Chunk 2 ==
 0000 | GET_LOCAL     0
 0001 | CONSTANT      1 (0)
 0002 | EQUAL
-0003 | JUMP_IF       7 false
+0003 | JUMP_IF       6 false
 0004 | CONSTANT      5 (false)
 0005 | RETURN
-0006 | JUMP          7
-0007 | GET_UPVALUE    0
-0008 | GET_LOCAL     0
-0009 | CONSTANT      3 (1)
-0010 | SUBTRACT
-0011 | CALL          1 true
-0012 | RETURN
+0006 | GET_UPVALUE    0
+0007 | GET_LOCAL     0
+0008 | CONSTANT      3 (1)
+0009 | SUBTRACT
+0010 | CALL          1 true
+0011 | RETURN
