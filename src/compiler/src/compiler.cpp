@@ -6,6 +6,7 @@ import l3.ast.printer;
 import l3.bytecode;
 import l3.runtime;
 import utils;
+import :peephole;
 
 namespace l3::compiler {
 
@@ -37,6 +38,7 @@ void Compiler::compile(const ast::Program &ast_program) {
   }
   emit(OpConstant{make_constant({})});
   emit(OpReturn{});
+  optimize(program);
   deduplicate_constants();
 }
 
