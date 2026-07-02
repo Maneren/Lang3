@@ -128,6 +128,25 @@ Match match_pop_zero(
   return {.consumed = 1, .replacement = std::nullopt};
 }
 
+// OpJump{next_instruction} → remove
+Match match_zero_jump(
+    std::size_t i,
+    const std::vector<Instruction> &code,
+    ProgramBytecode & /*unused*/
+) {
+  const auto *jump = std::get_if<OpJump>(&code[i]);
+  if ((jump != nullptr) && jump->offset == i + 1) {
+    return {.consumed = 1, .replacement = std::nullopt};
+  }
+
+  const auto *jumpif = std::get_if<OpJumpIf>(&code[i]);
+  if ((jumpif != nullptr) && jumpif->offset == i + 1) {
+    return {.consumed = 1, .replacement = std::nullopt};
+  }
+
+  return {};
+}
+
 // OpConstant{idx} + OpNegate/OpNot → OpConstant{folded}
 Match match_unary_fold(
     std::size_t i,
@@ -237,8 +256,9 @@ Match match_jump_chaining(
   return {};
 }
 
-constexpr std::array<Pattern, 5> patterns{
+constexpr std::array<Pattern, 6> patterns{
     match_pop_zero,
+    match_zero_jump,
     match_unary_fold,
     match_const_jumpif,
     match_binary_fold,
