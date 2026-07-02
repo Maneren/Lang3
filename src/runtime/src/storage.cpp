@@ -21,7 +21,6 @@ GCValue &GCStorage::emplace(Value &&value) {
 std::size_t GCStorage::sweep() {
   debug_print("[GC] Sweeping");
   sweep_count++;
-  added_since_last_sweep = 0;
   std::size_t erased = 0;
   // Remove all unmarked items from the front to ensure we start from a marked
   // value
@@ -51,6 +50,8 @@ std::size_t GCStorage::sweep() {
     }
   }
 
+  added_since_last_sweep = 0;
+  next_gc_threshold = std::max(size * 2, std::size_t{1024});
   return erased;
 }
 

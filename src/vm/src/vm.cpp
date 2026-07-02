@@ -239,8 +239,8 @@ std::size_t BytecodeVM::run_gc() {
 }
 
 void BytecodeVM::maybe_gc() {
-  constexpr std::size_t GC_INTERVAL = 16UZ * 1024UZ;
-  if (gc_storage.get_added_since_last_sweep() > GC_INTERVAL) {
+  if (gc_storage.get_added_since_last_sweep() >=
+      gc_storage.get_next_gc_threshold()) {
     run_gc();
   }
 }
