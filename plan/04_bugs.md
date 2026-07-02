@@ -185,23 +185,46 @@ How to confirm the fix works.
 
 *(This is the root cause of Bug #1, tracked separately for clarity)*
 
-**Status:** Open
+**Status:** Fixed
 **Discovered:** 2026-06-30
+**Fixed:** 2026-06-30
 **Severity:** High
 
 ### Root cause
 
-`GCValue::mark()` (and the `mark_value` lambda in `run_gc()`) trace
-`BytecodeFunction::curried_args` but not `BytecodeFunction::captured_upvalue_refs`.
-Both are `std::vector<Ref>` containing pointers to `GCValue` objects that must
-survive the GC sweep.
+`GCValue::mark()` traces `BytecodeFunction::curried_args` but not
+`BytecodeFunction::captured_upvalue_refs`. Both are `std::vector<Ref>`
+containing pointers to `GCValue` objects that must survive the GC sweep.
+
+The `mark_value` lambda in `BytecodeVM::run_gc()` (vm.cpp) already had the
+correct tracing for both vectors, but `GCValue::mark()` (gc_value.cpp) was
+missing the `captured_upvalue_refs` trace. This caused a GC root coverage
+asymmetry: closures rooted through stack/global references were traced
+correctly, but closures rooted through other `GCValue` objects (e.g., stored
+in arrays) would have their captured upvalues swept.
 
 **Files:**
-- `src/runtime/src/gc_value.cpp:19-41` — `GCValue::mark()`
-- `src/vm/src/vm.cpp:195-213` — `mark_value` lambda in `run_gc()`
+- `src/runtime/src/gc_value.cpp:32-38` — `GCValue::mark()` (missing trace)
+- `src/vm/src/vm.cpp:207-209` — `mark_value` lambda (already correct)
 
 ### Fix
 
-Add `captured_upvalue_refs` tracing alongside `curried_args` in both locations.
-This ensures captured local values (upvalues) are reachable from the GC root set
-and survive the sweep phase. See Bug #1 for the exact code change.
+Added the missing loop in `GCValue::mark()`:
+
+```cpp
+[](Value::function_type &func) {
+    if (auto bc_opt = func.as_mut_bytecode_function()) {
+        for (auto &ca : bc_opt->get().curried_args)
+            ca.get_gc_mut().mark();
+        // NEW:
+        for (auto &uv : bc_opt->get().captured_upvalue_refs)
+            uv.get_gc_mut().mark();
+    }
+},
+```
+
+### Verification
+
+- `N = 10000` closure reproducer now outputs correct sum `49995000`
+- All 17 snapshot tests pass
+- Example with closures stored in arrays no longer crashes under GC pressure
