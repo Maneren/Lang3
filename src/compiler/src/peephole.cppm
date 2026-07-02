@@ -3,10 +3,8 @@ export module l3.compiler:peephole;
 import std;
 import l3.bytecode;
 
-using namespace l3::bytecode;
+export namespace l3::compiler {
 
-namespace l3::compiler {
-
-void optimize(ProgramBytecode &program);
+void optimize(bytecode::ProgramBytecode &program);
 
 }
