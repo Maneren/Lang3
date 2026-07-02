@@ -14,15 +14,20 @@ using namespace l3::bytecode;
 
 namespace {
 
-struct LocationScope {
-  std::vector<location::Location> &stack;
+class LocationScope {
+  std::vector<location::Location> *stack;
 
+public:
+  LocationScope(const LocationScope &) = delete;
+  LocationScope(LocationScope &&) = default;
+  LocationScope &operator=(const LocationScope &) = delete;
+  LocationScope &operator=(LocationScope &&) = delete;
   LocationScope(std::vector<location::Location> &stack, location::Location loc)
-      : stack(stack) {
+      : stack(&stack) {
     stack.push_back(loc);
   }
 
-  ~LocationScope() { stack.pop_back(); }
+  ~LocationScope() { stack->pop_back(); }
 };
 
 } // namespace
@@ -220,7 +225,8 @@ void Compiler::deduplicate_constants() {
 
     auto it =
         std::ranges::find_if(deduped_constants, [&value](const auto &other) {
-          return value.compare(other.get_value()) == 0;
+          return value.compare(other.get_value()) ==
+                 std::partial_ordering::equivalent;
         });
 
     if (it != deduped_constants.end()) {
