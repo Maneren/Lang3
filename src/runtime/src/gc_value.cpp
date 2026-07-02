@@ -34,6 +34,9 @@ void GCValue::mark() {
           for (auto &ca : bc_opt->get().curried_args) {
             ca.get_gc_mut().mark();
           }
+          for (auto &uv : bc_opt->get().captured_upvalue_refs) {
+            uv.get_gc_mut().mark();
+          }
         }
       },
       [](auto & /*value*/) {}
