@@ -93,9 +93,7 @@ void Compiler::end_scope() {
     count++;
     locals().pop_back();
   }
-  if (count > 0) {
-    emit(OpPop{.count = count});
-  }
+  emit(OpPop{.count = count});
 }
 
 std::size_t Compiler::add_local(const ast::Identifier &name) {
