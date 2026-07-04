@@ -29,9 +29,6 @@
 0002 | SET_LOCAL     1
 0003 | GET_LOCAL     1
 0004 | RETURN
-0005 | POP           1
-0006 | CONSTANT      0 (nil)
-0007 | RETURN
 == Chunk 2 ==
 0000 | GET_UPVALUE    0
 0001 | CONSTANT      1 (0)
@@ -56,6 +53,3 @@
 0020 | CALL          1 true
 0021 | MULTIPLY
 0022 | RETURN
-0023 | POP           1
-0024 | CONSTANT      0 (nil)
-0025 | RETURN
