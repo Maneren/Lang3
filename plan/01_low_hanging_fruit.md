@@ -10,65 +10,34 @@ These are isolated changes with low risk and clear benefits.
 
 ## 1. Eliminate `OpPop{0}` No-Ops
 
+**Status:** Partially Implemented
+
 **Files:**
-- `src/compiler/src/compiler.cpp` — `end_scope()` around line 89-91, `compile_continue_statement()` around line 1016-1025
+- `src/compiler/src/compiler.cpp` — `end_scope()` at line 89, `compile_continue_statement()` at line 1024
 
 **Problem:**
 Both `end_scope()` and `compile_continue_statement()` emit `OpPop{.count = count}` even when `count == 0`. This produces dead instructions that the VM executes for no effect.
 
-Observed in snapshot `control_flow/bytecode.txt`:
-```
-0034 | POP           0              ← no-op!
-```
+**Current implementation (mixed approach):**
+- `end_scope()` at `compiler.cpp:96`: **GUARDED** with `if (count > 0)` — the scattered if-check.
+- `compile_continue_statement()` at `compiler.cpp:1031`: **NOT GUARDED** — still emits `OpPop` unconditionally.
+- Peephole pass at `src/compiler/src/peephole.cpp:119` (`match_pop_zero`): **CATCHES ANY REMAINING `POP 0`**, including from `compile_continue_statement()`.
 
-**Fix (centralized approach — peephole pass):**
-Handle this in the peephole optimizer (see `02_medium_complexity.md` §3 Pattern D). A single rule removes all `OpPop{0}` instructions from the bytecode stream regardless of which compiler function emitted them.
+This combination works but is inconsistent. The `end_scope()` guard was added directly (the approach the plan advised against), while `compile_continue_statement()` relies on the peephole pass. Consider removing the `end_scope()` guard to fully rely on the peephole pass (true to the design principle), or adding the guard to `compile_continue_statement()` too for consistency.
 
-**Alternative (scattered if-check — not recommended):**
-```cpp
-// end_scope(): if (count > 0) current_chunk().emit(OpPop{.count = count});
-// compile_continue_statement(): same pattern
-```
-This is simpler to implement immediately but adds the check in multiple places and doesn't catch `POP 0` that might be emitted by future code.
-
-**Verdict:** Use the peephole pass (Pattern D). It's a one-line rule `if pop.count == 0 → remove` that handles all sources at once.
-
-## 1. Eliminate `OpPop{0}` No-Ops
-
-**Files:**
-- `src/compiler/src/compiler.cpp` — `end_scope()` around line 89-91, `compile_continue_statement()` around line 1016-1025
-
-**Problem:**
-Both `end_scope()` and `compile_continue_statement()` emit `OpPop{.count = count}` even when `count == 0`. This produces dead instructions that the VM executes for no effect.
-
-Observed in snapshot `control_flow/bytecode.txt`:
-```
-0034 | POP           0              ← no-op!
-```
-
-**Fix:**
-```cpp
-// end_scope() — currently:
-current_chunk().emit(OpPop{.count = count});
-
-// Fix:
-if (count > 0)
-    current_chunk().emit(OpPop{.count = count});
-
-// compile_continue_statement() — same pattern
-```
-
-**Verification:** Snapshot tests should show the `POP 0` line disappearing. All snapshot expected files need to be updated.
+**Verification:** Snapshot tests no longer show `POP 0` lines.
 
 ---
 
 ## 2. Dead Nil-Push Elimination from Function Hoisting
 
+**Status:** Not Implemented
+
 **Files:**
-- `src/compiler/src/compiler.cpp` — `compile_named_function()` around lines 279-289 (hoisting pass), lines 730-745 (second pass)
+- `src/compiler/src/compiler.cpp` — `compile_statements()` at lines 286-302 (hoisting pass)
 
 **Problem:**
-The function hoisting pass emits `OpConstant{nil}` then `add_local(func_name)` for every named function. Later, when the function body is compiled, another `OpConstant{fn}` / `OpClosure{fn}` + `OpSetLocal{slot}` overwrites the local. The initial nil push is never read — it's a dead store.
+The function hoisting pass at `compiler.cpp:292` still emits `OpConstant{make_constant({})}` (nil) then `add_local()` for every named function. Later, when the function body is compiled, another `OpConstant{fn}` / `OpClosure{fn}` + `OpSetLocal{slot}` overwrites the local. The initial nil push is never read — it's a dead store.
 
 Observed in `functions_closures/bytecode.txt`:
 ```
@@ -80,21 +49,17 @@ Observed in `functions_closures/bytecode.txt`:
 0005 | SET_LOCAL     1
 ```
 
-**Fix (centralized approach — peephole pass):**
-Handle this in the peephole optimizer (see `02_medium_complexity.md` §3 Pattern A). A single rule detects `OpConstant{nil}` immediately followed by `OpSetLocal{n}`, where the next write to local `n` (via `OpSetLocal`) happens before any read (via `OpGetLocal`). Remove the nil-push+set pair.
-
-This centralized approach:
-- Catches **all** dead stores of nil to locals, not just those from function hoisting.
-- Doesn't require modifying the hoisting logic (which also serves as the mechanism for reserving function-name slots for mutual recursion).
-- Works even if future code changes introduce new sources of dead nil stores.
+**Fix (centralized approach — peephole pass, recommended):**
+Handle this in the peephole optimizer (see `02_medium_complexity.md` §3 Pattern A). Add a rule that detects `OpConstant{nil}` immediately followed by `OpSetLocal{n}`, where the next write to local `n` happens before any read of local `n`. Remove the nil-push+set pair.
 
 **Alternative (compiler change — direct fix in hoisting):**
 Skip emitting the nil constant during hoisting. Just call `add_local()` to reserve the slot:
 ```cpp
-// Instead of: make_constant({}); add_local(func.get_name(), true, start_depth);
-// Just do:    add_local(func.get_name(), true, start_depth);
+// Instead of: make_constant({}); add_local(func.get_name(), ...);
+// Just do:    add_local(func.get_name(), ...);
 ```
-This is simpler but scatters the fix into the compiler's hoisting pass rather than catching the general pattern. Only use if peephole pass is not yet implemented.
+
+**Note on current state:** Neither approach has been implemented. The peephole pass exists (see `02_medium_complexity.md` §3) but Pattern A was never added. Consider implementing the simpler compiler-side fix first, as it's a one-line change, and leave the peephole Pattern A for a future pass.
 
 **Verification:** Snapshot tests like `functions_closures` should show the dead `CONSTANT nil` lines gone. Update expected snapshots.
 
@@ -102,12 +67,16 @@ This is simpler but scatters the fix into the compiler's hoisting pass rather th
 
 ## 3. Remove `[[clang::noinline]]` from `execute_op` Overloads
 
+**Status:** Not Implemented
+
 **Files:**
-- `src/vm/src/vm.cpp` — every `execute_op` overload (29+ overloads, lines ~243-677)
+- `src/vm/src/vm.cpp` — every `execute_op` overload (33+ overloads, lines ~248-739)
 - `src/vm/src/vm.cppm` — declarations
 
 **Problem:**
 Every `execute_op` overload is annotated with `[[clang::noinline]]`. This forces a function call for every instruction dispatch, costing ~5-10 cycles for call/ret overhead per instruction. The annotation was presumably added to prevent code bloat from inlining all 29 handlers into the hot loop, but it guarantees suboptimal dispatch performance.
+
+**Current state:** All 33 `[[clang::noinline]]` annotations are still present in `src/vm/src/vm.cpp`.
 
 **Fix:**
 1. Remove `[[clang::noinline]]` from all `execute_op` overloads.
@@ -132,8 +101,11 @@ void BytecodeVM::execute_instruction(const Instruction &inst, CallFrame &frame) 
 
 ## 4. Constant Folding for Primitive Arithmetic
 
+**Status:** Partially Implemented (peephole pass only, compile-time not done)
+
 **Files:**
-- `src/compiler/src/compiler.cpp` — `compile_binary_expression()` around line 340-370
+- `src/compiler/src/compiler.cpp` — `compile_binary_expression()` around line 343
+- `src/compiler/src/peephole.cpp` — `match_unary_fold` (line 150), `match_binary_fold` (line 204)
 
 **Problem:**
 Expressions like `1 + 2 * -3` compile to runtime instructions even though all operands are known at compile time:
@@ -146,46 +118,20 @@ MULTIPLY
 ADD
 ```
 
-**Fix:**
-In `compile_binary_expression()`, when both operands are literals with primitive numeric values, compute the result at compile time and emit a single `OpConstant`:
+**Current implementation (peephole pass — done):**
+- `match_unary_fold` (`peephole.cpp:150`): Folds `OpConstant{x} + OpNegate/OpNot` → `OpConstant{folded}`
+- `match_binary_fold` (`peephole.cpp:204`): Folds `OpConstant{a} + OpConstant{b} + arithmetic/comparison` → `OpConstant{folded}`
+- `match_const_jumpif` (`peephole.cpp:179`): Folds `OpConstant{bool} + OpJumpIf` → `OpJump` or removal
 
-```cpp
-void Compiler::compile_binary_expression(const ast::BinaryExpression &expr) {
-    // Try constant folding
-    if (auto left_lit = get_constant_literal(expr.get_left());
-        auto right_lit = get_constant_literal(expr.get_right())) {
-        if (auto folded = try_fold(expr.get_operator(), *left_lit, *right_lit)) {
-            make_constant(*folded);
-            return;
-        }
-    }
-    // Fall through to normal compilation
-    compile_expression(expr.get_left());
-    compile_expression(expr.get_right());
-    emit_binary_op(expr.get_operator());
-}
-```
+These post-hoc peephole rules catch constant folding opportunities regardless of which compiler function produced the pattern.
 
-Extend to:
-- **Unary negation**: Detect `OpConstant{x}` + `OpNegate` → `OpConstant{-x}`
-- **Logical expressions**: `true and x` → just `x`, `false and x` → `OpConstant{false}`
-- **Unary plus**: `+x` → just `x` (already done in compiler)
-- **String concatenation** with two string literals: fold to a single constant
+**Not implemented (compile-time folding):**
+The compiler's `compile_binary_expression()` at `compiler.cpp:343` does no constant folding during AST traversal — it simply compiles both sides and emits the operator. Adding compile-time folding would avoid emitting instructions entirely rather than cleaning them up afterward.
 
-**Helper functions needed:**
-- `get_constant_literal()` — checks if an expression is a `Literal` with a primitive value, returns the value if so
-- `try_fold()` — given operator and operands, computes result if possible
-
-**Important:** Don't fold expressions with side effects. Literals have no side effects, so this is safe.
-
-**Alternative (peephole pass):** The same optimizations can be done as peephole rules:
-- `OpConstant{x}; OpNegate` → `OpConstant{-x}`
-- `OpConstant{x}; OpConstant{y}; OpAdd` → `OpConstant{x + y}` (if x, y are numeric)
-- `OpConstant{true}; OpJumpIf{false, target}` → `OpJump{target}`
-
-The peephole approach is more centralized (catches patterns regardless of which compiler function emitted them) but requires implementing constant evaluation logic that can run after compilation rather than during AST traversal. The direct compile-time approach is simpler for the initial implementation. If both are present, the peephole pass subsumes the compile-time checks.
-
-**Verdict:** Implement both. The compile-time folding is trivial and avoids emitting instructions at all. The peephole folding catches cases where constant-argument ops are created by other optimization passes or future compiler changes.
+**Remaining work:**
+- Add `get_constant_literal()` / `try_fold()` helpers in the compiler
+- Add compile-time folding in `compile_binary_expression()`
+- Extend to string literal concatenation
 
 **Verification:** A test like `lit_folding.l3` with `print(1 + 2 * 3)` should compile to a single `CONSTANT 7` instead of multiple ops. Update snapshot expected files.
 
@@ -193,11 +139,13 @@ The peephole approach is more centralized (catches patterns regardless of which 
 
 ## 5. Eliminate Duplicate Expression Compilation in Chained Comparisons
 
+**Status:** Not Implemented
+
 **Files:**
-- `src/compiler/src/compiler.cpp` — `compile_chained_comparison()` around line 403-410
+- `src/compiler/src/compiler.cpp` — `compile_comparison()` around line 402
 
 **Problem:**
-For `a < b < c`, the compiler generates `compile(b)` **twice** — once for each comparison pair:
+For `a < b < c`, the compiler at `compiler.cpp:402-451` generates `compile(b)` **twice** — once for each comparison pair:
 ```
 compile(a)
 compile(b)          ← first evaluation
@@ -231,42 +179,25 @@ After the chained comparison completes, pop the temp local (or let scoping handl
 
 ## 6. Fix Missing GC Root: Program Constants
 
+**Status:** Implemented (Fixed)
+
 **Files:**
-- `src/vm/src/vm.cpp` — `BytecodeVM::run_gc()` around line 194-234
-- `src/bytecode/src/bytecode.cppm` — `ProgramBytecode::constants` around line 145
+- `src/vm/src/vm.cpp` — `BytecodeVM::run_gc()` at line 233
 
 **Problem:**
-`ProgramBytecode::constants` is a `std::vector<runtime::GCValue>` that contains the constant pool (functions, strings, vectors, etc.). These `GCValue` objects are **never added as GC roots** during marking. If a constant contains `Ref`-bearing types (vectors with elements, closures with curried args), its referenced objects could be erroneously swept.
+`ProgramBytecode::constants` is a `std::vector<runtime::GCValue>` that contains the constant pool (functions, strings, vectors, etc.). These `GCValue` objects were **never added as GC roots** during marking. If a constant contains `Ref`-bearing types (vectors with elements, closures with curried args), its referenced objects could be erroneously swept.
 
-**Fix:**
-In `run_gc()`, add the program constants to the root set:
-
+**Fix (implemented at `vm.cpp:233-237`):**
 ```cpp
-std::size_t BytecodeVM::run_gc() {
-    static const auto mark_value = [](runtime::Value &value) { ... };
-    
-    // Existing roots:
-    for (auto &value : stack)
-        mark_value(value);
-    for (auto &[_, ref] : global_symbols)
-        ref.get_gc_mut().mark();
-    for (auto &frame : frames) {
-        // ... existing frame marking ...
+if (current_program) {
+    for (auto &gc_val : current_program->constants) {
+        gc_val.mark();
     }
-    
-    // NEW: Mark program constants as roots
-    if (current_program) {
-        for (auto &gc_value : current_program->constants) {
-            mark_value(gc_value.get_value_mut());
-        }
-    }
-    
-    return gc_storage.sweep();
 }
 ```
 
-**Note:** In practice, program constants live at least as long as the VM, so this is unlikely to fix a crash scenario. However, it is architecturally correct and prevents obscure bugs if constants are later mutated (e.g., by new builtins).
+In practice, program constants live at least as long as the VM, so this was unlikely to cause a crash on its own. However, it is architecturally correct and prevents obscure bugs if constants are later mutated (e.g., by new builtins).
 
 **Verification:** No observable behavioral change expected. Run all existing tests to confirm no regressions.
 
-**Related bugs:** See `plan/04_bugs.md` Bug #1 (GC sweep corrupts upvalues). The missing program-constants root may compound the `captured_upvalue_refs` tracing bug also documented there. Both need to be fixed together for correct closure GC behavior.
+**Related bugs:** See `plan/04_bugs.md` Bug #1 (GC sweep corrupts upvalues). The missing program-constants root may compound the `captured_upvalue_refs` tracing bug also documented there. Both needed to be fixed together for correct closure GC behavior — both are now fixed.

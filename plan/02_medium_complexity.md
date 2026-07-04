@@ -6,6 +6,8 @@ These changes are interconnected within their domain but largely independent of 
 
 ## 1. Eliminate `shared_ptr<HeapValue>` from `Value`
 
+**Status:** Not Implemented
+
 **The Problem:**
 
 `Value` uses `std::variant<Nil, Primitive, std::shared_ptr<HeapValue>>`. This has two critical performance flaws:
@@ -106,6 +108,8 @@ May become private to the GC storage implementation, or simplified. Since `HeapV
 ---
 
 ## 2. Flatten `Value`'s Double-Variant Dispatch
+
+**Status:** Not Implemented (depends on §1 — shared_ptr removal must come first)
 
 **The Problem:**
 
@@ -229,177 +233,67 @@ class Value {
 
 ## 3. Peephole Optimizer Pass
 
-**Files to create/modify:**
-- `src/compiler/CMakeLists.txt` — add new source file
-- `src/compiler/src/peephole.cppm` — module declaration
-- `src/compiler/src/peephole.cpp` — implementation
+**Status:** Partially Implemented
+
+**Files:**
+- `src/compiler/src/peephole.cppm` — module declaration (existing)
+- `src/compiler/src/peephole.cpp` — implementation (existing)
+- `src/compiler/src/compiler.cpp` — integration at line 9 (`import :peephole`) and line 46 (`optimize(program)`)
 
 **The Problem:**
 The compiler emits straightforward bytecode with known redundant patterns that can be eliminated with a post-processing pass over each chunk's instruction stream.
 
 **Design principle:** A peephole pass is the canonical example of a centralized solution. Instead of scattering if-checks across the compiler (`if count > 0 then emit Pop` in `end_scope`, `compile_continue`, etc.), a single pass catches all instances of a pattern regardless of which compiler function produced them. This also future-proofs against new code introducing the same inefficiency.
 
-**Identified Patterns:**
+**Current implementation:**
 
-### Pattern A: Dead `OpConstant{nil}` + `OpSetLocal{n}` from function hoisting
-```
-CONSTANT nil        ← never read
-SET_LOCAL 0
-... other code ...
-CONSTANT fn         ← real function
-SET_LOCAL 0         ← overwrites the nil
-```
+The peephole pass exists at `src/compiler/src/peephole.cpp` and is called from `Compiler::compile()` at `compiler.cpp:46` after all compilation and before `deduplicate_constants()`.
 
-**Rule:** If `OpConstant{nil}` is immediately followed by `OpSetLocal{n}`, and the next write to local `n` before any read of local `n`, remove the nil-push+set pair.
+**Implemented patterns (5 of 10):**
 
-### Pattern B: `OpGetLocal{n}` + same `OpSetLocal{n}` with no intervening read of `n`
-```
-GET_LOCAL 0         ← read local
-CONSTANT 1          ← some value
-ADD                 ← compute
-SET_LOCAL 0         ← store back
-```
-This is the operator-assignment pattern `x += 1`. The GET/SET pair is necessary for operator assignments, but if the local is never captured (no closure), we could compile `x += 1` differently. However, this pattern is hard to optimize post-hoc.
+| Pattern | Implementation | File:Line |
+|---------|---------------|-----------|
+| C: `OpConstant{x}` + `OpNegate/OpNot` → `OpConstant{folded}` | `match_unary_fold` | `peephole.cpp:150` |
+| D/H: `OpPop{0}` removal | `match_pop_zero` | `peephole.cpp:119` |
+| E: Jump-to-jump chains | `match_jump_chaining` | `peephole.cpp:244` |
+| G: `OpConstant{bool}` + `OpJumpIf` → `OpJump` or remove | `match_const_jumpif` | `peephole.cpp:179` |
+| I: `OpConstant{a}` + `OpConstant{b}` + arithmetic → `OpConstant{folded}` | `match_binary_fold` | `peephole.cpp:204` |
+| J: `OpConstant{x}` + `OpNot` (handled by `match_unary_fold` via `fold_unary`) | `match_unary_fold` | `peephole.cpp:150` |
 
-More obvious case is when GET/SET are on the same slot with **no modification in between** — a useless round-trip through the stack:
-```
-GET_LOCAL 0         ← redundant
-SET_LOCAL 0         ← redundant (value unchanged)
-```
-This should never be emitted in practice, but if found, remove both instructions.
+Additional pattern implemented that was not in the original plan:
+- **Zero-jump removal** (`match_zero_jump`, `peephole.cpp:132`): Removes `OpJump{next_instruction}` (jump to self, no-op).
 
-### Pattern C: `OpConstant{x}` + `OpNegate` → `OpConstant{-x}`
-```
-CONSTANT 5          ← constant
-NEGATE              ← negate
-→ fold to:
-CONSTANT -5         ← folded constant
-```
+**Missing patterns:**
 
-### Pattern D: `OpPop{0}` removal
-```
-POP 0               ← does nothing
-→ remove entirely
-```
-
-### Pattern E: Jump-to-jump chains
-```
-JUMP L1
-...
-L1: JUMP L2
-→ fold to:
-JUMP L2
-```
-and:
-```
-JUMP_IF_FALSE L1
-...
-L1: JUMP L2
-→ fold to:
-JUMP_IF_FALSE L2
-```
-
-### Pattern F: Unreachable code elimination
-After an unconditional `OpJump`, `OpReturn`, `OpPop {count}` (where count pops all remaining stack values, implying a return), or `OpJumpIf` with both branches leading to the same target — all instructions until the next jump target are dead.
-
-```
-JUMP L1
-CONSTANT 42          ← dead (never reached)
-POP 1
-L1: ...
-→ remove CONSTANT 42 and POP 1
-```
-
-### Pattern G: `OpConstant{x}` + `OpJumpIf{true}` → `OpJump` (unconditional)
-```
-CONSTANT true
-JUMP_IF_TRUE L1      ← always taken
-→ fold to:
-JUMP L1
-```
-Similarly for `OpConstant{false}` + `OpJumpIf{false}`.
-
-### Pattern H: Remove `OpPop{0}` no-ops
-```
-POP 0               ← does nothing
-→ remove entirely
-```
-This handles `OpPop{0}` from any source (end_scope, continue, or future code) in one rule instead of scattering if-checks across the compiler.
-
-### Pattern I: Constant folding for arithmetic
-When both operands of an arithmetic op are `OpConstant` with numeric primitives:
-```
-CONSTANT 5
-CONSTANT 3
-ADD
-→ fold to:
-CONSTANT 8
-```
-Also fold `OpConstant{x}; OpNegate` → `OpConstant{-x}` and `OpConstant{x}; OpConstant{y}; OpSub` → `OpConstant{x - y}`, etc.
-
-This requires evaluating the folded result and adding it to the constant pool (or replacing the constant index). Unlike compile-time folding, this catches cases where constant operands are introduced by other peephole rules (e.g., after inlining, constant propagation).
-
-### Pattern J: Fold `OpConstant{x}; OpNot` on boolean constants
-```
-CONSTANT true
-NOT
-→ fold to:
-CONSTANT false
-```
-
-**Implementation Design:**
-
-```cpp
-// peephole.cpp
-void optimize_chunk(Chunk &chunk, ProgramBytecode &program) {
-    bool changed = true;
-    while (changed) {
-        changed = false;
-        // Multiple passes until no more changes
-        for (size_t i = 0; i < chunk.code.size(); i++) {
-            changed |= try_constant_folding(i, chunk, program);
-            changed |= try_dead_store_elimination(i, chunk, program);
-            changed |= try_jump_chain_elimination(i, chunk, program);
-            changed |= try_unreachable_code_elimination(i, chunk, program);
-            changed |= try_noop_elimination(i, chunk, program);
-        }
-    }
-}
-```
+| Pattern | Description |
+|---------|-------------|
+| A: Dead `OpConstant{nil}` + `OpSetLocal{n}` | Function hoisting dead store — nil is pushed but never read before being overwritten |
+| B: Redundant `OpGetLocal{n}` + same `OpSetLocal{n}` | Useless round-trip through stack |
+| F: Unreachable code elimination | Dead code after unconditional `OpJump`, `OpReturn`, etc. |
 
 **Integration:**
-
-Call `optimize_chunk()` from `Compiler::finalize_chunk()` (or the end of `compile()`) before `deduplicate_constants()`:
-
 ```cpp
-void Compiler::compile() {
-    // ... existing compilation ...
-    
-    // NEW: peephole optimization
-    for (auto &chunk : program.chunks) {
-        optimize_chunk(chunk, program);
-    }
-    
-    deduplicate_constants();
-}
+// In Compiler::compile() (compiler.cpp:46):
+optimize(program);
 ```
 
 **Relationship with low-hanging fruit optimizations:**
-The peephole pass **subsumes** several optimizations from `01_low_hanging_fruit.md`: OpPop{0} removal (Pattern H), dead nil-push elimination (Pattern A), and constant folding (Pattern I). Those entries now delegate to this peephole pass. Implementing the peephole pass makes those scattered if-checks unnecessary.
+The peephole pass **subsumes** several optimizations from `01_low_hanging_fruit.md`: OpPop{0} removal (Pattern D/H) and constant folding (Pattern C/I/J). Dead nil-push elimination (Pattern A) from function hoisting (LF #2) was planned but never implemented — the peephole pass is the right place for it.
 
 **Verification:**
-- Run all snapshot tests. Expected bytecode files will change (instructions removed/reordered).
-- Check that outputs are identical before and after (no semantic change).
-- Sample snapshot to check: `functions_closures`, `control_flow`, `comparisons_and_logic`, `range_for`.
+- Run all snapshot tests. Bytecode outputs may change (instructions removed/reordered).
+- Check that program outputs are identical (no semantic change).
 
-**Test cases to create:**
-- `peephole_const_fold.l3`: `print(1 + 2)` → should fold to `CONSTANT 3`
-- `peephole_dead_code.l3`: `return 1; print(2)` → the `print(2)` should be removed
-- `peephole_jump_chain.l3`: nested control flow that creates jump-to-jump chains
+**Remaining work:**
+- Add Pattern A (dead nil-push from function hoisting)
+- Add Pattern F (unreachable code elimination)
+- Consider adding Pattern B (redundant GET/SET pair)
 
 ---
 
 ## 4. GC Improvements
+
+**Status:** Partially Implemented (4a done; 4b, 4c not done)
 
 **Files:**
 - `src/runtime/src/storage.cppm` — `GCStorage`
@@ -407,252 +301,82 @@ The peephole pass **subsumes** several optimizations from `01_low_hanging_fruit.
 - `src/runtime/src/gc_value.cppm` — `GCValue`
 - `src/vm/src/vm.cpp` — `maybe_gc()`, `run_gc()`
 
-### 4a. Adaptive GC Threshold
+### 4a. Adaptive GC Threshold — **Implemented**
 
 **Problem:**
-The GC triggers every 16,384 allocations (`GC_INTERVAL = 16 * 1024`), regardless of live heap size. This means:
-- Small heaps: GC runs too often (wasting time when few objects are actually garbage).
-- Large heaps: GC runs too infrequently relative to allocation rate (allowing heap to grow unboundedly).
+The GC previously triggered every 16,384 allocations (`GC_INTERVAL = 16 * 1024`), regardless of live heap size.
 
-**Fix:**
-Track live heap size after each sweep. Set the next threshold based on that:
-
+**Fix (implemented at `storage.cppm:16`, `storage.cpp:54`):**
 ```cpp
-class GCStorage {
-    std::size_t live_size = 0;      // objects remaining after last sweep
-    std::size_t next_gc_threshold = 1024;  // initial threshold
-    std::size_t added_since_last_sweep = 0;
-    
-    bool should_collect() const {
-        return added_since_last_sweep >= next_gc_threshold;
-    }
-};
+// storage.cppm:
+std::size_t next_gc_threshold = 1024;
+std::size_t added_since_last_sweep = 0;
 
-// After sweep:
-void GCStorage::sweep() {
-    // ... existing sweep ...
-    live_size = size - erased_count;
-    // Next collection: trigger when we've allocated ~2x the live size
-    next_gc_threshold = std::max(live_size * 2, std::size_t(1024));
-    added_since_last_sweep = 0;
-}
+// storage.cpp — after sweep:
+added_since_last_sweep = 0;
+next_gc_threshold = std::max(size * 2, std::size_t{1024});
 ```
 
-This is a simple "heap growth factor" heuristic, similar to how generational GCs and `std::vector` grow. The factor of 2 means worst-case memory usage is ~2x live set (tunable: 1.5x for memory-constrained, 3x for throughput).
+This is a "heap growth factor" heuristic: threshold = `max(live_size * 2, 1024)`, similar to how `std::vector` grows.
 
-### 4b. Linear Sweep Instead of Forward-List Iteration
+### 4b. Linear Sweep Instead of Forward-List Iteration — **Not Implemented**
 
 **Problem:**
-The sweep iterates a `std::forward_list` via `ChunkedForwardList`, which has poor cache locality. Each `GCValue` is a separate node, and nodes within a chunk are contiguous only at allocation time. After many deallocations and reallocations, the forward-list traversal jumps around memory.
+The sweep still iterates a `ChunkedForwardList<GCValue, 1024>` (`storage.cppm:12`), which has poor cache locality. Each `GCValue` is a separate node, and nodes across chunks are not contiguous.
 
-**Fix:**
-Replace (or augment) the `ChunkedForwardList` with a dense array where dead slots are marked and reclaimed eagerly. Two approaches:
+**Fix options (unchanged from original plan):**
+- Option A: Free list with compaction using `std::vector<GCValue>`
+- Option B: Bitmap marking with contiguous storage
+- Option C: Improve `ChunkedForwardList` cleanup
 
-**Option A — Free list with compaction:**
-Keep a `std::vector<GCValue>` for the main storage. Mark dead objects. Compact by moving live objects to the front and updating `Ref` pointers. This is O(n) but much more cache-friendly.
+The `ChunkedForwardList` is still used at `storage.cppm:12`. No conversion to dense storage has been made.
 
-**Option B — Bitmap marking:**
-Use a contiguous `std::vector<GCValue>` with a separate `std::vector<bool>` mark bitmap. The sweep iterates the bitmap (cache-friendly scan) and frees unmarked slots. The slots are reused via a free list.
+### 4c. Write Barrier for Stack Stores — **Not Implemented**
 
-```cpp
-class GCStorage {
-    std::vector<GCValue> objects;     // dense storage
-    std::vector<bool> mark_bits;      // aligned bitmap
-    std::vector<size_t> free_slots;   // stack of free indices
-    
-    size_t allocate_slot() {
-        if (!free_slots.empty()) {
-            auto idx = free_slots.back();
-            free_slots.pop_back();
-            return idx;
-        }
-        auto idx = objects.size();
-        objects.emplace_back();
-        mark_bits.push_back(false);
-        return idx;
-    }
-    
-    void sweep() {
-        for (size_t i = 0; i < objects.size(); i++) {
-            if (!mark_bits[i]) {
-                objects[i].~GCValue();  // destroy
-                free_slots.push_back(i); // reclaim
-            }
-            mark_bits[i] = false; // reset for next cycle
-        }
-    }
-};
-```
-
-**Option C — Keep `ChunkedForwardList` but improve cleanup:**
-Instead of running cleanup only every `2 * ChunkSize` deallocations, run it more aggressively when the fraction of empty chunks exceeds a threshold.
-
-### 4c. Write Barrier for Stack Stores
-
-**Problem:**
-When `OpSetLocal` or `OpSetUpvalue` writes to a captured local, the write goes directly to the `GCValue`'s `Value` member without any GC barrier. If we ever move to generational or incremental GC, this will cause missed references.
-
-**Fix (for future generational GC):**
-Add a simple write barrier in `GCValue::set_value()`:
-
-```cpp
-void GCValue::set_value(const Value &new_value) {
-    // If this object is in the old generation and the new value
-    // points to a young-generation object, record this as a cross-generational pointer
-    if (is_old && gc.is_young(new_value)) {
-        gc.remember(this);
-    }
-    value = new_value;
-}
-```
-
-For current stop-the-world GC, no write barrier is needed. This is preparation for future improvements.
+For current stop-the-world GC, no write barrier is needed. This is preparation for future generational/incremental GC. No code changes have been made.
 
 **Verification:**
 - Existing tests must pass (no semantic change to GC behavior).
 - Measure with `perf stat` before/after: reduced GC time, better heap utilization.
-- Test allocation-heavy workloads (e.g., building a large vector in a loop).
 
-**Related bugs:** See `plan/04_bugs.md`. In particular, Bug #2 (missing `captured_upvalue_refs` tracing in GC mark phase) must be fixed before or alongside any GC improvements. Any new GC bugs discovered during implementation should be added to `plan/04_bugs.md` with reproducer, root cause, and fix.
+**Related bugs:** Bug #2 (missing `captured_upvalue_refs` tracing in GC mark phase) has been fixed. See `plan/04_bugs.md`.
 
 ---
 
 ## 5. Function Call Optimization: Direct Stack Argument Passing
 
+**Status:** Partially Implemented (vector copy eliminated; function ref still moved, args still erased)
+
 **Files:**
-- `src/vm/src/vm.cpp` — `OpCall::execute_op()`, `evaluate()`, `BytecodeVM::execute_loop()`
+- `src/vm/src/vm.cpp` — `OpCall::execute_op()` at line 604
 - `src/vm/src/vm.cppm` — `CallFrame`, `BytecodeVM`
 
-**The Problem:**
-`OpCall` copies arguments from the stack into a `std::vector<runtime::Value>`, then calls `evaluate()` which erases them from the stack and pushes them back. This involves:
+**The Problem (original):**
+`OpCall` copied arguments from the stack into a `std::vector<runtime::Value>`, then called `evaluate()` which erased them from the stack and pushed them back — 3 traversals of the argument list per call.
 
-1. Loop over args to copy into vector (OpCall, lines ~611-618):
-```cpp
-std::vector<Value> args;
-for (std::size_t i = 0; i < op.arg_count; i++) {
-    args.push_back(stack_top(op.arg_count - 1 - i));
-}
-```
-2. Erase args from stack (same function):
-```cpp
-for (std::size_t i = 0; i < op.arg_count; i++)
-    stack.pop_back();
-```
-3. In `evaluate()`, push them back again:
-```cpp
-for (auto &arg : args)
-    stack.push_back(std::move(arg));
-```
+**Current implementation:**
 
-This is 3 traversals of the argument list per call.
+The `OpCall::execute_op()` handler at `vm.cpp:604-686` has been partially optimized:
 
-**The Fix:**
+- **No vector copy**: Arguments stay on the stack and are accessed via `std::span` (`vm.cpp:612-614`), avoiding the copy-to-vector step.
+- **Frame setup**: The new frame uses `base = stack.size() - op.arg_count` as the `frame_pointer` (`vm.cpp:611,650`), so callee accesses arguments directly via `OpGetLocal{0}` = `stack[frame_pointer + 0]`.
+- **Curried args**: Shuffled on the stack in place (`vm.cpp:658-673`) rather than in a separate vector.
 
-Use the stack **in place** for argument passing. The callee frame's `frame_pointer` already establishes the base of locals. If arguments are passed on the stack above the current frame's locals, the callee can access them directly without copying.
+**Remaining overhead:**
 
-**Design:**
+1. **Function reference moved out and erased** (`vm.cpp:607-608`): `auto func_ref = std::move(stack[func_pos])` followed by `stack.erase(...)` — the function reference is removed from the stack before the call.
+2. **Args erased after call** (`vm.cpp:681` via `clean_args()` at line 617): After the call returns, the argument region is erased from the stack.
+3. **No tail call optimization**: `OpCall` never checks if the next instruction is `OpReturn` to reuse the current frame.
+4. **`evaluate()` function** (`vm.cpp:141-192`): Still exists but is NOT called from `OpCall::execute_op()` for `BytecodeFunction` — the inline path handles everything. It may still be used from builtins.
 
-```
-Stack layout before call:
-[locals of caller] [arg1] [arg2] ... [argN] [top]
+**Remaining work (implementation checklist):**
 
-After call:
-[locals of caller] [arg1] [arg2] ... [argN] [callee locals...]
-                     ^-- callee frame_pointer points here
-```
-
-Arguments are treated as the first locals of the callee. The `evaluate()` method (or inline in `execute_op(OpCall)`) simply:
-
-1. Push a new `CallFrame` with `frame_pointer = stack.size() - op.arg_count`.
-2. The callee's `OpGetLocal{0}` accesses the first argument, `OpGetLocal{1}` the second, etc.
-3. No copying, no erasing, no re-pushing.
-
-**For currying:**
-When `total_args < arity`, curried args must be stored. Store them in the `BytecodeFunction::curried_args` (already a `std::vector<Ref>`). The callee frame's first locals are a mix of curried args and new args — the `evaluate()` method constructs the initial stack region:
-
-```cpp
-// In evaluate() or OpCall handler:
-auto &bc_func = function.as_bytecode_function();
-std::size_t arg_start = stack.size() - new_arg_count;
-
-// If there are curried args, place them first, then new args
-if (bc_func.has_curried_args()) {
-    // Remove new args from stack temporarily
-    std::vector<Value> new_args(stack.end() - new_arg_count, stack.end());
-    stack.erase(stack.end() - new_arg_count, stack.end());
-    
-    // Push curried args (from GC storage) onto the stack
-    for (auto &curried_ref : bc_func.curried_args) {
-        stack.push_back(curried_ref.get());
-    }
-    
-    // Push new args after curried args
-    for (auto &arg : new_args) {
-        stack.push_back(std::move(arg));
-    }
-    
-    bc_func.curried_args.clear(); // consumed
-}
-
-frames.push_back(CallFrame{
-    .chunk_id = bc_func.id,
-    .ip = 0,
-    .frame_pointer = current_local_base,
-    // ...
-});
-```
-
-**For return values:**
-The callee places its return value at `stack[frame_pointer]` (overwriting the first argument/local slot). The caller then adjusts its stack top to just past this value.
-
-**Tail call optimization:**
-When `return f(args)` is detected in the bytecode (a call immediately followed by `OpReturn`), reuse the current frame instead of pushing a new one. Detect this in `OpCall::execute_op()`:
-
-```cpp
-// If the next instruction is OpReturn and we're in a tail position
-if (is_tail_call(frame)) {
-    // Reset current frame's IP/chunk_id instead of creating a new frame
-    frame.chunk_id = target_chunk_id;
-    frame.ip = 0;
-    // Arguments are already on the stack above frame_pointer
-    // Reset the frame's locals
-    continue; // re-enter execute_loop
-}
-```
-
-**For `OpReturn`:**
-Currently returns by popping the frame and pushing the return value. With the new scheme:
-
-```cpp
-void BytecodeVM::execute_op(const OpReturn &, CallFrame &frame) {
-    auto return_value = stack.back();
-    stack.pop_back();
-    
-    // Pop this frame's locals (everything from frame_pointer to current top)
-    stack.resize(frame.frame_pointer);
-    
-    // Push return value back
-    stack.push_back(std::move(return_value));
-    
-    frames.pop_back();
-}
-```
-
-**Implementation checklist:**
-1. Change `OpCall` to set up frame with `frame_pointer = stack.size() - arg_count`.
-2. Remove argument copying in `OpCall::execute_op()`.
-3. Change `evaluate()` to not copy/push arguments; instead initialize frame with arguments in place.
-4. Change `OpReturn` to pop locals up to `frame_pointer`, leaving the return value at the top.
-5. Handle currying by extending the stack with curried args before the new args.
-6. Implement tail call optimization in `OpCall` when followed by `OpReturn`.
-7. Update `OpGetLocal`/`OpSetLocal` — they already use `frame_pointer + index`, so no change needed.
-
-**Potential issues:**
-- **Stack growth**: With currying, the stack may grow because curried args are pushed. Previously they were stored in a vector and copied. With the new scheme, the stack must hold them alongside regular frame data. The stack could fragment if many closures are curried.
-- **Frame pointer stability**: When a closure captures a local, it stores a `Ref` to a GC-value copy of that local (already done in the VM). The `frame_pointer` is used for `OpGetLocal`/`OpSetLocal` only within the current frame. No change needed.
+1. Eliminate function ref move+erase before call.
+2. Eliminate `clean_args()` erasure after call — let the return value overwrite the first arg slot and adjust the stack pointer.
+3. Implement tail call optimization when `OpCall` is followed by `OpReturn`.
+4. Clean up or remove `evaluate()` if no longer needed.
 
 **Verification:**
 - All function call snapshot tests must produce identical output.
 - The `curry` snapshot test must continue to work correctly.
 - Recursive functions (fibonacci, factorial) should test deep call stacks.
-- Benchmark: a tight loop calling a simple function should show measurable improvement.

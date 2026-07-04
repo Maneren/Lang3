@@ -14,8 +14,9 @@ with reproducer, root cause, and fix.
 
 ## Bug #1: GC sweep corrupts closure upvalues at ~10K allocation boundary
 
-**Status:** Open
+**Status:** Fixed
 **Discovered:** 2026-06-30, during closure benchmark testing (`examples/perf/closure_stress.l3`)
+**Fixed:** 2026-06-30 (resolved by Bug #2 fix)
 **Severity:** High (data corruption, incorrect behavior)
 
 ### Reproducer
@@ -62,90 +63,19 @@ Working with `N = 5000`, failing with `N = 10000`.
 
 ### Root cause analysis
 
-Multiple contributing factors:
+The root cause was **Bug #2** (missing `captured_upvalue_refs` tracing in GC mark phase). See Bug #2 below for full details.
 
-**a) Probable: Missing GC root for program constants (`01_low_hanging_fruit.md` §6)**
-`ProgramBytecode::constants` is a `std::vector<runtime::GCValue>` that is never
-marked during GC. The constant pool contains the compiled function objects
-(each closure references a `BytecodeFunction` via its chunk index). If the GC
-sweeps the `GCValue` containing the closure's bytecode function, the closure
-reference becomes a dangling pointer.
+**Contributing factor (also fixed):** Missing GC root for program constants (`01_low_hanging_fruit.md` §6) — `ProgramBytecode::constants` was not marked during GC. This was also fixed alongside the `captured_upvalue_refs` tracing.
 
-**b) Possible: `shared_ptr<HeapValue>` / `Value` copy semantics**
-When `make_adder(i)` creates a closure, the closure's captured value (`x = i`)
-is stored in a `GCValue` allocated in GC storage. A `shared_ptr<HeapValue>`
-copy may exist on the C++ stack or in a `Value` copy that isn't traced by
-the GC root set. However, the more likely scenario is that the GCValue
-containing the captured int is not reachable from any root and gets swept.
+### Fix
 
-**c) Possible: Missing root for closure upvalue `Ref` chain**
-The mark phase traces:
-- Stack values (the `adders` array is on the stack)
-- Global symbols
-- Frame locals and upvalues
-
-The `adders` array contains `Ref` values pointing to `GCValue` objects
-(the closures). Each closure's `GCValue` is marked. But does the mark
-phase trace **into** the closure's captured upvalues?
-
-In `GCValue::mark()` (`src/runtime/src/gc_value.cpp:19-41`):
-```cpp
-void GCValue::mark() {
-    if (marked) return;
-    marked = true;
-    get_value_mut().visit(
-        [](Value::vector_type &vector) {
-            for (auto &item : vector)
-                item.get_gc_mut().mark();    // traces vector elements
-        },
-        [](Value::function_type &func) {
-            if (auto bc_opt = func.as_mut_bytecode_function()) {
-                for (auto &ca : bc_opt->get().curried_args)
-                    ca.get_gc_mut().mark();    // traces curried args
-                // NOTE: Does NOT trace captured_upvalue_refs!
-            }
-        },
-        [](auto &) {}  // strings/primitives — leaf
-    );
-}
-```
-
-**Key finding:** `GCValue::mark()` traces `curried_args` but does **not** trace
-`BytecodeFunction::captured_upvalue_refs`. When a closure captures a local
-variable, the captured value is stored in `captured_upvalue_refs` (a
-`std::vector<Ref>`). This vector is **never marked**, so the captured values
-are always eligible for sweeping.
-
-**Cross-reference:** The `mark_value` lambda in `BytecodeVM::run_gc()`
-(`src/vm/src/vm.cpp:195-213`) also only traces `curried_args` for functions,
-not `captured_upvalue_refs`.
-
-### Proposed fix
-
-In both `GCValue::mark()` and the `mark_value` lambda in `run_gc()`, add
-tracing of `captured_upvalue_refs`:
-
-```cpp
-// In GCValue::mark() — gc_value.cpp:
-[](Value::function_type &func) {
-    if (auto bc_opt = func.as_mut_bytecode_function()) {
-        for (auto &ca : bc_opt->get().curried_args)
-            ca.get_gc_mut().mark();
-        // NEW: trace captured upvalue refs
-        for (auto &uv_ref : bc_opt->get().captured_upvalue_refs)
-            uv_ref.get_gc_mut().mark();
-    }
-},
-```
-
-Similarly in `BytecodeVM::run_gc()` (vm.cpp), the `mark_value` lambda needs
-the same addition.
+Fixed by Bug #2 (adding `captured_upvalue_refs` tracing in `GCValue::mark()` at `gc_value.cpp:37-39`) and by adding program constants as GC roots (`vm.cpp:233-237`).
 
 ### Verification
 
-- `N = 10000` variant of the reproducer should output the correct sum
-- All existing snapshot tests must pass
-- A new test case with closure-heavy code should be added to prevent regression
+- `N = 10000` reproducer now outputs correct sum `49995000`
+- All 17+ snapshot tests pass
+- Closure-heavy code no longer crashes under GC pressure
 
 ---
 

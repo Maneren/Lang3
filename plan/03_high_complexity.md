@@ -6,6 +6,14 @@ These are fundamental architectural changes that touch nearly every component. E
 
 ## 1. Compact Bytecode Encoding + Computed-Goto Dispatch
 
+**Status:** Not Implemented
+
+**Current state:**
+- `Instruction` is still `std::variant<29 alternatives>` with `std::size_t` fields (`src/bytecode/src/bytecode.cppm:98-129`)
+- `Chunk::code` is still `std::vector<Instruction>`, not `std::vector<uint8_t>` (`bytecode.cppm:136`)
+- VM dispatch still uses `match::match` (wrapping `std::visit`) with `[[clang::noinline]]` overloads
+- No `append_uint24`/`read_uint24` helper functions exist for compact encoding
+
 **Files to create/modify:**
 - `src/bytecode/src/bytecode.cppm` — rewrite `Instruction` variant as flat opcodes + operands
 - `src/bytecode/src/bytecode.cpp` — rewrite serialization/formatting
@@ -289,6 +297,13 @@ To match the new encoding. Keep the same format strings for snapshot compatibili
 
 ## 2. Value Representation: NaN-Boxing / Tagged Pointers
 
+**Status:** Not Implemented
+
+**Current state:**
+- `Value` is still `std::variant<Nil, Primitive, std::shared_ptr<HeapValue>>` (`value.cppm:48`)
+- No NaN-boxing bit manipulation (`NAN_MASK`, `TAG_MASK`, `std::bit_cast`)
+- `Value` is still 24+ bytes (variant + shared_ptr + control block)
+
 **Files to create/modify:**
 - `src/runtime/src/value.cppm` — rewrite `Value` class entirely
 - `src/runtime/src/value.cpp` — rewrite all operations
@@ -462,6 +477,13 @@ Operations become extremely cheap:
 ---
 
 ## 3. String Interning
+
+**Status:** Not Implemented
+
+**Current state:**
+- No `src/runtime/src/string_table.cppm` or `string_table.cpp` exists
+- String type is `std::string` stored directly in `HeapValue::inner` (`value.cppm:44`)
+- Global symbols use `std::unordered_map<std::string, runtime::Ref>` (`vm.cppm:122-123`)
 
 **Files to create/modify:**
 - `src/runtime/src/string_table.cppm` — new module for interned string table
