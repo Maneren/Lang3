@@ -296,8 +296,10 @@ bool run_pass(Chunk &chunk, ProgramBytecode &program) {
   for (std::size_t i = 0; i < chunk.code.size();) {
     auto match = try_match(i, chunk.code, program);
     if (match.consumed > 0) {
+      for (std::size_t j = i; j < i + match.consumed; ++j) {
+        old_to_new[j] = new_code.size();
+      }
       if (match.replacement) {
-        old_to_new[i] = new_code.size();
         new_code.push_back(std::move(*match.replacement));
         // Keep the location of the first instruction in the folded group
         if (i < chunk.locations.size()) {
