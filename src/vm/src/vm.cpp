@@ -245,7 +245,7 @@ void BytecodeVM::maybe_gc() {
   }
 }
 
-[[clang::noinline]]
+
 void BytecodeVM::execute(bytecode::ProgramBytecode &program) {
   current_program = &program;
   frames.emplace_back();
@@ -275,7 +275,7 @@ void BytecodeVM::execute(bytecode::ProgramBytecode &program) {
   stack.clear();
 }
 
-[[clang::noinline]]
+
 void BytecodeVM::execute_loop(std::size_t target_frames) {
   const auto &program = *current_program;
   const auto &chunks = program.chunks;
@@ -295,14 +295,14 @@ void BytecodeVM::execute_loop(std::size_t target_frames) {
   }
 }
 
-[[clang::noinline]]
+
 void BytecodeVM::
     execute_op(const bytecode::OpReturn & /*op*/, CallFrame & /*frame*/) {
   debug_print("RETURN value={}", stack_top());
   frames.pop_back();
 }
 
-[[clang::noinline]]
+
 void BytecodeVM::
     execute_op(const bytecode::OpConstant &op, CallFrame & /*frame*/) {
   const runtime::GCValue &chunk_val = constant_at(op.index);
@@ -310,7 +310,7 @@ void BytecodeVM::
   debug_print("CONSTANT index={} value={}", op.index, stack_top());
 }
 
-[[clang::noinline]]
+
 void BytecodeVM::execute_op(const bytecode::OpPop &op, CallFrame & /*frame*/) {
   if (stack.empty() || stack.size() == current_frame_pointer()) {
     throw runtime::RuntimeError("stack underflow");
@@ -325,49 +325,49 @@ void BytecodeVM::execute_op(const bytecode::OpPop &op, CallFrame & /*frame*/) {
   }
 }
 
-[[clang::noinline]]
+
 void BytecodeVM::
     execute_op(const bytecode::OpDuplicate &op, CallFrame & /*frame*/) {
   debug_print("DUPLICATE value={}", stack_top(op.index));
   stack.push_back(stack_top(op.index));
 }
 
-[[clang::noinline]]
+
 void BytecodeVM::
     execute_op(const bytecode::OpAdd & /*op*/, CallFrame & /*frame*/) {
   debug_print("ADD a={} b={}", stack_top(1), stack_top());
   binary_arithmetic([](auto &a, auto &b) { return a.add(b); });
 }
 
-[[clang::noinline]]
+
 void BytecodeVM::
     execute_op(const bytecode::OpSubtract & /*op*/, CallFrame & /*frame*/) {
   debug_print("SUBTRACT a={} b={}", stack_top(1), stack_top());
   binary_arithmetic([](auto &a, auto &b) { return a.sub(b); });
 }
 
-[[clang::noinline]]
+
 void BytecodeVM::
     execute_op(const bytecode::OpMultiply & /*op*/, CallFrame & /*frame*/) {
   debug_print("MULTIPLY a={} b={}", stack_top(1), stack_top());
   binary_arithmetic([](auto &a, auto &b) { return a.mul(b); });
 }
 
-[[clang::noinline]]
+
 void BytecodeVM::
     execute_op(const bytecode::OpDivide & /*op*/, CallFrame & /*frame*/) {
   debug_print("DIVIDE a={} b={}", stack_top(1), stack_top());
   binary_arithmetic([](auto &a, auto &b) { return a.div(b); });
 }
 
-[[clang::noinline]]
+
 void BytecodeVM::
     execute_op(const bytecode::OpModulo & /*op*/, CallFrame & /*frame*/) {
   debug_print("MODULO a={} b={}", stack_top(1), stack_top());
   binary_arithmetic([](auto &a, auto &b) { return a.mod(b); });
 }
 
-[[clang::noinline]]
+
 void BytecodeVM::
     execute_op(const bytecode::OpNegate & /*op*/, CallFrame & /*frame*/) {
   debug_print("NEGATE a={}", stack_top());
@@ -375,7 +375,7 @@ void BytecodeVM::
   stack_push(a.negative());
 }
 
-[[clang::noinline]]
+
 void BytecodeVM::
     execute_op(const bytecode::OpNot & /*op*/, CallFrame & /*frame*/) {
   debug_print("NOT a={}", stack_top());
@@ -383,28 +383,28 @@ void BytecodeVM::
   stack_push(a.not_op());
 }
 
-[[clang::noinline]]
+
 void BytecodeVM::
     execute_op(const bytecode::OpEqual & /*op*/, CallFrame & /*frame*/) {
   debug_print("EQUAL a={} b={}", stack_top(1), stack_top());
   comparison_op([](auto c) { return c == std::partial_ordering::equivalent; });
 }
 
-[[clang::noinline]]
+
 void BytecodeVM::
     execute_op(const bytecode::OpNotEqual & /*op*/, CallFrame & /*frame*/) {
   debug_print("NOT_EQUAL a={} b={}", stack_top(1), stack_top());
   comparison_op([](auto c) { return c != std::partial_ordering::equivalent; });
 }
 
-[[clang::noinline]]
+
 void BytecodeVM::
     execute_op(const bytecode::OpGreater & /*op*/, CallFrame & /*frame*/) {
   debug_print("GREATER a={} b={}", stack_top(1), stack_top());
   comparison_op([](auto c) { return c == std::partial_ordering::greater; });
 }
 
-[[clang::noinline]]
+
 void BytecodeVM::
     execute_op(const bytecode::OpGreaterEqual & /*op*/, CallFrame & /*frame*/) {
   debug_print("GREATER_EQUAL a={} b={}", stack_top(1), stack_top());
@@ -414,14 +414,14 @@ void BytecodeVM::
   });
 }
 
-[[clang::noinline]]
+
 void BytecodeVM::
     execute_op(const bytecode::OpLess & /*op*/, CallFrame & /*frame*/) {
   debug_print("LESS a={} b={}", stack_top(1), stack_top());
   comparison_op([](auto c) { return c == std::partial_ordering::less; });
 }
 
-[[clang::noinline]]
+
 void BytecodeVM::
     execute_op(const bytecode::OpLessEqual & /*op*/, CallFrame & /*frame*/) {
   debug_print("LESS_EQUAL a={} b={}", stack_top(1), stack_top());
@@ -431,13 +431,13 @@ void BytecodeVM::
   });
 }
 
-[[clang::noinline]]
+
 void BytecodeVM::execute_op(const bytecode::OpJump &op, CallFrame & /*frame*/) {
   debug_print("JUMP target={}", op.offset);
   current_frame().ip = op.offset;
 }
 
-[[clang::noinline]]
+
 void BytecodeVM::
     execute_op(const bytecode::OpJumpIf &op, CallFrame & /*frame*/) {
   const bool jump = stack_top().is_truthy() == op.expected;
@@ -460,7 +460,7 @@ void BytecodeVM::
   }
 }
 
-[[clang::noinline]]
+
 void BytecodeVM::
     execute_op(const bytecode::OpGetGlobal &op, CallFrame & /*frame*/) {
   const auto &name_val = constant_at(op.name_index);
@@ -475,7 +475,7 @@ void BytecodeVM::
   }
 }
 
-[[clang::noinline]]
+
 void BytecodeVM::
     execute_op(const bytecode::OpSetGlobal &op, CallFrame & /*frame*/) {
   const auto &name_val = constant_at(op.name_index);
@@ -489,7 +489,7 @@ void BytecodeVM::
   }
 }
 
-[[clang::noinline]]
+
 void BytecodeVM::execute_op(const bytecode::OpGetLocal &op, CallFrame &frame) {
   stack.push_back(stack_at(frame.frame_pointer + op.index));
   debug_print(
@@ -501,7 +501,7 @@ void BytecodeVM::execute_op(const bytecode::OpGetLocal &op, CallFrame &frame) {
   );
 }
 
-[[clang::noinline]]
+
 void BytecodeVM::execute_op(const bytecode::OpSetLocal &op, CallFrame &frame) {
   debug_print("SET_LOCAL index={} value={}", op.index, stack_top());
   auto val = stack_pop();
@@ -512,7 +512,7 @@ void BytecodeVM::execute_op(const bytecode::OpSetLocal &op, CallFrame &frame) {
   }
 }
 
-[[clang::noinline]]
+
 void BytecodeVM::execute_op(const bytecode::OpForLoop &op, CallFrame &frame) {
   const auto control_slot = frame.frame_pointer + op.control_index;
   const auto limit_slot = frame.frame_pointer + op.limit_index;
@@ -564,7 +564,7 @@ void BytecodeVM::execute_op(const bytecode::OpForLoop &op, CallFrame &frame) {
   );
 }
 
-[[clang::noinline]]
+
 void BytecodeVM::
     execute_op(const bytecode::OpMakeArray &op, CallFrame & /*frame*/) {
   const auto start = stack.end() - static_cast<std::ptrdiff_t>(op.count);
@@ -578,7 +578,7 @@ void BytecodeVM::
   stack_push(runtime::Value{std::move(elements)});
 }
 
-[[clang::noinline]]
+
 void BytecodeVM::
     execute_op(const bytecode::OpGetIndex & /*op*/, CallFrame & /*frame*/) {
   const auto index = stack_pop();
@@ -588,7 +588,7 @@ void BytecodeVM::
   stack_push_new(array.index(index));
 }
 
-[[clang::noinline]]
+
 void BytecodeVM::
     execute_op(const bytecode::OpSetIndex & /*op*/, CallFrame & /*frame*/) {
   auto value = stack_pop();
@@ -601,7 +601,7 @@ void BytecodeVM::
   stack.pop_back();
 }
 
-[[clang::noinline]]
+
 void BytecodeVM::execute_op(const bytecode::OpCall &op, CallFrame & /*frame*/) {
   const auto func_pos = stack.size() - op.arg_count - 1;
   auto func_ref = std::move(stack[func_pos]);
@@ -685,7 +685,7 @@ void BytecodeVM::execute_op(const bytecode::OpCall &op, CallFrame & /*frame*/) {
   }
 }
 
-[[clang::noinline]]
+
 void BytecodeVM::execute_op(const bytecode::OpClosure &op, CallFrame &frame) {
   auto function = current_program->constants[op.function_index]
                       .get_value_mut()
@@ -718,7 +718,7 @@ void BytecodeVM::execute_op(const bytecode::OpClosure &op, CallFrame &frame) {
   debug_print("CLOSURE function={}", stack.back());
 }
 
-[[clang::noinline]]
+
 void BytecodeVM::execute_op(
     const bytecode::OpGetUpvalue &op, CallFrame &frame
 ) {
@@ -727,7 +727,7 @@ void BytecodeVM::execute_op(
   stack.push_back(val);
 }
 
-[[clang::noinline]]
+
 void BytecodeVM::execute_op(
     const bytecode::OpSetUpvalue &op, CallFrame &frame
 ) {
