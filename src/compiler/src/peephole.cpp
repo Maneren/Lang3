@@ -80,20 +80,14 @@ OpConstant add_constant(ProgramBytecode &program, Value &&value) {
 // Jump offset adjustment
 // ---------------------------------------------------------------------------
 
-void adjust_offset(
-    std::size_t &offset, const std::vector<std::size_t> &old_to_new
-) {
-  offset = old_to_new[offset];
-}
-
 void adjust_offsets(
     Instruction &inst, const std::vector<std::size_t> &old_to_new
 ) {
   match::match(
       inst,
-      [&](OpJump &jump) { adjust_offset(jump.offset, old_to_new); },
-      [&](OpJumpIf &jump) { adjust_offset(jump.offset, old_to_new); },
-      [&](OpForLoop &loop) { adjust_offset(loop.body_offset, old_to_new); },
+      [&](OpJump &jump) { jump.offset = old_to_new[jump.offset]; },
+      [&](OpJumpIf &jump) { jump.offset = old_to_new[jump.offset]; },
+      [&](OpForLoop &loop) { loop.body_offset = old_to_new[loop.body_offset]; },
       [](auto &) {}
   );
 }
