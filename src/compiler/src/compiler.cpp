@@ -41,7 +41,7 @@ void Compiler::compile(const ast::Program &ast_program) {
   if (const auto last = ast_program.get_last_statement(); last) {
     throw std::runtime_error("Unexpected last statement in top-level scope");
   }
-  emit(OpConstant{make_constant({})});
+  emit(OpConstant{make_constant()});
   emit(OpReturn{});
   optimize(program);
   deduplicate_constants();
@@ -86,14 +86,16 @@ void Compiler::pop_context() { contexts.pop_back(); }
 
 void Compiler::begin_scope() { scope_depth()++; }
 
-void Compiler::end_scope() {
+void Compiler::end_scope(bool emit_pop) {
   scope_depth()--;
   std::size_t count = 0;
   while (!locals().empty() && locals().back().depth > scope_depth()) {
     count++;
     locals().pop_back();
   }
-  emit(OpPop{.count = count});
+  if (emit_pop) {
+    emit(OpPop{.count = count});
+  }
 }
 
 std::size_t Compiler::add_local(const ast::Identifier &name) {
@@ -287,7 +289,7 @@ void Compiler::compile_statements(std::ranges::input_range auto &statements) {
     LocationScope scope(location_stack, stmt.get_location());
     stmt.visit(
         [this](const ast::NamedFunction &func) {
-          emit(OpConstant{make_constant({})});
+          emit(OpConstant{make_constant()});
           add_local(func.get_name());
         },
         [](const auto &) {}
@@ -302,10 +304,12 @@ void Compiler::compile_statements(std::ranges::input_range auto &statements) {
 void Compiler::compile_block(const ast::Block &block) {
   begin_scope();
   compile_statements(block.get_statements());
-  if (const auto last = block.get_last_statement(); last) {
+  if (const auto last = block.get_last_statement()) {
     compile_last_statement(last->get());
+    end_scope(false);
+  } else {
+    end_scope(true);
   }
-  end_scope();
 }
 
 void Compiler::compile_expression(const ast::Expression &expr) {
@@ -525,7 +529,7 @@ void Compiler::compile_variable(const ast::Variable &variable) {
 
 void Compiler::compile_literal(const ast::Literal &literal) {
   literal.visit(
-      [this](const ast::Nil &) { emit(OpConstant{make_constant({})}); },
+      [this](const ast::Nil &) { emit(OpConstant{make_constant()}); },
       [this](const ast::Array &array) {
         const auto &elements = array.get_elements();
         for (const auto &elem : elements) {
@@ -579,7 +583,7 @@ void Compiler::compile_declaration(const ast::Declaration &decl) {
     if (decl.get_expression()) {
       compile_expression(*decl.get_expression());
     } else {
-      emit(OpConstant{make_constant({})});
+      emit(OpConstant{make_constant()});
     }
 
     add_local(names.front());
@@ -587,7 +591,7 @@ void Compiler::compile_declaration(const ast::Declaration &decl) {
   }
   if (!decl.get_expression()) {
     for (const auto &ident : names) {
-      emit(OpConstant{make_constant({})});
+      emit(OpConstant{make_constant()});
       add_local(ident);
     }
     return;
@@ -765,8 +769,8 @@ Compiler::compile_function_body(const ast::FunctionBody &body) {
 
   compile_block(body.get_block());
 
-  if (!std::holds_alternative<OpReturn>(current_chunk().code.back())) {
-    emit(OpConstant{make_constant({})});
+  if (!body.get_block().get_last_statement()) {
+    emit(OpConstant{make_constant()});
     emit(OpReturn{});
   }
 
@@ -1005,7 +1009,7 @@ void Compiler::compile_return_statement(const ast::ReturnStatement &ret) {
   if (const auto &expr = ret.get_expression(); expr) {
     compile_expression(*expr);
   } else {
-    emit(OpConstant{make_constant({})});
+    emit(OpConstant{make_constant()});
   }
   if (!was_in_expression) {
     emit(OpReturn{});
