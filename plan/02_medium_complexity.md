@@ -17,6 +17,7 @@ Every copy, move, or destroy of a `Value` with a heap-allocated type incurs atom
 
 **b) Double memory management:**
 The `shared_ptr` ref-counting is **redundant** with the GC mark-sweep. All heap values live inside `GCValue` objects in the chunked storage, and the GC is the one that determines liveness. The `shared_ptr` creates a separate, invisible root set that the GC cannot see, leading to:
+
 - Memory leaks: GC reclaims `GCValue` but `shared_ptr` refcount keeps `HeapValue` alive, leaking it.
 - Missed collection: `shared_ptr` pins `HeapValue` even when the GC says it's unreachable.
 
@@ -25,12 +26,14 @@ The `shared_ptr` ref-counting is **redundant** with the GC mark-sweep. All heap 
 Replace `std::shared_ptr<HeapValue>` with a raw handle into GC storage. Options:
 
 **Option A — Raw `GCValue*` pointer (recommended):**
+
 ```cpp
 class Value {
-    std::variant<Nil, Primitive, GCValue*> inner;
-    // ...
+  std::variant<Nil, Primitive, GCValue *> inner;
+  // ...
 };
 ```
+
 - `GCValue*` is just 8 bytes (same as the pointer part of `shared_ptr`, but without the control block).
 - No atomic ref-count operations.
 - The `GCValue` manages the `HeapValue` directly (as its `Value` member).
@@ -61,19 +64,19 @@ class Value {
 ```cpp
 // Before:
 class Value {
-    std::variant<Nil, Primitive, std::shared_ptr<HeapValue>> inner;
-    
-    Value(Function &&function)
-        : inner{std::make_shared<HeapValue>(std::move(function))} {}
+  std::variant<Nil, Primitive, std::shared_ptr<HeapValue>> inner;
+
+  Value(Function &&function)
+      : inner{std::make_shared<HeapValue>(std::move(function))} {}
 };
 
 // After:
 class Value {
-    std::variant<Nil, Primitive, GCValue*> inner;
-    
-    // No more shared_ptr construction
-    // GCValue* is set when a value is emplaced in GC storage
-    // or retrieved via Ref
+  std::variant<Nil, Primitive, GCValue *> inner;
+
+  // No more shared_ptr construction
+  // GCValue* is set when a value is emplaced in GC storage
+  // or retrieved via Ref
 };
 ```
 
@@ -88,8 +91,7 @@ Value::Value(std::string s)
 
 // After:
 // Option 1: Value becomes a "view" — construct from Ref
-Value::Value(const Ref &ref)
-    : inner{&ref.get_gc()} {}
+Value::Value(const Ref &ref) : inner{&ref.get_gc()} {}
 
 // Option 2: GCStorage creates the GCValue and returns a handle
 // The caller does:
@@ -101,6 +103,7 @@ Value val(ref);
 May become private to the GC storage implementation, or simplified. Since `HeapValue` is always accessed through `GCValue → Value → HeapValue*`, and `GCValue::get_value()` returns `Value&`, we access the inner variant of `HeapValue` through the existing `Value::visit()` mechanism. The `shared_ptr` removal simplifies the chain to `GCValue* → GCValue → Value → HeapValue*` (one less indirection).
 
 **Testing:**
+
 - All existing tests must pass (snapshot tests verify bytecode and output).
 - No behavioral change to the language semantics.
 - Run with `valgrind` / `-fsanitize=address` to catch any new lifetime bugs.
@@ -113,9 +116,10 @@ May become private to the GC storage implementation, or simplified. Since `HeapV
 
 **The Problem:**
 
-`Value::visit()` does a `std::visit` on the outer variant (`Nil`/`Primitive`/`shared_ptr<HeapValue>`), then inside the heap case, does a *second* `std::visit` on `HeapValue::inner` (`unique_ptr<Function>` / `vector<Ref>` / `string`). This adds dispatch overhead for every operation on heap types.
+`Value::visit()` does a `std::visit` on the outer variant (`Nil`/`Primitive`/`shared_ptr<HeapValue>`), then inside the heap case, does a _second_ `std::visit` on `HeapValue::inner` (`unique_ptr<Function>` / `vector<Ref>` / `string`). This adds dispatch overhead for every operation on heap types.
 
 Current dispatch for `value.add(rhs)`:
+
 ```
 1. outer std::visit on (Nil | Primitive | shared_ptr<HeapValue>)
 2. if heap: inner std::visit on (unique_ptr<Function> | vector<Ref> | string)
@@ -129,21 +133,21 @@ Merge `HeapValue`'s inner types directly into `Value`'s variant:
 ```cpp
 // Before:
 class HeapValue {
-    std::variant<std::unique_ptr<Function>, std::vector<Ref>, std::string> inner;
+  std::variant<std::unique_ptr<Function>, std::vector<Ref>, std::string> inner;
 };
 class Value {
-    std::variant<Nil, Primitive, std::shared_ptr<HeapValue>> inner;
+  std::variant<Nil, Primitive, std::shared_ptr<HeapValue>> inner;
 };
 
 // After (with shared_ptr → raw pointer change from §1):
 class Value {
-    std::variant<
-        Nil,
-        Primitive,
-        Function,        // by value, not unique_ptr
-        std::vector<Ref>,
-        std::string
-    > inner;
+  std::variant<
+      Nil,
+      Primitive,
+      Function, // by value, not unique_ptr
+      std::vector<Ref>,
+      std::string>
+      inner;
 };
 ```
 
@@ -157,7 +161,7 @@ Now `Value::visit()` has a single `std::visit` with 5 alternatives. No double di
    - `std::vector<Ref>`: ~24 bytes.
    - `Primitive`: ~16 bytes.
    - Nil: ~1 byte.
-   
+
    The variant size is dominated by `BytecodeFunction` → ~80 bytes plus variant discriminant → ~96 bytes per `Value`. This is **much larger** than the current 24 bytes.
 
 2. **Large `Value`**: A 96-byte `Value` means the VM stack (`std::vector<Value>`) uses 4x more memory. This impacts cache behavior negatively. Most stack slots are primitives (24 bytes currently) but with flattening they're 96 bytes. **This may be worse overall.**
@@ -170,22 +174,19 @@ Use a union-like structure where small types are inline and large types are indi
 
 ```cpp
 class Value {
-    enum class Tag : uint8_t {
-        Nil, Bool, Int, Float,
-        String, Vector, Function
-    };
-    
-    struct LargeValue {
-        std::variant<std::string, std::vector<Ref>, Function> inner;
-    };
-    
-    Tag tag;
-    union {
-        bool bool_val;
-        int64_t int_val;
-        double float_val;
-        LargeValue *heap_val;  // separate heap allocation for large types
-    };
+  enum class Tag : uint8_t { Nil, Bool, Int, Float, String, Vector, Function };
+
+  struct LargeValue {
+    std::variant<std::string, std::vector<Ref>, Function> inner;
+  };
+
+  Tag tag;
+  union {
+    bool bool_val;
+    int64_t int_val;
+    double float_val;
+    LargeValue *heap_val; // separate heap allocation for large types
+  };
 };
 ```
 
@@ -198,6 +199,7 @@ Given the size concern with Option A, the best approach is a **staged plan**:
 **Stage 1:** Remove `shared_ptr<HeapValue>` → `GCValue*` (§1 above). This alone eliminates the double variant dispatch because the inner `Value` inside `GCValue` is the one that does dispatch. The outer `Value` just holds a `GCValue*` — dispatching on a pointer type is trivial (just check pointer against null/non-null, or use the variant tag).
 
 Wait — actually, with `GCValue*` in the variant, the dispatch becomes:
+
 - `Nil` → immediate
 - `Primitive` → immediate
 - `GCValue*` → need to dereference to get the actual type (string/vector/function)
@@ -208,22 +210,23 @@ So there's still an indirection for heap types. The outer dispatch is still doub
 
 ```cpp
 class Value {
-    // Small string optimization: strings up to N chars are stored inline
-    static constexpr size_t SmallStringCapacity = 14; // 14 chars + 1 byte tag
-    
-    struct InlineString {
-        char data[SmallStringCapacity];
-        uint8_t size;
-    };
-    
-    std::variant<
-        Nil,
-        Primitive,
-        InlineString,
-        std::string,        // large strings
-        std::vector<Ref>,   // always heap for now (could also be SSO)
-        Function            // always heap allocated
-    > inner;
+  // Small string optimization: strings up to N chars are stored inline
+  static constexpr size_t SmallStringCapacity = 14; // 14 chars + 1 byte tag
+
+  struct InlineString {
+    char data[SmallStringCapacity];
+    uint8_t size;
+  };
+
+  std::variant<
+      Nil,
+      Primitive,
+      InlineString,
+      std::string,      // large strings
+      std::vector<Ref>, // always heap for now (could also be SSO)
+      Function          // always heap allocated
+      >
+      inner;
 };
 ```
 
@@ -236,6 +239,7 @@ class Value {
 **Status:** Partially Implemented
 
 **Files:**
+
 - `src/compiler/src/peephole.cppm` — module declaration (existing)
 - `src/compiler/src/peephole.cpp` — implementation (existing)
 - `src/compiler/src/compiler.cpp` — integration at line 9 (`import :peephole`) and line 46 (`optimize(program)`)
@@ -251,27 +255,29 @@ The peephole pass exists at `src/compiler/src/peephole.cpp` and is called from `
 
 **Implemented patterns (5 of 10):**
 
-| Pattern | Implementation | File:Line |
-|---------|---------------|-----------|
-| C: `OpConstant{x}` + `OpNegate/OpNot` → `OpConstant{folded}` | `match_unary_fold` | `peephole.cpp:150` |
-| D/H: `OpPop{0}` removal | `match_pop_zero` | `peephole.cpp:119` |
-| E: Jump-to-jump chains | `match_jump_chaining` | `peephole.cpp:244` |
-| G: `OpConstant{bool}` + `OpJumpIf` → `OpJump` or remove | `match_const_jumpif` | `peephole.cpp:179` |
-| I: `OpConstant{a}` + `OpConstant{b}` + arithmetic → `OpConstant{folded}` | `match_binary_fold` | `peephole.cpp:204` |
-| J: `OpConstant{x}` + `OpNot` (handled by `match_unary_fold` via `fold_unary`) | `match_unary_fold` | `peephole.cpp:150` |
+| Pattern                                                                       | Implementation        | File:Line          |
+| ----------------------------------------------------------------------------- | --------------------- | ------------------ |
+| C: `OpConstant{x}` + `OpNegate/OpNot` → `OpConstant{folded}`                  | `match_unary_fold`    | `peephole.cpp:150` |
+| D/H: `OpPop{0}` removal                                                       | `match_pop_zero`      | `peephole.cpp:119` |
+| E: Jump-to-jump chains                                                        | `match_jump_chaining` | `peephole.cpp:244` |
+| G: `OpConstant{bool}` + `OpJumpIf` → `OpJump` or remove                       | `match_const_jumpif`  | `peephole.cpp:179` |
+| I: `OpConstant{a}` + `OpConstant{b}` + arithmetic → `OpConstant{folded}`      | `match_binary_fold`   | `peephole.cpp:204` |
+| J: `OpConstant{x}` + `OpNot` (handled by `match_unary_fold` via `fold_unary`) | `match_unary_fold`    | `peephole.cpp:150` |
 
 Additional pattern implemented that was not in the original plan:
+
 - **Zero-jump removal** (`match_zero_jump`, `peephole.cpp:132`): Removes `OpJump{next_instruction}` (jump to self, no-op).
 
 **Missing patterns:**
 
-| Pattern | Description |
-|---------|-------------|
-| A: Dead `OpConstant{nil}` + `OpSetLocal{n}` | Function hoisting dead store — nil is pushed but never read before being overwritten |
-| B: Redundant `OpGetLocal{n}` + same `OpSetLocal{n}` | Useless round-trip through stack |
-| F: Unreachable code elimination | Dead code after unconditional `OpJump`, `OpReturn`, etc. |
+| Pattern                                             | Description                                                                          |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| A: Dead `OpConstant{nil}` + `OpSetLocal{n}`         | Function hoisting dead store — nil is pushed but never read before being overwritten |
+| B: Redundant `OpGetLocal{n}` + same `OpSetLocal{n}` | Useless round-trip through stack                                                     |
+| F: Unreachable code elimination                     | Dead code after unconditional `OpJump`, `OpReturn`, etc.                             |
 
 **Integration:**
+
 ```cpp
 // In Compiler::compile() (compiler.cpp:46):
 optimize(program);
@@ -281,10 +287,12 @@ optimize(program);
 The peephole pass **subsumes** several optimizations from `01_low_hanging_fruit.md`: OpPop{0} removal (Pattern D/H) and constant folding (Pattern C/I/J). Dead nil-push elimination (Pattern A) from function hoisting (LF #2) was planned but never implemented — the peephole pass is the right place for it.
 
 **Verification:**
+
 - Run all snapshot tests. Bytecode outputs may change (instructions removed/reordered).
 - Check that program outputs are identical (no semantic change).
 
 **Remaining work:**
+
 - Add Pattern A (dead nil-push from function hoisting)
 - Add Pattern F (unreachable code elimination)
 - Consider adding Pattern B (redundant GET/SET pair)
@@ -293,31 +301,14 @@ The peephole pass **subsumes** several optimizations from `01_low_hanging_fruit.
 
 ## 4. GC Improvements
 
-**Status:** Partially Implemented (4a done; 4b, 4c not done)
+**Status:** Partially Implemented (4b, 4c not done)
 
 **Files:**
+
 - `src/runtime/src/storage.cppm` — `GCStorage`
 - `src/runtime/src/storage.cpp` — sweep logic
 - `src/runtime/src/gc_value.cppm` — `GCValue`
 - `src/vm/src/vm.cpp` — `maybe_gc()`, `run_gc()`
-
-### 4a. Adaptive GC Threshold — **Implemented**
-
-**Problem:**
-The GC previously triggered every 16,384 allocations (`GC_INTERVAL = 16 * 1024`), regardless of live heap size.
-
-**Fix (implemented at `storage.cppm:16`, `storage.cpp:54`):**
-```cpp
-// storage.cppm:
-std::size_t next_gc_threshold = 1024;
-std::size_t added_since_last_sweep = 0;
-
-// storage.cpp — after sweep:
-added_since_last_sweep = 0;
-next_gc_threshold = std::max(size * 2, std::size_t{1024});
-```
-
-This is a "heap growth factor" heuristic: threshold = `max(live_size * 2, 1024)`, similar to how `std::vector` grows.
 
 ### 4b. Linear Sweep Instead of Forward-List Iteration — **Not Implemented**
 
@@ -325,6 +316,7 @@ This is a "heap growth factor" heuristic: threshold = `max(live_size * 2, 1024)`
 The sweep still iterates a `ChunkedForwardList<GCValue, 1024>` (`storage.cppm:12`), which has poor cache locality. Each `GCValue` is a separate node, and nodes across chunks are not contiguous.
 
 **Fix options (unchanged from original plan):**
+
 - Option A: Free list with compaction using `std::vector<GCValue>`
 - Option B: Bitmap marking with contiguous storage
 - Option C: Improve `ChunkedForwardList` cleanup
@@ -336,18 +328,16 @@ The `ChunkedForwardList` is still used at `storage.cppm:12`. No conversion to de
 For current stop-the-world GC, no write barrier is needed. This is preparation for future generational/incremental GC. No code changes have been made.
 
 **Verification:**
+
 - Existing tests must pass (no semantic change to GC behavior).
 - Measure with `perf stat` before/after: reduced GC time, better heap utilization.
-
-**Related bugs:** Bug #2 (missing `captured_upvalue_refs` tracing in GC mark phase) has been fixed. See `plan/04_bugs.md`.
-
----
 
 ## 5. Function Call Optimization: Direct Stack Argument Passing
 
 **Status:** Partially Implemented (vector copy eliminated; function ref still moved, args still erased)
 
 **Files:**
+
 - `src/vm/src/vm.cpp` — `OpCall::execute_op()` at line 604
 - `src/vm/src/vm.cppm` — `CallFrame`, `BytecodeVM`
 
@@ -377,6 +367,7 @@ The `OpCall::execute_op()` handler at `vm.cpp:604-686` has been partially optimi
 4. Clean up or remove `evaluate()` if no longer needed.
 
 **Verification:**
+
 - All function call snapshot tests must produce identical output.
 - The `curry` snapshot test must continue to work correctly.
 - Recursive functions (fibonacci, factorial) should test deep call stacks.
