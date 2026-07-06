@@ -22,27 +22,47 @@ std::string function_name_for_frame(const BytecodeVM::CallFrame &frame) {
 BytecodeVM::BytecodeVM(bool debug_) : debug(debug_) {
   for (const auto &[name, body] : l3::builtins::BUILTINS) {
     auto func = store_value(
-        runtime::Function{runtime::BuiltinFunction{
+        runtime::Value{runtime::Function{runtime::BuiltinFunction{
             runtime::Identifier{std::string(name)},
             [this, body](runtime::L3Args args) -> runtime::Value {
               return body(*this, args);
             }
-        }}
+        }}}
     );
     define_global(name, func);
   }
 }
 
-runtime::Ref BytecodeVM::store_value(runtime::Value &&value) {
-  return runtime::Ref{gc_storage.emplace(std::move(value))};
+runtime::StackValue BytecodeVM::store_value(runtime::Value &&value) {
+  return std::move(value).visit(
+      [](runtime::Nil) -> runtime::StackValue { return {}; },
+      [](runtime::Primitive p) -> runtime::StackValue {
+        return runtime::StackValue{p};
+      },
+      [this](runtime::Value::function_type &f) -> runtime::StackValue {
+        return runtime::StackValue{
+            &gc_storage.emplace(runtime::Value{std::move(f)})
+        };
+      },
+      [this](std::vector<runtime::StackValue> &vec) -> runtime::StackValue {
+        return runtime::StackValue{
+            &gc_storage.emplace(runtime::Value{std::move(vec)})
+        };
+      },
+      [this](std::string &s) -> runtime::StackValue {
+        return runtime::StackValue{
+            &gc_storage.emplace(runtime::Value{std::move(s)})
+        };
+      }
+  );
 }
 
-runtime::Ref BytecodeVM::store_new_value(runtime::NewValue &&value) {
+runtime::StackValue BytecodeVM::store_new_value(runtime::NewValue &&value) {
   return match::match(
       std::move(value),
-      [](runtime::Ref ref) -> runtime::Ref { return ref; },
-      [this](runtime::Value &&value) -> runtime::Ref {
-        return runtime::Ref{gc_storage.emplace(std::move(value))};
+      [](runtime::StackValue sv) -> runtime::StackValue { return sv; },
+      [this](runtime::Value &&value) -> runtime::StackValue {
+        return store_value(std::move(value));
       }
   );
 }
@@ -56,29 +76,27 @@ const location::Location &BytecodeVM::current_instruction_location() const {
       .locations[current_frame().ip - 1];
 }
 
-runtime::Value BytecodeVM::stack_pop() {
-  auto val = std::move(stack.back());
+runtime::StackValue BytecodeVM::stack_pop() {
+  auto val = stack.back();
   stack.pop_back();
   return val;
 }
 
-void BytecodeVM::stack_push(runtime::Value &&value) {
-  stack.emplace_back(std::move(value));
-}
-
-void BytecodeVM::stack_push(const runtime::Value &value) {
-  stack.push_back(value);
+void BytecodeVM::stack_push(runtime::StackValue value) {
+  stack.emplace_back(value);
 }
 
 void BytecodeVM::stack_push_new(runtime::NewValue &&value) {
   match::match(
       std::move(value),
-      [this](runtime::Ref ref) { stack.emplace_back(*ref); },
-      [this](runtime::Value &&value) { stack.emplace_back(std::move(value)); }
+      [this](runtime::StackValue sv) { stack.emplace_back(sv); },
+      [this](runtime::Value &&value) {
+        stack.emplace_back(store_value(std::move(value)));
+      }
   );
 }
 
-std::optional<runtime::Ref>
+std::optional<runtime::StackValue>
 BytecodeVM::resolve_global(std::string_view name) const {
   if (auto it = global_symbols.find(name); it != global_symbols.end()) {
     return it->second;
@@ -86,7 +104,9 @@ BytecodeVM::resolve_global(std::string_view name) const {
   return std::nullopt;
 }
 
-void BytecodeVM::define_global(std::string_view name, runtime::Ref value) {
+void BytecodeVM::define_global(
+    std::string_view name, runtime::StackValue value
+) {
   if (auto it = global_symbols.find(name); it != global_symbols.end()) {
     throw runtime::RuntimeError("Global already defined: {}", name);
   }
@@ -125,117 +145,101 @@ void BytecodeVM::debug_print(std::format_string<Args...> fmt, Args &&...args) {
   }
 }
 
-template <typename Op> void BytecodeVM::binary_arithmetic(Op op) {
-  auto b = stack_pop();
-  auto a = stack_pop();
-  stack_push(op(a, b));
-}
-
-template <typename Predicate>
-void BytecodeVM::comparison_op(Predicate predicate) {
-  auto b = stack_pop();
-  auto a = stack_pop();
-  stack_push(runtime::Primitive{predicate(a.compare(b))});
-}
-
 runtime::Value BytecodeVM::evaluate(
-    const runtime::Value &function,
+    const runtime::StackValue &function,
     runtime::L3Args arguments,
     const location::Location &call_location
 ) {
-  if (auto func_opt = function.as_function()) {
-    const auto &func = func_opt->get();
-
-    return func.visit(
-        [&](const runtime::BuiltinFunction &func) {
-          return func.invoke(arguments);
-        },
-        [&](const runtime::BytecodeFunction &bc_func) {
-          auto total_args = bc_func.curried_args.size() + arguments.size();
-
-          if (total_args < bc_func.arity) {
-            auto new_func = bc_func;
-            for (const auto &arg : arguments) {
-              new_func.curried_args.push_back(store_value(runtime::Value{arg}));
-            }
-            return runtime::Value{runtime::Function{std::move(new_func)}};
-          }
-          if (total_args == bc_func.arity) {
-            auto previous_frames = frames.size();
-            auto fp = stack.size();
-            frames.emplace_back(
-                bc_func.id,
-                0,
-                fp,
-                call_location,
-                std::pair{bc_func, runtime::Value{function}}
-            );
-            auto &new_frame = frames.back();
-            for (const auto &ref : bc_func.captured_upvalue_refs) {
-              new_frame.upvalues.push_back(ref.get());
-            }
-            for (const auto &arg : bc_func.curried_args) {
-              stack.push_back(*arg);
-            }
-            for (const auto &arg : arguments) {
-              stack.push_back(arg);
-            }
-            execute_loop(previous_frames);
-            return stack_pop();
-          }
-
-          throw runtime::RuntimeError("evaluate arity mismatch");
-        }
-    );
+  if (!function.holds_gc_value()) {
+    throw runtime::RuntimeError("evaluate: not a function");
   }
-  throw runtime::RuntimeError("evaluate: not a function");
+  auto *gcv = function.get_gc_ptr();
+  return gcv->get_value_mut().visit(
+      [&](runtime::Value::function_type &f) -> runtime::Value {
+        return f->visit(
+            [&](const runtime::BuiltinFunction &func) {
+              return func.invoke(arguments);
+            },
+            [&](runtime::BytecodeFunction &bc_func) -> runtime::Value {
+              auto total_args = bc_func.curried_args.size() + arguments.size();
+
+              if (total_args < bc_func.arity) {
+                auto new_func = bc_func;
+                for (const auto &arg : arguments) {
+                  new_func.curried_args.push_back(
+                      store_value(runtime::to_value(arg))
+                  );
+                }
+                return runtime::Value{runtime::Function{std::move(new_func)}};
+              }
+              if (total_args == bc_func.arity) {
+                auto previous_frames = frames.size();
+                auto fp = stack.size();
+                frames.emplace_back(
+                    bc_func.id,
+                    0,
+                    fp,
+                    call_location,
+                    std::pair{bc_func, function}
+                );
+                auto &new_frame = frames.back();
+                for (const auto &sv : bc_func.captured_upvalue_refs) {
+                  new_frame.upvalues.push_back(sv);
+                }
+                for (const auto &arg : bc_func.curried_args) {
+                  stack.push_back(arg);
+                }
+                for (const auto &arg : arguments) {
+                  stack.push_back(store_value(runtime::to_value(arg)));
+                }
+                execute_loop(previous_frames);
+                auto result_sv = stack_pop();
+                return runtime::to_value(result_sv);
+              }
+
+              throw runtime::RuntimeError("evaluate arity mismatch");
+            }
+        );
+      },
+      [&](auto &) -> runtime::Value {
+        throw runtime::RuntimeError("evaluate: not a function");
+      }
+  );
 }
 
 std::size_t BytecodeVM::run_gc() {
-  static const auto mark_value = [](runtime::Value &value) {
-    value.visit(
-        [](runtime::Value::vector_type &vec) {
-          for (auto &item : vec) {
-            item.get_gc_mut().mark();
-          }
-        },
-        [](runtime::Value::function_type &func) {
-          if (auto bc_opt = func.as_mut_bytecode_function()) {
-            for (auto &ca : bc_opt->get().curried_args) {
-              ca.get_gc_mut().mark();
-            }
-            for (auto &uv : bc_opt->get().captured_upvalue_refs) {
-              uv.get_gc_mut().mark();
-            }
-          }
-        },
-        [](auto & /*value*/) {}
-    );
+  static const auto mark_stack_value = [](runtime::StackValue &sv) {
+    if (auto *gcv = sv.get_gc_ptr()) {
+      gcv->mark();
+    }
   };
 
-  for (auto &value : stack) {
-    mark_value(value);
+  for (auto &sv : stack) {
+    mark_stack_value(sv);
   }
-  for (auto &[_, ref] : global_symbols) {
-    ref.get_gc_mut().mark();
+  for (auto &[_, sv] : global_symbols) {
+    if (auto *gcv = sv.get_gc_ptr()) {
+      gcv->mark();
+    }
   }
   for (auto &frame : frames) {
-    if (frame.closure) {
-      mark_value(frame.closure->second);
+    if (frame.closure && frame.closure->second.holds_gc_value()) {
+      frame.closure->second.get_gc_ptr_mut()->mark();
     }
-    for (auto &uv : frame.upvalues) {
-      mark_value(uv);
+    for (auto *uv : frame.upvalues) {
+      uv->mark();
     }
-    for (auto &[_, ref] : frame.captured_locals) {
-      mark_value(*ref);
+    for (auto &[_, uv] : frame.captured_locals) {
+      uv->mark();
     }
   }
-  if (current_program) {
+  if (current_program != nullptr) {
     for (auto &gc_val : current_program->constants) {
       gc_val.mark();
     }
   }
-  return gc_storage.sweep();
+  gc_storage.sweep();
+  return upvalue_storage.sweep();
 }
 
 void BytecodeVM::maybe_gc() {
@@ -244,7 +248,6 @@ void BytecodeVM::maybe_gc() {
     run_gc();
   }
 }
-
 
 void BytecodeVM::execute(bytecode::ProgramBytecode &program) {
   current_program = &program;
@@ -275,7 +278,6 @@ void BytecodeVM::execute(bytecode::ProgramBytecode &program) {
   stack.clear();
 }
 
-
 void BytecodeVM::execute_loop(std::size_t target_frames) {
   const auto &program = *current_program;
   const auto &chunks = program.chunks;
@@ -295,21 +297,22 @@ void BytecodeVM::execute_loop(std::size_t target_frames) {
   }
 }
 
-
 void BytecodeVM::
     execute_op(const bytecode::OpReturn & /*op*/, CallFrame & /*frame*/) {
   debug_print("RETURN value={}", stack_top());
   frames.pop_back();
 }
 
-
 void BytecodeVM::
     execute_op(const bytecode::OpConstant &op, CallFrame & /*frame*/) {
-  const runtime::GCValue &chunk_val = constant_at(op.index);
-  stack.push_back(chunk_val.get_value());
+  runtime::GCValue &chunk_val = constant_at(op.index);
+  chunk_val.get_value_mut().visit(
+      [&](runtime::Nil) { stack.emplace_back(); },
+      [&](runtime::Primitive p) { stack.emplace_back(runtime::StackValue{p}); },
+      [&](auto &) { stack.emplace_back(&chunk_val); }
+  );
   debug_print("CONSTANT index={} value={}", op.index, stack_top());
 }
-
 
 void BytecodeVM::execute_op(const bytecode::OpPop &op, CallFrame & /*frame*/) {
   if (stack.empty() || stack.size() == current_frame_pointer()) {
@@ -325,118 +328,150 @@ void BytecodeVM::execute_op(const bytecode::OpPop &op, CallFrame & /*frame*/) {
   }
 }
 
-
 void BytecodeVM::
     execute_op(const bytecode::OpDuplicate &op, CallFrame & /*frame*/) {
   debug_print("DUPLICATE value={}", stack_top(op.index));
   stack.push_back(stack_top(op.index));
 }
 
-
 void BytecodeVM::
     execute_op(const bytecode::OpAdd & /*op*/, CallFrame & /*frame*/) {
   debug_print("ADD a={} b={}", stack_top(1), stack_top());
-  binary_arithmetic([](auto &a, auto &b) { return a.add(b); });
+  auto b_sv = stack_pop();
+  auto a_sv = stack_pop();
+  stack_push(store_value(runtime::add(a_sv, b_sv)));
 }
-
 
 void BytecodeVM::
     execute_op(const bytecode::OpSubtract & /*op*/, CallFrame & /*frame*/) {
   debug_print("SUBTRACT a={} b={}", stack_top(1), stack_top());
-  binary_arithmetic([](auto &a, auto &b) { return a.sub(b); });
+  auto b_sv = stack_pop();
+  auto a_sv = stack_pop();
+  stack_push(store_value(runtime::sub(a_sv, b_sv)));
 }
-
 
 void BytecodeVM::
     execute_op(const bytecode::OpMultiply & /*op*/, CallFrame & /*frame*/) {
   debug_print("MULTIPLY a={} b={}", stack_top(1), stack_top());
-  binary_arithmetic([](auto &a, auto &b) { return a.mul(b); });
+  auto b_sv = stack_pop();
+  auto a_sv = stack_pop();
+  stack_push(store_value(runtime::mul(a_sv, b_sv)));
 }
-
 
 void BytecodeVM::
     execute_op(const bytecode::OpDivide & /*op*/, CallFrame & /*frame*/) {
   debug_print("DIVIDE a={} b={}", stack_top(1), stack_top());
-  binary_arithmetic([](auto &a, auto &b) { return a.div(b); });
+  auto b_sv = stack_pop();
+  auto a_sv = stack_pop();
+  stack_push(store_value(runtime::div(a_sv, b_sv)));
 }
-
 
 void BytecodeVM::
     execute_op(const bytecode::OpModulo & /*op*/, CallFrame & /*frame*/) {
   debug_print("MODULO a={} b={}", stack_top(1), stack_top());
-  binary_arithmetic([](auto &a, auto &b) { return a.mod(b); });
+  auto b_sv = stack_pop();
+  auto a_sv = stack_pop();
+  stack_push(store_value(runtime::mod(a_sv, b_sv)));
 }
-
 
 void BytecodeVM::
     execute_op(const bytecode::OpNegate & /*op*/, CallFrame & /*frame*/) {
   debug_print("NEGATE a={}", stack_top());
-  auto a = stack_pop();
-  stack_push(a.negative());
+  auto a_sv = stack_pop();
+  stack_push(store_value(runtime::negative(a_sv)));
 }
-
 
 void BytecodeVM::
     execute_op(const bytecode::OpNot & /*op*/, CallFrame & /*frame*/) {
   debug_print("NOT a={}", stack_top());
-  auto a = stack_pop();
-  stack_push(a.not_op());
+  auto a_sv = stack_pop();
+  stack_push(store_value(runtime::not_op(a_sv)));
 }
-
 
 void BytecodeVM::
     execute_op(const bytecode::OpEqual & /*op*/, CallFrame & /*frame*/) {
   debug_print("EQUAL a={} b={}", stack_top(1), stack_top());
-  comparison_op([](auto c) { return c == std::partial_ordering::equivalent; });
+  auto b_sv = stack_pop();
+  auto a_sv = stack_pop();
+  const auto cmp = runtime::compare(a_sv, b_sv);
+  stack_push(
+      runtime::StackValue{
+          runtime::Primitive{cmp == std::partial_ordering::equivalent}
+      }
+  );
 }
-
 
 void BytecodeVM::
     execute_op(const bytecode::OpNotEqual & /*op*/, CallFrame & /*frame*/) {
   debug_print("NOT_EQUAL a={} b={}", stack_top(1), stack_top());
-  comparison_op([](auto c) { return c != std::partial_ordering::equivalent; });
+  auto b_sv = stack_pop();
+  auto a_sv = stack_pop();
+  const auto cmp = runtime::compare(a_sv, b_sv);
+  stack_push(
+      runtime::StackValue{
+          runtime::Primitive{cmp != std::partial_ordering::equivalent}
+      }
+  );
 }
-
 
 void BytecodeVM::
     execute_op(const bytecode::OpGreater & /*op*/, CallFrame & /*frame*/) {
   debug_print("GREATER a={} b={}", stack_top(1), stack_top());
-  comparison_op([](auto c) { return c == std::partial_ordering::greater; });
+  auto b_sv = stack_pop();
+  auto a_sv = stack_pop();
+  const auto cmp = runtime::compare(a_sv, b_sv);
+  stack_push(
+      runtime::StackValue{
+          runtime::Primitive{cmp == std::partial_ordering::greater}
+      }
+  );
 }
-
 
 void BytecodeVM::
     execute_op(const bytecode::OpGreaterEqual & /*op*/, CallFrame & /*frame*/) {
   debug_print("GREATER_EQUAL a={} b={}", stack_top(1), stack_top());
-  comparison_op([](auto c) {
-    return c == std::partial_ordering::greater ||
-           c == std::partial_ordering::equivalent;
-  });
+  auto b_sv = stack_pop();
+  auto a_sv = stack_pop();
+  const auto cmp = runtime::compare(a_sv, b_sv);
+  stack_push(
+      runtime::StackValue{runtime::Primitive{
+          cmp == std::partial_ordering::greater ||
+          cmp == std::partial_ordering::equivalent
+      }}
+  );
 }
-
 
 void BytecodeVM::
     execute_op(const bytecode::OpLess & /*op*/, CallFrame & /*frame*/) {
   debug_print("LESS a={} b={}", stack_top(1), stack_top());
-  comparison_op([](auto c) { return c == std::partial_ordering::less; });
+  auto b_sv = stack_pop();
+  auto a_sv = stack_pop();
+  const auto cmp = runtime::compare(a_sv, b_sv);
+  stack_push(
+      runtime::StackValue{
+          runtime::Primitive{cmp == std::partial_ordering::less}
+      }
+  );
 }
-
 
 void BytecodeVM::
     execute_op(const bytecode::OpLessEqual & /*op*/, CallFrame & /*frame*/) {
   debug_print("LESS_EQUAL a={} b={}", stack_top(1), stack_top());
-  comparison_op([](auto c) {
-    return c == std::partial_ordering::less ||
-           c == std::partial_ordering::equivalent;
-  });
+  auto b_sv = stack_pop();
+  auto a_sv = stack_pop();
+  const auto cmp = runtime::compare(a_sv, b_sv);
+  stack_push(
+      runtime::StackValue{runtime::Primitive{
+          cmp == std::partial_ordering::less ||
+          cmp == std::partial_ordering::equivalent
+      }}
+  );
 }
-
 
 void BytecodeVM::execute_op(const bytecode::OpJump &op, CallFrame & /*frame*/) {
   debug_print("JUMP target={}", op.offset);
   current_frame().ip = op.offset;
 }
-
 
 void BytecodeVM::
     execute_op(const bytecode::OpJumpIf &op, CallFrame & /*frame*/) {
@@ -460,35 +495,38 @@ void BytecodeVM::
   }
 }
 
-
 void BytecodeVM::
     execute_op(const bytecode::OpGetGlobal &op, CallFrame & /*frame*/) {
-  const auto &name_val = constant_at(op.name_index);
-  if (auto str_opt = name_val.get_value().as_string()) {
-    const auto slot = resolve_global(str_opt->get());
-    if (!slot) {
-      throw runtime::UndefinedVariableError("{}", str_opt->get());
-    }
-    const auto &value = *slot;
-    debug_print("GET_GLOBAL name={} value={}", str_opt->get(), value);
-    stack.push_back(value.get());
-  }
+  auto &name_gcv = constant_at(op.name_index);
+  name_gcv.get_value().visit(
+      [&](const std::string &name) {
+        const auto slot = resolve_global(name);
+        if (!slot) {
+          throw runtime::UndefinedVariableError("{}", name);
+        }
+        const auto &sv = *slot;
+        debug_print("GET_GLOBAL name={} value={}", name, sv);
+        stack.push_back(sv);
+      },
+      [](const auto &) { std::unreachable(); }
+  );
 }
-
 
 void BytecodeVM::
     execute_op(const bytecode::OpSetGlobal &op, CallFrame & /*frame*/) {
-  const auto &name_val = constant_at(op.name_index);
-  if (auto str_opt = name_val.get_value().as_string()) {
-    auto slot = resolve_global(str_opt->get());
-    if (!slot) {
-      throw runtime::RuntimeError("Undefined variable: {}", str_opt->get());
-    }
-    debug_print("SET_GLOBAL name={} value={}", str_opt->get(), stack_top());
-    *slot = store_value(stack_pop());
-  }
+  auto &name_gcv = constant_at(op.name_index);
+  name_gcv.get_value().visit(
+      [&](const std::string &name) {
+        auto slot = resolve_global(name);
+        if (!slot) {
+          throw runtime::RuntimeError("Undefined variable: {}", name);
+        }
+        debug_print("SET_GLOBAL name={} value={}", name, stack_top());
+        *slot = stack_pop();
+      },
+      [](const auto &) { std::unreachable(); }
+  );
 }
-
 
 void BytecodeVM::execute_op(const bytecode::OpGetLocal &op, CallFrame &frame) {
   stack.push_back(stack_at(frame.frame_pointer + op.index));
@@ -501,53 +539,43 @@ void BytecodeVM::execute_op(const bytecode::OpGetLocal &op, CallFrame &frame) {
   );
 }
 
-
 void BytecodeVM::execute_op(const bytecode::OpSetLocal &op, CallFrame &frame) {
   debug_print("SET_LOCAL index={} value={}", op.index, stack_top());
   auto val = stack_pop();
   stack_at(frame.frame_pointer + op.index) = val;
   auto it = frame.captured_locals.find(op.index);
   if (it != frame.captured_locals.end()) {
-    it->second.get() = val;
+    it->second->get() = val;
   }
 }
-
 
 void BytecodeVM::execute_op(const bytecode::OpForLoop &op, CallFrame &frame) {
   const auto control_slot = frame.frame_pointer + op.control_index;
   const auto limit_slot = frame.frame_pointer + op.limit_index;
 
-  if (!stack_at(control_slot).is_primitive() ||
-      !stack_at(control_slot).as_primitive()->get().is_integer()) {
-    throw runtime::RuntimeError("for-loop control variable must be an integer");
-  }
-  if (!stack_at(limit_slot).is_primitive() ||
-      !stack_at(limit_slot).as_primitive()->get().is_integer()) {
-    throw runtime::RuntimeError("for-loop limit value must be an integer");
-  }
-
-  std::int64_t step = 1;
-  if (op.step_index) {
-    const auto step_slot = frame.frame_pointer + *op.step_index;
-    if (!stack_at(step_slot).is_primitive() ||
-        !stack_at(step_slot).as_primitive()->get().is_integer()) {
-      throw runtime::RuntimeError("for-loop step value must be an integer");
+  auto get_primitive = [&](std::size_t slot) -> std::int64_t {
+    auto &sv = stack_at(slot);
+    if (!sv.is_primitive()) {
+      throw runtime::RuntimeError("for-loop requires integer values");
     }
-    step = stack_at(step_slot).as_primitive()->get().as_integer().value();
+    return sv.as_primitive()->get().visit([](const auto &v) {
+      return static_cast<std::int64_t>(v);
+    });
+  };
+
+  auto current = get_primitive(control_slot);
+  auto next = current + 1;
+
+  if (op.step_index) {
+    auto step = get_primitive(frame.frame_pointer + *op.step_index);
+    next = current + step;
   }
 
-  const auto current =
-      stack_at(control_slot).as_primitive()->get().as_integer().value();
-  const auto next = current + step;
-  stack_at(control_slot) =
-      runtime::Value{runtime::Primitive{static_cast<long>(next)}};
+  stack_at(control_slot) = runtime::StackValue{runtime::Primitive{next}};
 
-  const auto limit =
-      stack_at(limit_slot).as_primitive()->get().as_integer().value();
+  auto limit = get_primitive(limit_slot);
 
-  const bool keep_running = op.inclusive
-                                ? (step >= 0 ? next <= limit : next >= limit)
-                                : (step >= 0 ? next < limit : next > limit);
+  const bool keep_running = op.inclusive ? (next <= limit) : (next < limit);
 
   if (keep_running) {
     current_frame().ip = op.body_offset;
@@ -557,59 +585,63 @@ void BytecodeVM::execute_op(const bytecode::OpForLoop &op, CallFrame &frame) {
       "FOR_LOOP ctrl={} lim={} step={} next={} body={} take={}",
       op.control_index,
       op.limit_index,
-      step,
+      1,
       next,
       op.body_offset,
       keep_running
   );
 }
 
-
 void BytecodeVM::
     execute_op(const bytecode::OpMakeArray &op, CallFrame & /*frame*/) {
   const auto start = stack.end() - static_cast<std::ptrdiff_t>(op.count);
-  auto elements = std::vector<runtime::Ref>{};
+  auto elements = std::vector<runtime::StackValue>{};
   elements.reserve(op.count);
   for (auto it = start; it != stack.end(); ++it) {
-    elements.push_back(store_value(std::move(*it)));
+    elements.push_back(*it);
   }
   stack.erase(start, stack.end());
   debug_print("MAKE_ARRAY count={}", op.count);
-  stack_push(runtime::Value{std::move(elements)});
+  stack_push(
+      runtime::StackValue{
+          &gc_storage.emplace(runtime::Value{std::move(elements)})
+      }
+  );
 }
-
 
 void BytecodeVM::
     execute_op(const bytecode::OpGetIndex & /*op*/, CallFrame & /*frame*/) {
-  const auto index = stack_pop();
-  const auto array = stack_pop();
+  auto index_sv = stack_pop();
+  auto array_sv = stack_pop();
 
-  debug_print("GET_INDEX array={} index={}", array, index);
-  stack_push_new(array.index(index));
+  debug_print("GET_INDEX array={} index={}", array_sv, index_sv);
+
+  stack_push_new(runtime::index(array_sv, index_sv));
 }
-
 
 void BytecodeVM::
     execute_op(const bytecode::OpSetIndex & /*op*/, CallFrame & /*frame*/) {
-  auto value = stack_pop();
-  auto index = stack_pop();
+  auto value_sv = stack_pop();
+  auto index_sv = stack_pop();
 
-  auto &array = stack.back();
-  debug_print("SET_INDEX array={} index={} value={}", array, index, value);
+  auto &array_sv = stack.back();
+  debug_print(
+      "SET_INDEX array={} index={} value={}", array_sv, index_sv, value_sv
+  );
 
-  array.index_mut(index) = store_value(std::move(value));
+  runtime::index_mut(array_sv, index_sv) = value_sv;
   stack.pop_back();
 }
 
-
 void BytecodeVM::execute_op(const bytecode::OpCall &op, CallFrame & /*frame*/) {
   const auto func_pos = stack.size() - op.arg_count - 1;
-  auto func_ref = std::move(stack[func_pos]);
+  auto func_sv = stack[func_pos];
   stack.erase(stack.begin() + static_cast<std::ptrdiff_t>(func_pos));
-  debug_print("CALL func={} argc={}", func_ref, op.arg_count);
+
+  debug_print("CALL func={} argc={}", func_sv, op.arg_count);
 
   const auto base = stack.size() - op.arg_count;
-  const auto args = std::span(
+  const auto args_span = std::span(
       stack.end() - static_cast<std::ptrdiff_t>(op.arg_count), op.arg_count
   );
 
@@ -617,82 +649,99 @@ void BytecodeVM::execute_op(const bytecode::OpCall &op, CallFrame & /*frame*/) {
     stack.erase(stack.begin() + static_cast<std::ptrdiff_t>(base), stack.end());
   };
 
-  if (!func_ref.is_function()) {
+  if (!func_sv.holds_gc_value()) {
     clean_args();
     throw runtime::RuntimeError("Attempted to call a non-function value");
   }
 
-  const auto &func = func_ref.as_function()->get();
-  auto result = func.visit(
-      [&](const runtime::BuiltinFunction &f) -> runtime::Value {
-        auto result = f.invoke(args);
-        return result;
-      },
-      [&](const runtime::BytecodeFunction &bc_func) -> runtime::Value {
-        auto total_args = bc_func.curried_args.size() + op.arg_count;
+  auto *gcv = func_sv.get_gc_ptr();
+  auto result = gcv->get_value_mut().visit(
+      [&](runtime::Value::function_type &f) -> runtime::Value {
+        return f->visit(
+            [&](const runtime::BuiltinFunction &bf) -> runtime::Value {
+              return bf.invoke(args_span);
+            },
+            [&](runtime::BytecodeFunction &bc_func) -> runtime::Value {
+              auto total_args = bc_func.curried_args.size() + op.arg_count;
 
-        if (total_args > bc_func.arity) {
-          throw runtime::RuntimeError("evaluate arity mismatch");
-        }
+              if (total_args > bc_func.arity) {
+                throw runtime::RuntimeError("evaluate arity mismatch");
+              }
 
-        if (total_args < bc_func.arity) {
-          auto new_func = bc_func;
-          for (auto &it : args) {
-            new_func.curried_args.push_back(store_value(std::move(it)));
-          }
-          return {runtime::Function{std::move(new_func)}};
-        }
+              if (total_args < bc_func.arity) {
+                auto new_func = bc_func;
+                for (auto &it : args_span) {
+                  new_func.curried_args.push_back(it);
+                }
+                return runtime::Value{runtime::Function{std::move(new_func)}};
+              }
 
-        auto previous_frames = frames.size();
-        auto &new_frame = frames.emplace_back(
-            bc_func.id,
-            0,
-            base,
-            current_instruction_location(),
-            std::pair{bc_func, std::move(func_ref)}
+              auto previous_frames = frames.size();
+              auto &new_frame = frames.emplace_back(
+                  bc_func.id,
+                  0,
+                  base,
+                  current_instruction_location(),
+                  std::pair{bc_func, func_sv}
+              );
+              for (const auto &sv : bc_func.captured_upvalue_refs) {
+                new_frame.upvalues.push_back(sv);
+              }
+
+              if (!bc_func.curried_args.empty()) {
+                const auto curried_count = bc_func.curried_args.size();
+                stack.resize(stack.size() + curried_count);
+
+                for (std::size_t i = 1; i <= op.arg_count; i++) {
+                  stack[stack.size() - i] =
+                      stack[stack.size() - i - curried_count];
+                }
+
+                for (const auto &[i, arg] :
+                     utils::ranges::enumerate(bc_func.curried_args)) {
+                  stack[base + i] = arg;
+                }
+              }
+
+              execute_loop(previous_frames);
+              auto result_sv = stack_pop();
+              return runtime::to_value(result_sv);
+            }
         );
-        for (const auto &ref : bc_func.captured_upvalue_refs) {
-          new_frame.upvalues.push_back(ref.get());
-        }
-
-        if (!bc_func.curried_args.empty()) {
-          const auto curried_count = bc_func.curried_args.size();
-          stack.resize(stack.size() + curried_count);
-
-          // Move regular arguments to the end.
-          for (std::size_t i = 1; i <= op.arg_count; i++) {
-            stack[stack.size() - i] =
-                std::move(stack[stack.size() - i - curried_count]);
-          }
-
-          // Place curried arguments at the start.
-          for (const auto &[i, arg] :
-               utils::ranges::enumerate(bc_func.curried_args)) {
-            stack[base + i] = *arg;
-          }
-        }
-
-        execute_loop(previous_frames);
-        auto result = stack_pop();
-        return result;
+      },
+      [&](auto &) -> runtime::Value {
+        clean_args();
+        throw runtime::RuntimeError(
+            "Attempted to call a non-function value: {}",
+            gcv->get_value().type_name()
+        );
       }
   );
 
   clean_args();
 
   if (op.keep_return_value) {
-    stack.push_back(std::move(result));
+    stack_push(store_value(std::move(result)));
   }
 }
 
-
 void BytecodeVM::execute_op(const bytecode::OpClosure &op, CallFrame &frame) {
-  auto function = current_program->constants[op.function_index]
-                      .get_value_mut()
-                      .as_mut_function()
-                      ->get()
-                      .as_mut_bytecode_function()
-                      ->get();
+  auto &constant = current_program->constants[op.function_index];
+  auto *func_ptr = constant.get_value_mut().visit(
+      [](runtime::Value::function_type &f) -> runtime::BytecodeFunction * {
+        if (auto bc_opt = f->as_mut_bytecode_function()) {
+          return &bc_opt->get();
+        }
+        return nullptr;
+      },
+      [](auto &) -> runtime::BytecodeFunction * { return nullptr; }
+  );
+
+  if (func_ptr == nullptr) {
+    throw runtime::RuntimeError("OpClosure: constant is not a function");
+  }
+
+  auto &function = *func_ptr;
 
   for (const auto &[local, index] : op.upvalues) {
     if (local) {
@@ -701,8 +750,8 @@ void BytecodeVM::execute_op(const bytecode::OpClosure &op, CallFrame &frame) {
         it = frame.captured_locals
                  .emplace(
                      index,
-                     store_value(
-                         runtime::Value{stack[frame.frame_pointer + index]}
+                     &upvalue_storage.emplace(
+                         stack[frame.frame_pointer + index]
                      )
                  )
                  .first;
@@ -714,28 +763,27 @@ void BytecodeVM::execute_op(const bytecode::OpClosure &op, CallFrame &frame) {
       );
     }
   }
-  stack_push(runtime::Function{std::move(function)});
+  stack_push(
+      runtime::StackValue{
+          &gc_storage.emplace(runtime::Value{std::move(function)})
+      }
+  );
   debug_print("CLOSURE function={}", stack.back());
 }
-
 
 void BytecodeVM::execute_op(
     const bytecode::OpGetUpvalue &op, CallFrame &frame
 ) {
-  const auto &val = frame.upvalues[op.index];
+  const auto &val = frame.upvalues[op.index]->get();
   debug_print("GET_UPVALUE index={} value={}", op.index, val);
   stack.push_back(val);
 }
-
 
 void BytecodeVM::execute_op(
     const bytecode::OpSetUpvalue &op, CallFrame &frame
 ) {
   debug_print("SET_UPVALUE index={} value={}", op.index, stack_top());
-  frame.upvalues[op.index] = stack.back();
-  if (frame.closure) {
-    frame.closure->first.captured_upvalue_refs[op.index].get() = stack.back();
-  }
+  frame.upvalues[op.index]->get() = stack.back();
 }
 
 } // namespace l3::vm
