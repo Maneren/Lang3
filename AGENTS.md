@@ -62,3 +62,4 @@ Modules use partitions for sub-components. `CMAKE_CXX_SCAN_FOR_MODULES` handles 
 - Primary objective is clean and readable code, but keep the performance in mind as well.
 - Try to match the formatting of the surrounding code.
 - `ninja: no work to do.` means the target is up-to-date and has already been compiled without errors. Either touch a source file (preferably) or run `just configure` to force full recompilation.
+- Prefer `match::match` over `get_if`, `std::visit` and similar
