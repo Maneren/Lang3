@@ -3,63 +3,47 @@ export module l3.runtime:value;
 import utils;
 import :primitive;
 import :function;
-import :ref_value;
+import :stack_value;
 
 export namespace l3::runtime {
 
-struct Nil {
-  std::strong_ordering operator<=>(Nil /*unused*/) const {
-    return std::strong_ordering::equal;
-  };
-};
-
-using NewValue = std::variant<Ref, Value>;
+using NewValue = std::variant<StackValue, Value>;
 
 struct Slice {
   std::optional<std::int64_t> start, end;
 };
 
-class Value;
-
-class HeapValue {
-  std::variant<std::unique_ptr<Function>, std::vector<Ref>, std::string> inner;
-
-public:
-  template <typename T>
-    requires(!std::is_same_v<T, HeapValue>)
-  HeapValue(T &&t) : inner(std::forward<T>(t)) {}
-
-  HeapValue(Function &&func)
-      : inner(std::make_unique<Function>(std::move(func))) {}
-
-  VISIT(inner)
-  DEFINE_ACCESSOR_X(inner);
-
-  friend class Value;
-};
-
 class Value {
 public:
-  using function_type = Function;
-  using vector_type = std::vector<Ref>;
+  using function_type = std::unique_ptr<Function>;
+  using vector_type = std::vector<StackValue>;
   using string_type = std::string;
 
 private:
-  std::variant<Nil, Primitive, std::shared_ptr<HeapValue>> inner;
+  std::variant<
+      Nil,
+      Primitive,
+      std::unique_ptr<Function>,
+      vector_type,
+      string_type>
+      inner;
+
+  using variant = decltype(inner);
 
 public:
   Value();
 
-  Value(const Value &) = default;
+  Value(const Value &other);
   Value(Value &&) = default;
-  Value &operator=(const Value &) = default;
+  Value &operator=(const Value &other);
   Value &operator=(Value &&) = default;
   ~Value() = default;
 
-  Value(Nil /*unused*/);
+  Value(Nil);
   Value(Primitive primitive);
-  Value(Function &&function);
+  Value(std::unique_ptr<Function> &&function);
   Value(const Function &function);
+  Value(Function &&function);
   Value(vector_type &&vector);
   Value(string_type &&string);
 
@@ -76,73 +60,10 @@ public:
   [[nodiscard]] Value negative() const;
 
   auto visit(auto &&...visitor) -> decltype(auto) {
-    return std::visit(
-        match::Overloaded{
-            [&](Primitive &p) -> decltype(auto) {
-              return match::Overloaded{
-                  std::forward<decltype(visitor)>(visitor)...
-              }(p);
-            },
-            [&](Nil &nil) -> decltype(auto) {
-              return match::Overloaded{
-                  std::forward<decltype(visitor)>(visitor)...
-              }(nil);
-            },
-            [&](std::shared_ptr<HeapValue> &h) -> decltype(auto) {
-              return std::visit(
-                  match::Overloaded{
-                      [&](std::unique_ptr<Function> &func) -> decltype(auto) {
-                        return match::Overloaded{
-                            std::forward<decltype(visitor)>(visitor)...
-                        }(*func);
-                      },
-                      [&](auto &other) -> decltype(auto) {
-                        return match::Overloaded{
-                            std::forward<decltype(visitor)>(visitor)...
-                        }(other);
-                      }
-                  },
-                  h->get_inner_mut()
-              );
-            }
-        },
-        inner
-    );
+    return match::match(inner, std::forward<decltype(visitor)>(visitor)...);
   }
   auto visit(auto &&...visitor) const -> decltype(auto) {
-    return std::visit(
-        match::Overloaded{
-            [&](const Primitive &p) -> decltype(auto) {
-              return match::Overloaded{
-                  std::forward<decltype(visitor)>(visitor)...
-              }(p);
-            },
-            [&](const Nil &nil) -> decltype(auto) {
-              return match::Overloaded{
-                  std::forward<decltype(visitor)>(visitor)...
-              }(nil);
-            },
-            [&](const std::shared_ptr<HeapValue> &h) -> decltype(auto) {
-              return std::visit(
-                  match::Overloaded{
-                      [&](const std::unique_ptr<Function> &func)
-                          -> decltype(auto) {
-                        return match::Overloaded{
-                            std::forward<decltype(visitor)>(visitor)...
-                        }(*func);
-                      },
-                      [&](const auto &other) -> decltype(auto) {
-                        return match::Overloaded{
-                            std::forward<decltype(visitor)>(visitor)...
-                        }(other);
-                      }
-                  },
-                  h->get_inner()
-              );
-            }
-        },
-        inner
-    );
+    return match::match(inner, std::forward<decltype(visitor)>(visitor)...);
   }
 
   [[nodiscard]] bool is_nil() const;
@@ -165,8 +86,8 @@ public:
   [[nodiscard]] NewValue index(const Value &index) const;
   [[nodiscard]] NewValue index(std::size_t index) const;
 
-  [[nodiscard]] Ref &index_mut(const Value &index);
-  [[nodiscard]] Ref &index_mut(std::size_t index);
+  [[nodiscard]] StackValue &index_mut(const Value &index);
+  [[nodiscard]] StackValue &index_mut(std::size_t index);
 
   [[nodiscard]] Value slice(Slice slice) const;
 
@@ -174,5 +95,32 @@ public:
 
   DEFINE_ACCESSOR_X(inner)
 };
+
+// Operations on StackValues directly (no value_from_stack round trip)
+// These extract references to GC data without copying, perform the op, and
+// return a new Value.
+
+[[nodiscard]] Value to_value(const StackValue &sv);
+[[nodiscard]] StackValue &
+index_mut(StackValue &container, const StackValue &index);
+
+// Arithmetic binary ops
+[[nodiscard]] Value add(const StackValue &a, const StackValue &b);
+[[nodiscard]] Value sub(const StackValue &a, const StackValue &b);
+[[nodiscard]] Value mul(const StackValue &a, const StackValue &b);
+[[nodiscard]] Value div(const StackValue &a, const StackValue &b);
+[[nodiscard]] Value mod(const StackValue &a, const StackValue &b);
+
+// Comparison
+[[nodiscard]] std::partial_ordering
+compare(const StackValue &a, const StackValue &b);
+
+// Unary ops
+[[nodiscard]] Value negative(const StackValue &sv);
+[[nodiscard]] Value not_op(const StackValue &sv);
+
+// Indexing
+[[nodiscard]] NewValue
+index(const StackValue &container, const StackValue &index);
 
 } // namespace l3::runtime

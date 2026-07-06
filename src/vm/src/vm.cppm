@@ -30,10 +30,10 @@ class BytecodeVM {
 public:
   explicit BytecodeVM(bool debug_ = false);
 
-  runtime::Ref store_value(runtime::Value &&value);
-  runtime::Ref store_new_value(runtime::NewValue &&value);
+  runtime::StackValue store_value(runtime::Value &&value);
+  runtime::StackValue store_new_value(runtime::NewValue &&value);
   runtime::Value evaluate(
-      const runtime::Value &function,
+      const runtime::StackValue &function,
       runtime::L3Args arguments,
       const location::Location &call_location = {}
   );
@@ -46,16 +46,18 @@ public:
     std::size_t ip = 0;
     std::size_t frame_pointer = 0;
     std::optional<location::Location> call_location;
-    std::optional<std::pair<runtime::BytecodeFunction, runtime::Value>> closure;
-    std::vector<runtime::Value> upvalues;
-    std::unordered_map<std::size_t, runtime::Ref> captured_locals;
+    std::optional<std::pair<runtime::BytecodeFunction, runtime::StackValue>>
+        closure;
+    std::vector<runtime::GCUpvalue *> upvalues;
+    std::unordered_map<std::size_t, runtime::GCUpvalue *> captured_locals;
   };
 
   void execute(bytecode::ProgramBytecode &program);
 
 private:
-  std::optional<runtime::Ref> resolve_global(std::string_view name) const;
-  void define_global(std::string_view name, runtime::Ref value);
+  std::optional<runtime::StackValue>
+  resolve_global(std::string_view name) const;
+  void define_global(std::string_view name, runtime::StackValue value);
 
   [[nodiscard]] auto &&current_frame(this auto &&self);
   [[nodiscard]] std::size_t current_frame_pointer() const;
@@ -104,22 +106,22 @@ private:
   void execute_op(const bytecode::OpGetUpvalue &op, CallFrame &frame);
   void execute_op(const bytecode::OpSetUpvalue &op, CallFrame &frame);
 
-  runtime::Value stack_pop();
-  void stack_push(const runtime::Value &value);
-  void stack_push(runtime::Value &&value);
+  runtime::StackValue stack_pop();
+  void stack_push(runtime::StackValue value);
   void stack_push_new(runtime::NewValue &&value);
 
   template <typename... Args>
   void debug_print(std::format_string<Args...> fmt, Args &&...args);
 
-  template <typename Op> void binary_arithmetic(Op op);
-
-  template <typename Predicate> void comparison_op(Predicate predicate);
-
   bool debug;
   runtime::GCStorage gc_storage;
-  std::vector<runtime::Value> stack;
-  std::unordered_map<std::string, runtime::Ref, string_hash, std::equal_to<>>
+  runtime::GCUpvalueStorage upvalue_storage;
+  std::vector<runtime::StackValue> stack;
+  std::unordered_map<
+      std::string,
+      runtime::StackValue,
+      string_hash,
+      std::equal_to<>>
       global_symbols;
 
   std::vector<CallFrame> frames;

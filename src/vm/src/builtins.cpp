@@ -9,9 +9,42 @@ namespace l3::builtins {
 namespace {
 using l3::runtime::Primitive;
 using l3::runtime::RuntimeError;
+using l3::runtime::StackValue;
 using l3::runtime::TypeError;
 using l3::runtime::Value;
 using l3::runtime::ValueError;
+
+void format_sv(
+    const std::output_iterator<char> auto &out, const StackValue &sv
+) {
+  sv.visit(
+      [&](const Primitive &p) { std::format_to(out, "{}", p); },
+      [&](l3::runtime::Nil) { std::format_to(out, "nil"); },
+      [&](l3::runtime::GCValue *gcv) {
+        if (!gcv) {
+          std::format_to(out, "nil");
+          return;
+        }
+        gcv->get_value().visit(
+            [&](const l3::runtime::Value::function_type &f) {
+              std::format_to(out, "{}", *f);
+            },
+            [&](const std::vector<StackValue> &vec) {
+              auto o = std::format_to(out, "[");
+              for (std::size_t i = 0; i < vec.size(); ++i) {
+                if (i > 0)
+                  o = std::format_to(o, ", ");
+                o = std::format_to(o, "{}", vec[i]);
+              }
+              std::format_to(out, "]");
+            },
+            [&](const std::string &s) { std::format_to(out, "{}", s); },
+            [&](const Primitive &p) { std::format_to(out, "{}", p); },
+            [&](const l3::runtime::Nil &) { std::format_to(out, "nil"); }
+        );
+      }
+  );
+}
 
 void format_args(
     const std::output_iterator<char> auto &out, l3::runtime::L3Args args
@@ -19,9 +52,10 @@ void format_args(
   if (args.empty()) {
     return;
   }
-  std::format_to(out, "{}", l3::runtime::ValuePrettyPrinter{args[0]});
+  format_sv(out, args[0]);
   for (const auto &arg : args | std::views::drop(1)) {
-    std::format_to(out, " {}", l3::runtime::ValuePrettyPrinter{arg});
+    std::format_to(out, " ");
+    format_sv(out, arg);
   }
 }
 
@@ -142,12 +176,11 @@ Value builtin_head(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
       throw RuntimeError("head() takes a non-empty vector");
     }
 
-    auto head = *vec.front();
-    auto rest =
-        Value(std::vector<l3::runtime::Ref>(vec.begin() + 1, vec.end()));
+    auto head = vec.front();
+    auto rest = Value(std::vector<StackValue>(vec.begin() + 1, vec.end()));
 
-    auto result = std::vector<l3::runtime::Ref>{};
-    result.push_back(vm.store_value(std::move(head)));
+    auto result = std::vector<StackValue>{};
+    result.push_back(vm.store_value(l3::runtime::to_value(head)));
     result.push_back(vm.store_value(std::move(rest)));
     return {std::move(result)};
   }
@@ -162,7 +195,7 @@ Value builtin_head(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
     auto head = Value(std::string{string.front()});
     auto rest = Value(string.substr(1));
 
-    auto result = std::vector<l3::runtime::Ref>{};
+    auto result = std::vector<StackValue>{};
     result.push_back(vm.store_value(std::move(head)));
     result.push_back(vm.store_value(std::move(rest)));
     return {std::move(result)};
@@ -184,13 +217,12 @@ Value builtin_tail(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
       throw RuntimeError("tail() takes a non-empty vector");
     }
 
-    auto tail = *vec.back();
-    auto rest =
-        Value(std::vector<l3::runtime::Ref>(vec.begin(), vec.end() - 1));
+    auto tail = vec.back();
+    auto rest = Value(std::vector<StackValue>(vec.begin(), vec.end() - 1));
 
-    auto result = std::vector<l3::runtime::Ref>{};
+    auto result = std::vector<StackValue>{};
     result.push_back(vm.store_value(std::move(rest)));
-    result.push_back(vm.store_value(std::move(tail)));
+    result.push_back(vm.store_value(l3::runtime::to_value(tail)));
     return {std::move(result)};
   }
 
@@ -204,7 +236,7 @@ Value builtin_tail(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
     auto tail = Value(std::string{string.back()});
     auto rest = Value(string.substr(0, string.size() - 1));
 
-    auto result = std::vector<l3::runtime::Ref>{};
+    auto result = std::vector<StackValue>{};
     result.push_back(vm.store_value(std::move(rest)));
     result.push_back(vm.store_value(std::move(tail)));
     return {std::move(result)};
@@ -217,17 +249,19 @@ Value builtin_len(l3::vm::BytecodeVM & /*vm*/, l3::runtime::L3Args args) {
   if (args.size() != 1) {
     throw RuntimeError("len() takes exactly one arguments");
   }
-  return args[0].visit(
-      [](const Value::vector_type &vec) -> Value {
-        return {Primitive{static_cast<std::int64_t>(vec.size())}};
-      },
-      [](const Value::string_type &str) -> Value {
-        return {Primitive{static_cast<std::int64_t>(str.size())}};
-      },
-      [](const auto &) -> Value {
-        throw TypeError("len() does not support {} values");
-      }
-  );
+
+  const auto &arg = args[0];
+  if (arg.is_string()) {
+    return {
+        Primitive{static_cast<std::int64_t>(arg.as_string()->get().size())}
+    };
+  }
+  if (arg.is_vector()) {
+    return {
+        Primitive{static_cast<std::int64_t>(arg.as_vector()->get().size())}
+    };
+  }
+  throw TypeError("len() does not support {} values");
 }
 
 Value builtin_drop(l3::vm::BytecodeVM & /*vm*/, l3::runtime::L3Args args) {
@@ -323,8 +357,7 @@ Value builtin_map(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
     throw TypeError("map() takes exactly 2 arguments");
   }
 
-  auto func_opt = args[0].as_function();
-  if (!func_opt) {
+  if (!args[0].is_function()) {
     throw TypeError("map() first argument must be a function");
   }
 
@@ -334,10 +367,10 @@ Value builtin_map(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
   }
   const auto &list = list_opt->get();
 
-  auto result = std::vector<l3::runtime::Ref>{};
+  auto result = std::vector<StackValue>{};
   result.reserve(list.size());
   for (const auto &item : list) {
-    result.push_back(vm.store_value(vm.evaluate(args[0], std::array{*item})));
+    result.push_back(vm.store_value(vm.evaluate(args[0], std::array{item})));
   }
 
   return {std::move(result)};
@@ -348,8 +381,7 @@ Value builtin_filter(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
     throw TypeError("filter() takes exactly 2 arguments");
   }
 
-  auto func_opt = args[0].as_function();
-  if (!func_opt) {
+  if (!args[0].is_function()) {
     throw TypeError("filter() first argument must be a function");
   }
 
@@ -359,9 +391,9 @@ Value builtin_filter(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
   }
   const auto &list = list_opt->get();
 
-  auto result = std::vector<l3::runtime::Ref>{};
+  auto result = std::vector<StackValue>{};
   for (const auto &item : list) {
-    if (vm.evaluate(args[0], std::array{*item}).is_truthy()) {
+    if (vm.evaluate(args[0], std::array{item}).is_truthy()) {
       result.push_back(item);
     }
   }
@@ -384,9 +416,9 @@ Value builtin_sum(l3::vm::BytecodeVM & /*vm*/, l3::runtime::L3Args args) {
     throw TypeError("sum() cannot be applied to an empty vector");
   }
 
-  Value total = *list.front();
+  Value total = l3::runtime::to_value(list.front());
   for (const auto &item : list | std::views::drop(1)) {
-    total.add_assign(*item);
+    total.add_assign(l3::runtime::to_value(item));
   }
 
   return total;
@@ -404,7 +436,7 @@ Value builtin_all(l3::vm::BytecodeVM & /*vm*/, l3::runtime::L3Args args) {
   const auto &list = list_opt->get();
 
   for (const auto &item : list) {
-    if (item->is_falsy()) {
+    if (!item.is_truthy()) {
       return {Primitive{false}};
     }
   }
@@ -424,7 +456,7 @@ Value builtin_any(l3::vm::BytecodeVM & /*vm*/, l3::runtime::L3Args args) {
   const auto &list = list_opt->get();
 
   for (const auto &item : list) {
-    if (item->is_truthy()) {
+    if (item.is_truthy()) {
       return {Primitive{true}};
     }
   }
@@ -437,8 +469,7 @@ Value builtin_count(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
     throw TypeError("count() takes exactly 2 arguments");
   }
 
-  const auto fn_opt = args[0].as_function();
-  if (!fn_opt) {
+  if (!args[0].is_function()) {
     throw TypeError("count() first argument must be a function");
   }
 
@@ -450,7 +481,7 @@ Value builtin_count(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
 
   std::int64_t count = 0;
   for (const auto &item : list) {
-    if (vm.evaluate(args[0], std::array{*item}).is_truthy()) {
+    if (vm.evaluate(args[0], std::array{item}).is_truthy()) {
       ++count;
     }
   }
@@ -462,7 +493,7 @@ Value builtin_identity(l3::vm::BytecodeVM & /*vm*/, l3::runtime::L3Args args) {
   if (args.size() != 1) {
     throw TypeError("id() takes exactly 1 argument");
   }
-  return args[0];
+  return l3::runtime::to_value(args[0]);
 }
 
 Value builtin_range(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
@@ -502,7 +533,7 @@ Value builtin_range(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
     }
   }
 
-  auto result = std::vector<l3::runtime::Ref>{};
+  auto result = std::vector<StackValue>{};
   for (std::int64_t i = start; step > 0 ? i < end : i > end; i += step) {
     result.push_back(vm.store_value(Primitive{i}));
   }

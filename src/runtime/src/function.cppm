@@ -1,16 +1,15 @@
 export module l3.runtime:function;
 
 import utils;
-
 import :identifier;
-import :ref_value;
+import :stack_value;
 import std;
 
 export namespace l3::runtime {
 
-class Value;
+class GCUpvalue;
 
-using L3Args = std::span<const Value>;
+using L3Args = std::span<const StackValue>;
 
 class BuiltinFunction {
 public:
@@ -33,9 +32,8 @@ struct BytecodeFunction {
   std::size_t id;
   std::string name;
   std::size_t arity;
-  std::vector<std::size_t> upvalues;
-  std::vector<Ref> curried_args;
-  std::vector<Ref> captured_upvalue_refs;
+  std::vector<StackValue> curried_args;
+  std::vector<GCUpvalue *> captured_upvalue_refs;
 };
 
 class Function {

@@ -2,6 +2,8 @@ export module l3.runtime:formatting;
 
 import utils;
 import :value;
+import :stack_value;
+import :gc_value;
 import :storage;
 
 export namespace l3::runtime {
@@ -93,10 +95,45 @@ export {
   };
 
   template <>
-  struct std::formatter<l3::runtime::Ref>
-      : utils::static_formatter<l3::runtime::Ref> {
-    static constexpr auto format(const auto &value, std::format_context &ctx) {
-      return std::format_to(ctx.out(), "{}", *value);
+  struct std::formatter<l3::runtime::StackValue>
+      : utils::static_formatter<l3::runtime::StackValue> {
+    static constexpr auto format(const auto &sv, std::format_context &ctx) {
+      return sv.visit(
+          [&ctx](const l3::runtime::Primitive &primitive) {
+            return std::format_to(ctx.out(), "{}", primitive);
+          },
+          [&ctx](const l3::runtime::Nil &) {
+            return std::format_to(ctx.out(), "nil");
+          },
+          [&ctx](l3::runtime::GCValue *gcv) -> decltype(auto) {
+            if (!gcv) {
+              return std::format_to(ctx.out(), "nil");
+            }
+            return gcv->get_value().visit(
+                [&ctx](const l3::runtime::Value::function_type &f) {
+                  return std::format_to(ctx.out(), "{}", *f);
+                },
+                [&ctx](const std::vector<l3::runtime::StackValue> &vec) {
+                  auto out = std::format_to(ctx.out(), "[");
+                  for (std::size_t i = 0; i < vec.size(); ++i) {
+                    if (i > 0)
+                      out = std::format_to(out, ", ");
+                    out = std::format_to(out, "{}", vec[i]);
+                  }
+                  return std::format_to(out, "]");
+                },
+                [&ctx](const std::string &s) {
+                  return std::format_to(ctx.out(), R"("{}")", s);
+                },
+                [&ctx](const l3::runtime::Primitive &p) {
+                  return std::format_to(ctx.out(), "{}", p);
+                },
+                [&ctx](const l3::runtime::Nil &) {
+                  return std::format_to(ctx.out(), "nil");
+                }
+            );
+          }
+      );
     }
   };
 
@@ -106,7 +143,7 @@ export {
     static constexpr auto format(const auto &value, std::format_context &ctx) {
       return value.visit(
           [&ctx](const l3::runtime::Value::function_type &function) {
-            return std::format_to(ctx.out(), "{}", function);
+            return std::format_to(ctx.out(), "{}", *function);
           },
           [&ctx](const l3::runtime::Value::string_type &value) {
             return std::format_to(ctx.out(), R"("{}")", value);
@@ -123,7 +160,7 @@ export {
               if (i > 0) {
                 out = std::format_to(out, ", ");
               }
-              out = std::format_to(out, "{}", *vec[i]);
+              out = std::format_to(out, "{}", vec[i]);
             }
             return std::format_to(out, "]");
           }
@@ -157,7 +194,7 @@ export {
               if (i > 0) {
                 out = std::format_to(out, ", ");
               }
-              out = std::format_to(out, "{}", *vec[i]);
+              out = std::format_to(out, "{}", vec[i]);
             }
             return std::format_to(out, "]");
           }
