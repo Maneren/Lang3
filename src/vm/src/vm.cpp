@@ -17,6 +17,32 @@ std::string function_name_for_frame(const BytecodeVM::CallFrame &frame) {
   return frame.closure->first.name;
 }
 
+template <typename Op>
+void binary_op(
+    BytecodeVM &vm, std::vector<runtime::StackValue> &stack, const Op &op
+) {
+  auto &a = stack[stack.size() - 2];
+  auto &b = stack.back();
+  a = vm.store_value(op(a, b));
+  stack.pop_back();
+}
+
+template <typename Op>
+void unary_op(
+    BytecodeVM &vm, std::vector<runtime::StackValue> &stack, const Op &op
+) {
+  auto &a = stack.back();
+  a = vm.store_value(op(a));
+}
+
+template <typename Pred>
+void compare_op(std::vector<runtime::StackValue> &stack, const Pred &pred) {
+  auto &a = stack[stack.size() - 2];
+  auto &b = stack.back();
+  a = {runtime::Primitive{pred(runtime::compare(a, b))}};
+  stack.pop_back();
+}
+
 } // namespace
 
 BytecodeVM::BytecodeVM(bool debug_) : debug(debug_) {
@@ -308,7 +334,7 @@ void BytecodeVM::
   runtime::GCValue &chunk_val = constant_at(op.index);
   chunk_val.get_value_mut().visit(
       [&](runtime::Nil) { stack.emplace_back(); },
-      [&](runtime::Primitive p) { stack.emplace_back(runtime::StackValue{p}); },
+      [&](runtime::Primitive p) { stack.emplace_back(p); },
       [&](auto &) { stack.emplace_back(&chunk_val); }
   );
   debug_print("CONSTANT index={} value={}", op.index, stack_top());
@@ -337,135 +363,93 @@ void BytecodeVM::
 void BytecodeVM::
     execute_op(const bytecode::OpAdd & /*op*/, CallFrame & /*frame*/) {
   debug_print("ADD a={} b={}", stack_top(1), stack_top());
-  auto b_sv = stack_pop();
-  auto a_sv = stack_pop();
-  stack_push(store_value(runtime::add(a_sv, b_sv)));
+  binary_op(*this, stack, runtime::add);
 }
 
 void BytecodeVM::
     execute_op(const bytecode::OpSubtract & /*op*/, CallFrame & /*frame*/) {
   debug_print("SUBTRACT a={} b={}", stack_top(1), stack_top());
-  auto b_sv = stack_pop();
-  auto a_sv = stack_pop();
-  stack_push(store_value(runtime::sub(a_sv, b_sv)));
+  binary_op(*this, stack, runtime::sub);
 }
 
 void BytecodeVM::
     execute_op(const bytecode::OpMultiply & /*op*/, CallFrame & /*frame*/) {
   debug_print("MULTIPLY a={} b={}", stack_top(1), stack_top());
-  auto b_sv = stack_pop();
-  auto a_sv = stack_pop();
-  stack_push(store_value(runtime::mul(a_sv, b_sv)));
+  binary_op(*this, stack, runtime::mul);
 }
 
 void BytecodeVM::
     execute_op(const bytecode::OpDivide & /*op*/, CallFrame & /*frame*/) {
   debug_print("DIVIDE a={} b={}", stack_top(1), stack_top());
-  auto b_sv = stack_pop();
-  auto a_sv = stack_pop();
-  stack_push(store_value(runtime::div(a_sv, b_sv)));
+  binary_op(*this, stack, runtime::div);
 }
 
 void BytecodeVM::
     execute_op(const bytecode::OpModulo & /*op*/, CallFrame & /*frame*/) {
   debug_print("MODULO a={} b={}", stack_top(1), stack_top());
-  auto b_sv = stack_pop();
-  auto a_sv = stack_pop();
-  stack_push(store_value(runtime::mod(a_sv, b_sv)));
+  binary_op(*this, stack, runtime::mod);
 }
 
 void BytecodeVM::
     execute_op(const bytecode::OpNegate & /*op*/, CallFrame & /*frame*/) {
   debug_print("NEGATE a={}", stack_top());
-  auto a_sv = stack_pop();
-  stack_push(store_value(runtime::negative(a_sv)));
+  unary_op(*this, stack, runtime::negative);
 }
 
 void BytecodeVM::
     execute_op(const bytecode::OpNot & /*op*/, CallFrame & /*frame*/) {
   debug_print("NOT a={}", stack_top());
-  auto a_sv = stack_pop();
-  stack_push(store_value(runtime::not_op(a_sv)));
+  unary_op(*this, stack, runtime::not_op);
 }
 
 void BytecodeVM::
     execute_op(const bytecode::OpEqual & /*op*/, CallFrame & /*frame*/) {
   debug_print("EQUAL a={} b={}", stack_top(1), stack_top());
-  auto b_sv = stack_pop();
-  auto a_sv = stack_pop();
-  const auto cmp = runtime::compare(a_sv, b_sv);
-  stack_push(
-      runtime::StackValue{
-          runtime::Primitive{cmp == std::partial_ordering::equivalent}
-      }
-  );
+  compare_op(stack, [](auto cmp) {
+    return cmp == std::partial_ordering::equivalent;
+  });
 }
 
 void BytecodeVM::
     execute_op(const bytecode::OpNotEqual & /*op*/, CallFrame & /*frame*/) {
   debug_print("NOT_EQUAL a={} b={}", stack_top(1), stack_top());
-  auto b_sv = stack_pop();
-  auto a_sv = stack_pop();
-  const auto cmp = runtime::compare(a_sv, b_sv);
-  stack_push(
-      runtime::StackValue{
-          runtime::Primitive{cmp != std::partial_ordering::equivalent}
-      }
-  );
+  compare_op(stack, [](auto cmp) {
+    return cmp != std::partial_ordering::equivalent;
+  });
 }
 
 void BytecodeVM::
     execute_op(const bytecode::OpGreater & /*op*/, CallFrame & /*frame*/) {
   debug_print("GREATER a={} b={}", stack_top(1), stack_top());
-  auto b_sv = stack_pop();
-  auto a_sv = stack_pop();
-  const auto cmp = runtime::compare(a_sv, b_sv);
-  stack_push(
-      runtime::StackValue{
-          runtime::Primitive{cmp == std::partial_ordering::greater}
-      }
-  );
+  compare_op(stack, [](auto cmp) {
+    return cmp == std::partial_ordering::greater;
+  });
 }
 
 void BytecodeVM::
     execute_op(const bytecode::OpGreaterEqual & /*op*/, CallFrame & /*frame*/) {
   debug_print("GREATER_EQUAL a={} b={}", stack_top(1), stack_top());
-  auto b_sv = stack_pop();
-  auto a_sv = stack_pop();
-  const auto cmp = runtime::compare(a_sv, b_sv);
-  stack_push(
-      runtime::StackValue{runtime::Primitive{
-          cmp == std::partial_ordering::greater ||
-          cmp == std::partial_ordering::equivalent
-      }}
-  );
+  compare_op(stack, [](auto cmp) {
+    return cmp == std::partial_ordering::greater ||
+           cmp == std::partial_ordering::equivalent;
+  });
 }
 
 void BytecodeVM::
     execute_op(const bytecode::OpLess & /*op*/, CallFrame & /*frame*/) {
   debug_print("LESS a={} b={}", stack_top(1), stack_top());
-  auto b_sv = stack_pop();
-  auto a_sv = stack_pop();
-  const auto cmp = runtime::compare(a_sv, b_sv);
-  stack_push(
-      runtime::StackValue{
-          runtime::Primitive{cmp == std::partial_ordering::less}
-      }
-  );
+  compare_op(stack, [](auto cmp) {
+    return cmp == std::partial_ordering::less;
+  });
 }
 
 void BytecodeVM::
     execute_op(const bytecode::OpLessEqual & /*op*/, CallFrame & /*frame*/) {
   debug_print("LESS_EQUAL a={} b={}", stack_top(1), stack_top());
-  auto b_sv = stack_pop();
-  auto a_sv = stack_pop();
-  const auto cmp = runtime::compare(a_sv, b_sv);
-  stack_push(
-      runtime::StackValue{runtime::Primitive{
-          cmp == std::partial_ordering::less ||
-          cmp == std::partial_ordering::equivalent
-      }}
-  );
+  compare_op(stack, [](auto cmp) {
+    return cmp == std::partial_ordering::less ||
+           cmp == std::partial_ordering::equivalent;
+  });
 }
 
 void BytecodeVM::execute_op(const bytecode::OpJump &op, CallFrame & /*frame*/) {
@@ -747,14 +731,13 @@ void BytecodeVM::execute_op(const bytecode::OpClosure &op, CallFrame &frame) {
     if (local) {
       auto it = frame.captured_locals.find(index);
       if (it == frame.captured_locals.end()) {
-        it = frame.captured_locals
-                 .emplace(
-                     index,
-                     &upvalue_storage.emplace(
-                         stack[frame.frame_pointer + index]
-                     )
-                 )
-                 .first;
+        it =
+            frame.captured_locals
+                .emplace(
+                    index,
+                    &upvalue_storage.emplace(stack[frame.frame_pointer + index])
+                )
+                .first;
       }
       function.captured_upvalue_refs.push_back(it->second);
     } else {
