@@ -48,12 +48,12 @@ void compare_op(std::vector<runtime::StackValue> &stack, const Pred &pred) {
 BytecodeVM::BytecodeVM(bool debug_) : debug(debug_) {
   for (const auto &[name, body] : l3::builtins::BUILTINS) {
     auto func = store_value(
-        runtime::Value{runtime::Function{runtime::BuiltinFunction{
+        runtime::Function{runtime::BuiltinFunction{
             runtime::Identifier{std::string(name)},
             [this, body](runtime::L3Args args) -> runtime::Value {
               return body(*this, args);
             }
-        }}}
+        }}
     );
     define_global(name, func);
   }
@@ -62,33 +62,9 @@ BytecodeVM::BytecodeVM(bool debug_) : debug(debug_) {
 runtime::StackValue BytecodeVM::store_value(runtime::Value &&value) {
   return std::move(value).visit(
       [](runtime::Nil) -> runtime::StackValue { return {}; },
-      [](runtime::Primitive p) -> runtime::StackValue {
-        return runtime::StackValue{p};
-      },
-      [this](runtime::Value::function_type &f) -> runtime::StackValue {
-        return runtime::StackValue{
-            &gc_storage.emplace(runtime::Value{std::move(f)})
-        };
-      },
-      [this](std::vector<runtime::StackValue> &vec) -> runtime::StackValue {
-        return runtime::StackValue{
-            &gc_storage.emplace(runtime::Value{std::move(vec)})
-        };
-      },
-      [this](std::string &s) -> runtime::StackValue {
-        return runtime::StackValue{
-            &gc_storage.emplace(runtime::Value{std::move(s)})
-        };
-      }
-  );
-}
-
-runtime::StackValue BytecodeVM::store_new_value(runtime::NewValue &&value) {
-  return match::match(
-      std::move(value),
-      [](runtime::StackValue sv) -> runtime::StackValue { return sv; },
-      [this](runtime::Value &&value) -> runtime::StackValue {
-        return store_value(std::move(value));
+      [](runtime::Primitive p) -> runtime::StackValue { return {p}; },
+      [this](auto &f) -> runtime::StackValue {
+        return {&gc_storage.emplace(runtime::Value{std::move(f)})};
       }
   );
 }
@@ -110,16 +86,6 @@ runtime::StackValue BytecodeVM::stack_pop() {
 
 void BytecodeVM::stack_push(runtime::StackValue value) {
   stack.emplace_back(value);
-}
-
-void BytecodeVM::stack_push_new(runtime::NewValue &&value) {
-  match::match(
-      std::move(value),
-      [this](runtime::StackValue sv) { stack.emplace_back(sv); },
-      [this](runtime::Value &&value) {
-        stack.emplace_back(store_value(std::move(value)));
-      }
-  );
 }
 
 std::optional<runtime::StackValue>
@@ -586,21 +552,25 @@ void BytecodeVM::
   }
   stack.erase(start, stack.end());
   debug_print("MAKE_ARRAY count={}", op.count);
-  stack_push(
-      runtime::StackValue{
-          &gc_storage.emplace(runtime::Value{std::move(elements)})
-      }
-  );
+  stack_push(store_value(std::move(elements)));
 }
 
 void BytecodeVM::
     execute_op(const bytecode::OpGetIndex & /*op*/, CallFrame & /*frame*/) {
-  auto index_sv = stack_pop();
-  auto array_sv = stack_pop();
+  auto &index_sv = stack.back();
+  auto &array_sv = stack[stack.size() - 2];
 
   debug_print("GET_INDEX array={} index={}", array_sv, index_sv);
 
-  stack_push_new(runtime::index(array_sv, index_sv));
+  auto result = runtime::index(array_sv, index_sv);
+  stack.pop_back();
+  match::match(
+      std::move(result),
+      [this](runtime::StackValue sv) { stack.back() = sv; },
+      [this](runtime::Value &&value) {
+        stack.back() = store_value(std::move(value));
+      }
+  );
 }
 
 void BytecodeVM::
@@ -731,13 +701,9 @@ void BytecodeVM::execute_op(const bytecode::OpClosure &op, CallFrame &frame) {
     if (local) {
       auto it = frame.captured_locals.find(index);
       if (it == frame.captured_locals.end()) {
-        it =
-            frame.captured_locals
-                .emplace(
-                    index,
-                    &upvalue_storage.emplace(stack[frame.frame_pointer + index])
-                )
-                .first;
+        it = frame.captured_locals
+                 .emplace(index, &upvalue_storage.emplace(stack_local(index)))
+                 .first;
       }
       function.captured_upvalue_refs.push_back(it->second);
     } else {
@@ -746,11 +712,7 @@ void BytecodeVM::execute_op(const bytecode::OpClosure &op, CallFrame &frame) {
       );
     }
   }
-  stack_push(
-      runtime::StackValue{
-          &gc_storage.emplace(runtime::Value{std::move(function)})
-      }
-  );
+  stack_push(store_value(std::move(function)));
   debug_print("CLOSURE function={}", stack.back());
 }
 
@@ -766,7 +728,7 @@ void BytecodeVM::execute_op(
     const bytecode::OpSetUpvalue &op, CallFrame &frame
 ) {
   debug_print("SET_UPVALUE index={} value={}", op.index, stack_top());
-  frame.upvalues[op.index]->get() = stack.back();
+  frame.upvalues[op.index]->get() = stack_pop();
 }
 
 } // namespace l3::vm
