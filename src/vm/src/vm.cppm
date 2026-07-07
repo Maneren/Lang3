@@ -78,8 +78,6 @@ private:
 
   void execute_loop(std::size_t target_frames);
 
-  template <typename T> void execute_op(const T &op, CallFrame &frame);
-
   void execute_op(const bytecode::OpReturn &op, CallFrame &);
   void execute_op(const bytecode::OpConstant &op, CallFrame &);
   void execute_op(const bytecode::OpPop &op, CallFrame &);
