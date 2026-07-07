@@ -95,22 +95,6 @@ slice_bounds(std::size_t size, Slice slice) {
   return {start, end};
 }
 
-std::size_t value_to_index(const Value &value) {
-  const auto index_opt = value.as_primitive().and_then(&Primitive::as_integer);
-
-  if (!index_opt) {
-    throw TypeError("index to a container must be an integer");
-  }
-
-  const auto index = *index_opt;
-
-  if (index < 0LL) {
-    throw ValueError("index out of bounds");
-  }
-
-  return static_cast<std::size_t>(index);
-}
-
 template <typename T> utils::optional_cref<T> as_impl(const Value &v) {
   return v.visit(
       [](const T &val) -> utils::optional_cref<T> { return val; },
@@ -255,24 +239,6 @@ Value Value::mul(const Value &other) const {
   );
 }
 
-void Value::mul_assign(const Value &other) {
-  match::match(
-      std::forward_as_tuple(inner, other.inner),
-      [](Primitive &lhs, const Primitive &rhs) { lhs = lhs * rhs; },
-      [](vector_type &vec, const Primitive &count_prim) {
-        multiply_container_inplace(vec, count_prim);
-      },
-      [](string_type &str, const Primitive &count_prim) {
-        multiply_container_inplace(str, count_prim);
-      },
-      [&other, this](auto &, const auto &) {
-        throw UnsupportedOperation(
-            "multiplication", type_name(), other.type_name()
-        );
-      }
-  );
-}
-
 Value Value::div(const Value &other) const {
   return binary_op(
       "division", *this, other, [](const Primitive &lhs, const Primitive &rhs) {
@@ -326,14 +292,6 @@ utils::optional_cref<Primitive> Value::as_primitive() const {
   return as_impl<Primitive>(*this);
 }
 
-utils::optional_cref<Value::function_type> Value::as_function() const {
-  return as_impl<function_type>(*this);
-}
-
-utils::optional_ref<Value::function_type> Value::as_mut_function() {
-  return as_mut_impl<function_type>(*this);
-}
-
 utils::optional_cref<Value::vector_type> Value::as_vector() const {
   return as_impl<vector_type>(*this);
 }
@@ -344,53 +302,6 @@ utils::optional_ref<Value::vector_type> Value::as_mut_vector() {
 
 utils::optional_cref<Value::string_type> Value::as_string() const {
   return as_impl<string_type>(*this);
-}
-
-utils::optional_ref<Value::string_type> Value::as_mut_string() {
-  return as_mut_impl<string_type>(*this);
-}
-
-NewValue Value::index(const Value &index_value) const {
-  return index(value_to_index(index_value));
-}
-
-NewValue Value::index(std::size_t index) const {
-  return visit(
-      [&index](const vector_type &values) -> NewValue {
-        if (index >= values.size()) {
-          throw ValueError("index out of bounds");
-        }
-        return values[index];
-      },
-      [&index](const string_type &string) -> NewValue {
-        if (index >= string.size()) {
-          throw ValueError("index out of bounds");
-        }
-
-        return {string.substr(index, 1)};
-      },
-      [this](const auto &) -> NewValue {
-        throw TypeError("cannot index a {} value", type_name());
-      }
-  );
-}
-
-StackValue &Value::index_mut(const Value &index) {
-  return index_mut(value_to_index(index));
-}
-
-StackValue &Value::index_mut(std::size_t index) {
-  return visit(
-      [&index](vector_type &values) -> StackValue & {
-        if (index >= values.size()) {
-          throw ValueError("index out of bounds");
-        }
-        return values[index];
-      },
-      [this](auto &) -> StackValue & {
-        throw TypeError("cannot mutably index a {} value", type_name());
-      }
-  );
 }
 
 Value Value::slice(Slice slice) const {

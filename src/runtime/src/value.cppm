@@ -51,7 +51,6 @@ public:
   void add_assign(const Value &other);
   [[nodiscard]] Value sub(const Value &other) const;
   [[nodiscard]] Value mul(const Value &other) const;
-  void mul_assign(const Value &other);
   [[nodiscard]] Value div(const Value &other) const;
   [[nodiscard]] Value mod(const Value &other) const;
   [[nodiscard]] std::partial_ordering compare(const Value &other) const;
@@ -73,21 +72,12 @@ public:
   [[nodiscard]] bool is_string() const;
 
   [[nodiscard]] utils::optional_cref<Primitive> as_primitive() const;
-  [[nodiscard]] utils::optional_cref<function_type> as_function() const;
-  [[nodiscard]] utils::optional_ref<function_type> as_mut_function();
   [[nodiscard]] utils::optional_cref<vector_type> as_vector() const;
   [[nodiscard]] utils::optional_ref<vector_type> as_mut_vector();
   [[nodiscard]] utils::optional_cref<string_type> as_string() const;
   [[nodiscard]] utils::optional_ref<string_type> as_mut_string();
 
   [[nodiscard]] bool is_truthy() const;
-  [[nodiscard]] bool is_falsy() const { return !is_truthy(); }
-
-  [[nodiscard]] NewValue index(const Value &index) const;
-  [[nodiscard]] NewValue index(std::size_t index) const;
-
-  [[nodiscard]] StackValue &index_mut(const Value &index);
-  [[nodiscard]] StackValue &index_mut(std::size_t index);
 
   [[nodiscard]] Value slice(Slice slice) const;
 
