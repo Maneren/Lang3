@@ -137,7 +137,7 @@ void BytecodeVM::debug_print(std::format_string<Args...> fmt, Args &&...args) {
   }
 }
 
-runtime::Value BytecodeVM::evaluate(
+runtime::StackValue BytecodeVM::evaluate(
     const runtime::StackValue &function,
     runtime::L3Args arguments,
     const location::Location &call_location
@@ -147,22 +147,20 @@ runtime::Value BytecodeVM::evaluate(
   }
   auto *gcv = function.get_gc_ptr();
   return gcv->get_value_mut().visit(
-      [&](runtime::Value::function_type &f) -> runtime::Value {
+      [&](runtime::Value::function_type &f) {
         return f->visit(
             [&](const runtime::BuiltinFunction &func) {
-              return func.invoke(arguments);
+              return store_value(func.invoke(arguments));
             },
-            [&](runtime::BytecodeFunction &bc_func) -> runtime::Value {
+            [&](runtime::BytecodeFunction &bc_func) {
               auto total_args = bc_func.curried_args.size() + arguments.size();
 
               if (total_args < bc_func.arity) {
                 auto new_func = bc_func;
                 for (const auto &arg : arguments) {
-                  new_func.curried_args.push_back(
-                      store_value(runtime::to_value(arg))
-                  );
+                  new_func.curried_args.push_back(arg);
                 }
-                return runtime::Value{runtime::Function{std::move(new_func)}};
+                return store_value(runtime::Function{std::move(new_func)});
               }
               if (total_args == bc_func.arity) {
                 auto previous_frames = frames.size();
@@ -182,18 +180,17 @@ runtime::Value BytecodeVM::evaluate(
                   stack.push_back(arg);
                 }
                 for (const auto &arg : arguments) {
-                  stack.push_back(store_value(runtime::to_value(arg)));
+                  stack.push_back(arg);
                 }
                 execute_loop(previous_frames);
-                auto result_sv = stack_pop();
-                return runtime::to_value(result_sv);
+                return stack_pop();
               }
 
               throw runtime::RuntimeError("evaluate arity mismatch");
             }
         );
       },
-      [&](auto &) -> runtime::Value {
+      [&](auto &) -> runtime::StackValue {
         throw runtime::RuntimeError("evaluate: not a function");
       }
   );
@@ -610,12 +607,12 @@ void BytecodeVM::execute_op(const bytecode::OpCall &op, CallFrame & /*frame*/) {
 
   auto *gcv = func_sv.get_gc_ptr();
   auto result = gcv->get_value_mut().visit(
-      [&](runtime::Value::function_type &f) -> runtime::Value {
+      [&](runtime::Value::function_type &f) {
         return f->visit(
-            [&](const runtime::BuiltinFunction &bf) -> runtime::Value {
-              return bf.invoke(args_span);
+            [&](const runtime::BuiltinFunction &bf) {
+              return store_value(bf.invoke(args_span));
             },
-            [&](runtime::BytecodeFunction &bc_func) -> runtime::Value {
+            [&](runtime::BytecodeFunction &bc_func) {
               auto total_args = bc_func.curried_args.size() + op.arg_count;
 
               if (total_args > bc_func.arity) {
@@ -627,7 +624,7 @@ void BytecodeVM::execute_op(const bytecode::OpCall &op, CallFrame & /*frame*/) {
                 for (auto &it : args_span) {
                   new_func.curried_args.push_back(it);
                 }
-                return runtime::Value{runtime::Function{std::move(new_func)}};
+                return store_value(runtime::Function{std::move(new_func)});
               }
 
               auto previous_frames = frames.size();
@@ -658,12 +655,11 @@ void BytecodeVM::execute_op(const bytecode::OpCall &op, CallFrame & /*frame*/) {
               }
 
               execute_loop(previous_frames);
-              auto result_sv = stack_pop();
-              return runtime::to_value(result_sv);
+              return stack_pop();
             }
         );
       },
-      [&](auto &) -> runtime::Value {
+      [&](auto &) -> runtime::StackValue {
         clean_args();
         throw runtime::RuntimeError(
             "Attempted to call a non-function value: {}",
@@ -675,7 +671,7 @@ void BytecodeVM::execute_op(const bytecode::OpCall &op, CallFrame & /*frame*/) {
   clean_args();
 
   if (op.keep_return_value) {
-    stack_push(store_value(std::move(result)));
+    stack_push(result);
   }
 }
 

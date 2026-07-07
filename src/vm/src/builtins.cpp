@@ -180,7 +180,7 @@ Value builtin_head(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
     auto rest = Value(std::vector<StackValue>(vec.begin() + 1, vec.end()));
 
     auto result = std::vector<StackValue>{};
-    result.push_back(vm.store_value(l3::runtime::to_value(head)));
+    result.push_back(head);
     result.push_back(vm.store_value(std::move(rest)));
     return {std::move(result)};
   }
@@ -222,7 +222,7 @@ Value builtin_tail(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
 
     auto result = std::vector<StackValue>{};
     result.push_back(vm.store_value(std::move(rest)));
-    result.push_back(vm.store_value(l3::runtime::to_value(tail)));
+    result.push_back(tail);
     return {std::move(result)};
   }
 
@@ -367,10 +367,10 @@ Value builtin_map(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
   }
   const auto &list = list_opt->get();
 
-  auto result = std::vector<StackValue>{};
+  std::vector<StackValue> result;
   result.reserve(list.size());
   for (const auto &item : list) {
-    result.push_back(vm.store_value(vm.evaluate(args[0], std::array{item})));
+    result.push_back(vm.evaluate(args[0], std::array{item}));
   }
 
   return {std::move(result)};

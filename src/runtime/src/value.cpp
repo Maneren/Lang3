@@ -131,6 +131,29 @@ template <typename T> bool is_impl(const Value &v) {
   );
 }
 
+template <typename... Vis>
+decltype(auto) visit_flat(const StackValue &sv, Vis &&...vis) {
+  auto overloaded = match::Overloaded{std::forward<Vis>(vis)...};
+  return sv.visit(overloaded, [&](GCValue *gcv) {
+    return gcv->get_value().visit(overloaded);
+  });
+}
+
+template <typename... Vis>
+decltype(auto) visit_flat(const Value &v, Vis &&...vis) {
+  return match::match(v.get_inner(), std::forward<Vis>(vis)...);
+}
+
+template <typename... Handlers>
+auto visit_pair(const auto &a, const auto &b, Handlers &&...handlers) {
+  auto visitor = match::Overloaded{std::forward<Handlers>(handlers)...};
+  return visit_flat(a, [&](const auto &flat_a) {
+    return visit_flat(b, [&](const auto &flat_b) {
+      return visitor(flat_a, flat_b);
+    });
+  });
+}
+
 } // namespace
 
 Value::Value() : inner{Nil{}} {}
@@ -419,7 +442,7 @@ std::string_view Value::type_name() const {
 }
 
 // ---------------------------------------------------------------------------
-// StackValue operations
+// StackValue operations — using unified visitor
 // ---------------------------------------------------------------------------
 
 Value to_value(const StackValue &sv) {
@@ -445,294 +468,144 @@ Value to_value(const StackValue &sv) {
   );
 }
 
-// --- Arithmetic ---
-
 Value add(const StackValue &a, const StackValue &b) {
-  return a.visit(
-      [&](const Primitive &ap) -> Value {
-        return b.visit(
-            [&](const Primitive &bp) -> Value { return Value{ap + bp}; },
-            [](const auto &) -> Value {
-              throw UnsupportedOperation(
-                  "addition between primitive and non-primitive"
-              );
-            }
-        );
+  return visit_pair(
+      a,
+      b,
+      [](const Primitive &lhs, const Primitive &rhs) -> Value {
+        return {lhs + rhs};
       },
-      [&](GCValue *agcv) -> Value {
-        if (!agcv) {
-          throw RuntimeError("nil value in addition");
-        }
-        return agcv->get_value().visit(
-            [&](const std::string &as) -> Value {
-              return b.visit(
-                  [&](GCValue *bgcv) -> Value {
-                    if (!bgcv) {
-                      throw RuntimeError("nil value in addition");
-                    }
-                    return bgcv->get_value().visit(
-                        [&](const std::string &bs) -> Value {
-                          return Value{as + bs};
-                        },
-                        [](const auto &) -> Value {
-                          throw UnsupportedOperation("string + non-string");
-                        }
-                    );
-                  },
-                  [](const auto &) -> Value {
-                    throw UnsupportedOperation("string + non-string");
-                  }
-              );
-            },
-            [&](const std::vector<StackValue> &av) -> Value {
-              return b.visit(
-                  [&](GCValue *bgcv) -> Value {
-                    if (!bgcv) {
-                      throw RuntimeError("nil value in addition");
-                    }
-                    return bgcv->get_value().visit(
-                        [&](const std::vector<StackValue> &bv) -> Value {
-                          auto result = av;
-                          result.append_range(bv);
-                          return Value{std::move(result)};
-                        },
-                        [](const auto &) -> Value {
-                          throw UnsupportedOperation("vector + non-vector");
-                        }
-                    );
-                  },
-                  [](const auto &) -> Value {
-                    throw UnsupportedOperation("vector + non-vector");
-                  }
-              );
-            },
-            [](const auto &) -> Value {
-              throw UnsupportedOperation("addition with unsupported GC type");
-            }
-        );
+      [](const std::string &ls, const std::string &rs) -> Value {
+        return {ls + rs};
       },
-      [](Nil) -> Value { throw UnsupportedOperation("nil + something"); }
+      [](const std::vector<StackValue> &lv,
+         const std::vector<StackValue> &rv) -> Value {
+        std::vector<StackValue> result;
+        result.reserve(lv.size() + rv.size());
+        result.append_range(lv);
+        result.append_range(rv);
+        return {std::move(result)};
+      },
+      [&](const auto &, const auto &) -> Value {
+        throw UnsupportedOperation("addition", a.type_name(), b.type_name());
+      }
   );
 }
 
 Value sub(const StackValue &a, const StackValue &b) {
-  return a.visit(
-      [&](const Primitive &ap) -> Value {
-        return b.visit(
-            [&](const Primitive &bp) -> Value { return Value{ap - bp}; },
-            [](const auto &) -> Value {
-              throw UnsupportedOperation("subtraction requires primitives");
-            }
-        );
+  return visit_pair(
+      a,
+      b,
+      [](const Primitive &lhs, const Primitive &rhs) -> Value {
+        return {lhs - rhs};
       },
-      [](const auto &) -> Value {
+      [](const auto &, const auto &) -> Value {
         throw UnsupportedOperation("subtraction requires primitives");
       }
   );
 }
 
 Value mul(const StackValue &a, const StackValue &b) {
-  return a.visit(
-      [&](const Primitive &ap) -> Value {
-        return b.visit(
-            [&](const Primitive &bp) -> Value { return Value{ap * bp}; },
-            [&](GCValue *bgcv) -> Value {
-              if (!bgcv) {
-                throw RuntimeError("nil in multiplication");
-              }
-              return bgcv->get_value().visit(
-                  [&](const std::vector<StackValue> &vec) -> Value {
-                    return multiply_container(vec, ap);
-                  },
-                  [&](const std::string &str) -> Value {
-                    return multiply_container(str, ap);
-                  },
-                  [](const auto &) -> Value {
-                    throw UnsupportedOperation("multiplication");
-                  }
-              );
-            },
-            [](const auto &) -> Value {
-              throw UnsupportedOperation("multiplication");
-            }
-        );
+  return visit_pair(
+      a,
+      b,
+      [](const Primitive &lhs, const Primitive &rhs) -> Value {
+        return {lhs * rhs};
       },
-      [&](GCValue *agcv) -> Value {
-        if (!agcv) {
-          throw RuntimeError("nil in multiplication");
-        }
-        return agcv->get_value().visit(
-            [&](const std::vector<StackValue> &vec) -> Value {
-              return b.visit(
-                  [&](const Primitive &bp) -> Value {
-                    return multiply_container(vec, bp);
-                  },
-                  [](const auto &) -> Value {
-                    throw UnsupportedOperation("multiplication");
-                  }
-              );
-            },
-            [&](const std::string &str) -> Value {
-              return b.visit(
-                  [&](const Primitive &bp) -> Value {
-                    return multiply_container(str, bp);
-                  },
-                  [](const auto &) -> Value {
-                    throw UnsupportedOperation("multiplication");
-                  }
-              );
-            },
-            [](const auto &) -> Value {
-              throw UnsupportedOperation("multiplication");
-            }
-        );
+      [](const Primitive &count, const std::vector<StackValue> &vec) -> Value {
+        return multiply_container(vec, count);
       },
-      [](Nil) -> Value {
-        throw UnsupportedOperation("multiplication with nil");
+      [](const Primitive &count, const std::string &str) -> Value {
+        return multiply_container(str, count);
+      },
+      [](const std::vector<StackValue> &vec, const Primitive &count) -> Value {
+        return multiply_container(vec, count);
+      },
+      [](const std::string &str, const Primitive &count) -> Value {
+        return multiply_container(str, count);
+      },
+      [](const auto &, const auto &) -> Value {
+        throw UnsupportedOperation("multiplication");
       }
   );
 }
 
 Value div(const StackValue &a, const StackValue &b) {
-  return a.visit(
-      [&](const Primitive &ap) -> Value {
-        return b.visit(
-            [&](const Primitive &bp) -> Value { return Value{ap / bp}; },
-            [](const auto &) -> Value {
-              throw UnsupportedOperation("division requires primitives");
-            }
-        );
+  return visit_pair(
+      a,
+      b,
+      [](const Primitive &lhs, const Primitive &rhs) -> Value {
+        return {lhs / rhs};
       },
-      [](const auto &) -> Value {
+      [](const auto &, const auto &) -> Value {
         throw UnsupportedOperation("division requires primitives");
       }
   );
 }
 
 Value mod(const StackValue &a, const StackValue &b) {
-  return a.visit(
-      [&](const Primitive &ap) -> Value {
-        return b.visit(
-            [&](const Primitive &bp) -> Value { return Value{ap % bp}; },
-            [](const auto &) -> Value {
-              throw UnsupportedOperation("modulo requires primitives");
-            }
-        );
+  return visit_pair(
+      a,
+      b,
+      [](const Primitive &lhs, const Primitive &rhs) -> Value {
+        return {lhs % rhs};
       },
-      [](const auto &) -> Value {
+      [](const auto &, const auto &) -> Value {
         throw UnsupportedOperation("modulo requires primitives");
       }
   );
 }
 
-// --- Comparison ---
-
 std::partial_ordering compare(const StackValue &a, const StackValue &b) {
-  return a.visit(
-      [&](const Primitive &ap) -> std::partial_ordering {
-        return b.visit(
-            [&](const Primitive &bp) -> std::partial_ordering {
-              return ap <=> bp;
-            },
-            [](const auto &) -> std::partial_ordering {
-              return std::partial_ordering::unordered;
-            }
-        );
-      },
-      [&](Nil) -> std::partial_ordering {
-        return b.visit(
-            [](Nil) -> std::partial_ordering {
-              return std::strong_ordering::equal;
-            },
-            [](const auto &) -> std::partial_ordering {
-              return std::partial_ordering::unordered;
-            }
-        );
-      },
-      [&](GCValue *agcv) -> std::partial_ordering {
-        if (!agcv) {
-          return b.visit(
-              [](Nil) -> std::partial_ordering {
-                return std::strong_ordering::equal;
-              },
-              [](const auto &) -> std::partial_ordering {
-                return std::partial_ordering::unordered;
-              }
-          );
+  return visit_pair(
+      a,
+      b,
+      []<typename T>(const T &lhs, const T &rhs) -> std::partial_ordering
+        requires requires(T lhs, T rhs) { lhs <=> rhs; }
+      { return lhs <=> rhs; },
+      [](const std::vector<StackValue> &lv,
+         const std::vector<StackValue> &rv) -> std::partial_ordering {
+        if (lv.size() != rv.size()) {
+          return lv.size() <=> rv.size();
         }
-        return agcv->get_value().visit(
-            [&](const std::string &as) -> std::partial_ordering {
-              return b.visit(
-                  [&](GCValue *bgcv) -> std::partial_ordering {
-                    if (!bgcv) {
-                      return std::partial_ordering::unordered;
-                    }
-                    return bgcv->get_value().visit(
-                        [&](const std::string &bs) -> std::partial_ordering {
-                          return as <=> bs;
-                        },
-                        [](const auto &) -> std::partial_ordering {
-                          return std::partial_ordering::unordered;
-                        }
-                    );
-                  },
-                  [](const auto &) -> std::partial_ordering {
-                    return std::partial_ordering::unordered;
-                  }
-              );
-            },
-            [&](const std::vector<StackValue> &av) -> std::partial_ordering {
-              return b.visit(
-                  [&](GCValue *bgcv) -> std::partial_ordering {
-                    if (!bgcv) {
-                      return std::partial_ordering::unordered;
-                    }
-                    return bgcv->get_value().visit(
-                        [&](const std::vector<StackValue> &bv)
-                            -> std::partial_ordering {
-                          if (av.size() != bv.size()) {
-                            return std::partial_ordering::unordered;
-                          }
-                          for (std::size_t i = 0; i < av.size(); ++i) {
-                            const auto elem_cmp = compare(av[i], bv[i]);
-                            if (elem_cmp != 0) {
-                              return elem_cmp;
-                            }
-                          }
-                          return std::strong_ordering::equal;
-                        },
-                        [](const auto &) -> std::partial_ordering {
-                          return std::partial_ordering::unordered;
-                        }
-                    );
-                  },
-                  [](const auto &) -> std::partial_ordering {
-                    return std::partial_ordering::unordered;
-                  }
-              );
-            },
-            [](const auto &) -> std::partial_ordering {
-              return std::partial_ordering::unordered;
-            }
-        );
+        for (std::size_t i = 0; i < lv.size(); ++i) {
+          const auto elem_cmp = compare(lv[i], rv[i]);
+          if (elem_cmp != std::partial_ordering::equivalent) {
+            return elem_cmp;
+          }
+        }
+        return std::partial_ordering::equivalent;
+      },
+      [](const auto &, const auto &) {
+        return std::partial_ordering::unordered;
       }
-  );
+      );
 }
 
-// --- Unary ---
-
 Value negative(const StackValue &sv) {
-  return sv.visit(
-      [](const Primitive &p) -> Value { return Value{-p}; },
+  return visit_flat(
+      sv,
+      [](const Primitive &p) -> Value { return {-p}; },
       [](const auto &) -> Value {
         throw UnsupportedOperation("cannot negate a non-numeric value");
       }
   );
 }
 
-Value not_op(const StackValue &sv) { return Value{Primitive{!sv.is_truthy()}}; }
-
-// --- Index ---
+Value not_op(const StackValue &sv) {
+  return visit_flat(
+      sv,
+      [](const Primitive &p) -> Value { return {!p}; },
+      [](Nil) -> Value { return {Primitive{true}}; },
+      [](const std::string &s) -> Value { return {Primitive{s.empty()}}; },
+      [](const std::vector<StackValue> &v) -> Value {
+        return {Primitive{v.empty()}};
+      },
+      [](const auto &) -> Value {
+        throw TypeError("cannot convert a function to bool");
+      }
+  );
+}
 
 NewValue index(const StackValue &container, const StackValue &index_sv) {
   const auto index_opt =
@@ -745,28 +618,19 @@ NewValue index(const StackValue &container, const StackValue &index_sv) {
   }
   const auto idx = static_cast<std::size_t>(*index_opt);
 
-  return container.visit(
-      [&](GCValue *gcv) -> NewValue {
-        if (!gcv) {
-          throw TypeError("cannot index nil");
+  return visit_flat(
+      container,
+      [&](const std::vector<StackValue> &vec) -> NewValue {
+        if (idx >= vec.size()) {
+          throw ValueError("index out of bounds");
         }
-        return gcv->get_value().visit(
-            [&](const std::vector<StackValue> &vec) -> NewValue {
-              if (idx >= vec.size()) {
-                throw ValueError("index out of bounds");
-              }
-              return vec[idx];
-            },
-            [&](const std::string &s) -> NewValue {
-              if (idx >= s.size()) {
-                throw ValueError("index out of bounds");
-              }
-              return Value{std::string{s.substr(idx, 1)}};
-            },
-            [&](const auto &) -> NewValue {
-              throw TypeError("cannot index a {} value", container.type_name());
-            }
-        );
+        return vec[idx];
+      },
+      [&](const std::string &s) -> NewValue {
+        if (idx >= s.size()) {
+          throw ValueError("index out of bounds");
+        }
+        return Value{std::string{s.substr(idx, 1)}};
       },
       [&](const auto &) -> NewValue {
         throw TypeError("cannot index a {} value", container.type_name());
@@ -787,7 +651,7 @@ StackValue &index_mut(StackValue &container, const StackValue &index_sv) {
 
   auto *gcv = container.get_gc_ptr();
   if (gcv == nullptr) {
-    throw TypeError("cannot mutably index a non-container");
+    throw TypeError("cannot index a {} value", container.type_name());
   }
   return gcv->get_value_mut().visit(
       [&](std::vector<StackValue> &vec) -> StackValue & {
@@ -796,8 +660,8 @@ StackValue &index_mut(StackValue &container, const StackValue &index_sv) {
         }
         return vec[idx];
       },
-      [](auto &) -> StackValue & {
-        throw TypeError("cannot mutably index this type");
+      [&](const auto &) -> StackValue & {
+        throw TypeError("cannot index a {} value", container.type_name());
       }
   );
 }
