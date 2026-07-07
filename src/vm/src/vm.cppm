@@ -31,7 +31,13 @@ public:
   explicit BytecodeVM(bool debug_ = false);
 
   runtime::StackValue store_value(runtime::Value &&value);
-  runtime::StackValue store_new_value(runtime::NewValue &&value);
+
+  template <typename T>
+    requires std::constructible_from<runtime::Value, T &&>
+  runtime::StackValue store_value(T &&value) {
+    return store_value(runtime::Value{std::forward<T>(value)});
+  }
+
   runtime::Value evaluate(
       const runtime::StackValue &function,
       runtime::L3Args arguments,
@@ -108,7 +114,6 @@ private:
 
   runtime::StackValue stack_pop();
   void stack_push(runtime::StackValue value);
-  void stack_push_new(runtime::NewValue &&value);
 
   template <typename... Args>
   void debug_print(std::format_string<Args...> fmt, Args &&...args);
