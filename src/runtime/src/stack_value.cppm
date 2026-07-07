@@ -51,8 +51,7 @@ public:
   [[nodiscard]] utils::optional_cref<Primitive> as_primitive() const;
 
   bool holds_gc_value() const {
-    return std::holds_alternative<GCValue *>(inner) &&
-           std::get<GCValue *>(inner) != nullptr;
+    return std::holds_alternative<GCValue *>(inner);
   }
 
   GCValue *get_gc_ptr() const noexcept {
