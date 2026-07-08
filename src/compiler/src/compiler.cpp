@@ -43,6 +43,14 @@ void Compiler::compile(const ast::Program &ast_program) {
   }
   emit(OpConstant{make_constant()});
   emit(OpReturn{});
+  program.main_function = runtime::BytecodeFunction{
+      .id = 0,
+      .name = "__main",
+      .arity = 0,
+      .local_count = contexts[0].max_locals,
+      .curried_args = {},
+      .captured_upvalue_refs = {}
+  };
   optimize(program);
   deduplicate_constants();
 }
@@ -86,21 +94,17 @@ void Compiler::pop_context() { contexts.pop_back(); }
 
 void Compiler::begin_scope() { scope_depth()++; }
 
-void Compiler::end_scope(bool emit_pop) {
+void Compiler::end_scope(bool /* emit_pop */) {
   scope_depth()--;
-  std::size_t count = 0;
   while (!locals().empty() && locals().back().depth > scope_depth()) {
-    count++;
     locals().pop_back();
-  }
-  if (emit_pop) {
-    emit(OpPop{.count = count});
   }
 }
 
 std::size_t Compiler::add_local(const ast::Identifier &name) {
   auto index = locals().size();
   locals().emplace_back(name, scope_depth());
+  contexts.back().max_locals = std::max(contexts.back().max_locals, index + 1);
   return index;
 }
 
@@ -288,10 +292,7 @@ void Compiler::compile_statements(std::ranges::input_range auto &statements) {
   for (const auto &stmt : statements) {
     LocationScope scope(location_stack, stmt.get_location());
     stmt.visit(
-        [this](const ast::NamedFunction &func) {
-          emit(OpConstant{make_constant()});
-          add_local(func.get_name());
-        },
+        [this](const ast::NamedFunction &func) { add_local(func.get_name()); },
         [](const auto &) {}
     );
   }
@@ -453,22 +454,23 @@ void Compiler::compile_comparison(const ast::Comparison &comparison) {
 }
 
 void Compiler::compile_anonymous_function(const ast::AnonymousFunction &func) {
-  auto [used_upvalues, new_chunk_id] = compile_function_body(func.get_body());
+  auto body = compile_function_body(func.get_body());
 
   std::size_t id = make_constant(
       runtime::Function{runtime::BytecodeFunction{
-          .id = new_chunk_id,
+          .id = body.chunk_id,
           .name = "<anonymous>",
           .arity = func.get_arity(),
+          .local_count = body.max_locals,
           .curried_args = {},
           .captured_upvalue_refs = {}
       }}
   );
 
-  if (used_upvalues.empty()) {
+  if (body.upvalues.empty()) {
     emit(OpConstant{id});
   } else {
-    emit(OpClosure{.function_index = id, .upvalues = std::move(used_upvalues)});
+    emit(OpClosure{.function_index = id, .upvalues = std::move(body.upvalues)});
   }
 }
 
@@ -581,16 +583,15 @@ void Compiler::compile_declaration(const ast::Declaration &decl) {
   if (names.size() == 1) {
     if (decl.get_expression()) {
       compile_expression(*decl.get_expression());
+      const auto idx = add_local(names.front());
+      emit(OpSetLocal{idx});
     } else {
-      emit(OpConstant{make_constant()});
+      add_local(names.front());
     }
-
-    add_local(names.front());
     return;
   }
   if (!decl.get_expression()) {
     for (const auto &ident : names) {
-      emit(OpConstant{make_constant()});
       add_local(ident);
     }
     return;
@@ -603,7 +604,8 @@ void Compiler::compile_declaration(const ast::Declaration &decl) {
       std::to_string(locals().size())
   };
 
-  std::size_t hidden_name_index = add_local(hidden_name);
+  const auto hidden_name_index = add_local(hidden_name);
+  emit(OpSetLocal{hidden_name_index});
 
   for (std::size_t i = 0; i < names.size(); ++i) {
     emit(OpGetLocal{hidden_name_index});
@@ -616,7 +618,8 @@ void Compiler::compile_declaration(const ast::Declaration &decl) {
     emit(OpGetIndex{});
 
     const auto &name = names[i];
-    add_local(name);
+    const auto idx = add_local(name);
+    emit(OpSetLocal{idx});
   }
 }
 
@@ -627,31 +630,32 @@ void Compiler::compile_for_loop(const ast::ForLoop &loop) {
 
   compile_expression(loop.get_collection());
   const auto coll_idx = add_local("_for_collection");
+  emit(OpSetLocal{coll_idx});
 
   emit(emit_get_variable(ast::Identifier{"len"}));
   emit(OpGetLocal{coll_idx});
   emit(OpCall{.arg_count = 1, .keep_return_value = true});
   const auto len_idx = add_local("_for_len");
+  emit(OpSetLocal{len_idx});
 
   emit(OpConstant{make_constant(runtime::Value{runtime::Primitive{-1L}})});
   const auto index_idx = add_local("_for_index");
+  emit(OpSetLocal{index_idx});
 
   const auto control_jump = emit_jump(OpJump{});
 
   const auto body_offset = current_instruction_offset();
 
-  loop_body_locals_snapshot.push_back(locals().size());
-
   begin_scope();
   emit(OpGetLocal{coll_idx});
   emit(OpGetLocal{index_idx});
   emit(OpGetIndex{});
-  add_local(loop.get_variable());
+  const auto var_idx = add_local(loop.get_variable());
+  emit(OpSetLocal{var_idx});
 
   compile_block(loop.get_body());
 
   end_scope();
-  loop_body_locals_snapshot.pop_back();
 
   const auto control_offset = current_instruction_offset();
 
@@ -739,8 +743,8 @@ void Compiler::compile_name_assignment(const ast::NameAssignment &assign) {
       std::to_string(locals().size())
   };
 
-  std::size_t hidden_name_idx = -1UZ;
-  hidden_name_idx = add_local(hidden_name);
+  const auto hidden_name_idx = add_local(hidden_name);
+  emit(OpSetLocal{hidden_name_idx});
 
   for (std::size_t i = 0; i < names.size(); ++i) {
     emit(OpGetLocal{hidden_name_idx});
@@ -774,8 +778,13 @@ Compiler::compile_function_body(const ast::FunctionBody &body) {
   }
 
   auto used_upvalues = std::move(upvalues());
+  auto max_locals = contexts.back().max_locals;
   pop_context();
-  return {.upvalues = std::move(used_upvalues), .chunk_id = chunk_id};
+  return {
+      .upvalues = std::move(used_upvalues),
+      .chunk_id = chunk_id,
+      .max_locals = max_locals
+  };
 }
 
 void Compiler::compile_named_function(const ast::NamedFunction &func) {
@@ -790,24 +799,25 @@ void Compiler::compile_named_function(const ast::NamedFunction &func) {
     );
   }
 
-  auto [used_upvalues, chunk_id] = compile_function_body(func.get_body());
+  auto body = compile_function_body(func.get_body());
 
   const auto constant = make_constant(
       runtime::Function{runtime::BytecodeFunction{
-          .id = chunk_id,
+          .id = body.chunk_id,
           .name = name.get_name(),
           .arity = func.get_arity(),
+          .local_count = body.max_locals,
           .curried_args = {},
           .captured_upvalue_refs = {}
       }}
   );
 
-  if (used_upvalues.empty()) {
+  if (body.upvalues.empty()) {
     emit(OpConstant{constant});
   } else {
     emit(
         OpClosure{
-            .function_index = constant, .upvalues = std::move(used_upvalues)
+            .function_index = constant, .upvalues = std::move(body.upvalues)
         }
     );
   }
@@ -900,9 +910,11 @@ void Compiler::compile_range_for_loop(const ast::RangeForLoop &loop) {
 
   compile_expression(loop.get_start());
   const auto current_idx = add_local("_range_current");
+  emit(OpSetLocal{current_idx});
 
   compile_expression(loop.get_end());
   const auto end_idx = add_local("_range_end");
+  emit(OpSetLocal{end_idx});
 
   if (loop.get_step()) {
     compile_expression(*loop.get_step());
@@ -910,6 +922,7 @@ void Compiler::compile_range_for_loop(const ast::RangeForLoop &loop) {
     emit(OpConstant{make_constant(runtime::Value{runtime::Primitive{1L}})});
   }
   const auto step_idx = add_local("_range_step");
+  emit(OpSetLocal{step_idx});
 
   emit(OpGetLocal{current_idx});
   emit(OpGetLocal{step_idx});
@@ -920,16 +933,14 @@ void Compiler::compile_range_for_loop(const ast::RangeForLoop &loop) {
 
   const auto body_offset = current_instruction_offset();
 
-  loop_body_locals_snapshot.push_back(locals().size());
-
   begin_scope();
   emit(OpGetLocal{current_idx});
-  add_local(loop.get_variable());
+  const auto var_idx = add_local(loop.get_variable());
+  emit(OpSetLocal{var_idx});
 
   compile_block(loop.get_body());
 
   end_scope();
-  loop_body_locals_snapshot.pop_back();
 
   const auto control_offset = current_instruction_offset();
 
@@ -968,11 +979,7 @@ void Compiler::compile_while_loop(const ast::While &loop) {
 
   const auto exit_jump = emit_jump(OpJumpIf{});
 
-  // Snapshot locals before the body scope so continue can compute how many
-  // body-scope locals to pop.
-  loop_body_locals_snapshot.push_back(locals().size());
   compile_block(loop.get_body());
-  loop_body_locals_snapshot.pop_back();
 
   emit_loop(loop_start);
 
@@ -1027,8 +1034,6 @@ void Compiler::
     throw std::runtime_error("Continue statement outside of loop");
   }
 
-  const auto body_locals = locals().size() - loop_body_locals_snapshot.back();
-  emit(OpPop{.count = body_locals});
   continue_jumps_stack.back().push_back(emit_jump(OpJump{}));
 }
 

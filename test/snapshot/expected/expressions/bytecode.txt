@@ -1,23 +1,27 @@
 == Chunk 0 ==
 0000 | CONSTANT     10 (-5)
-0001 | GET_LOCAL     0
-0002 | CONSTANT      3 (10)
-0003 | ADD
-0004 | CONSTANT      1 (2)
-0005 | DIVIDE
-0006 | CONSTANT      4 (42)
-0007 | CONSTANT      5 (3.14)
-0008 | GET_GLOBAL    6 '"println"'
-0009 | GET_LOCAL     0
-0010 | CALL          1 false
-0011 | GET_GLOBAL    6 '"println"'
-0012 | GET_LOCAL     1
-0013 | CALL          1 false
-0014 | GET_GLOBAL    6 '"println"'
-0015 | GET_LOCAL     2
-0016 | CALL          1 false
-0017 | GET_GLOBAL    6 '"println"'
-0018 | GET_LOCAL     3
-0019 | CALL          1 false
-0020 | CONSTANT      7 (nil)
-0021 | RETURN
+0001 | SET_LOCAL     0
+0002 | GET_LOCAL     0
+0003 | CONSTANT      3 (10)
+0004 | ADD
+0005 | CONSTANT      1 (2)
+0006 | DIVIDE
+0007 | SET_LOCAL     1
+0008 | CONSTANT      4 (42)
+0009 | SET_LOCAL     2
+0010 | CONSTANT      5 (3.14)
+0011 | SET_LOCAL     3
+0012 | GET_GLOBAL    6 '"println"'
+0013 | GET_LOCAL     0
+0014 | CALL          1 false
+0015 | GET_GLOBAL    6 '"println"'
+0016 | GET_LOCAL     1
+0017 | CALL          1 false
+0018 | GET_GLOBAL    6 '"println"'
+0019 | GET_LOCAL     2
+0020 | CALL          1 false
+0021 | GET_GLOBAL    6 '"println"'
+0022 | GET_LOCAL     3
+0023 | CALL          1 false
+0024 | CONSTANT      7 (nil)
+0025 | RETURN

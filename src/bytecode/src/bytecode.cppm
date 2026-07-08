@@ -143,6 +143,7 @@ public:
 struct ProgramBytecode {
   std::vector<Chunk> chunks;
   std::vector<runtime::GCValue> constants;
+  runtime::BytecodeFunction main_function;
 };
 
 } // namespace l3::bytecode

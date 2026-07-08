@@ -32,6 +32,7 @@ struct BytecodeFunction {
   std::size_t id;
   std::string name;
   std::size_t arity;
+  std::size_t local_count = 0;
   std::vector<StackValue> curried_args;
   std::vector<GCUpvalue *> captured_upvalue_refs;
 };

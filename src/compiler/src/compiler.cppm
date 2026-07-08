@@ -22,6 +22,7 @@ struct Context {
   std::size_t chunk_id;
   int scope_depth = 0;
   bool is_in_expression = false;
+  std::size_t max_locals = 0;
 };
 
 export class Compiler {
@@ -43,6 +44,7 @@ private:
   struct CompiledFunctionBody {
     std::vector<Upvalue> upvalues;
     std::size_t chunk_id;
+    std::size_t max_locals = 0;
   };
 
   enum class VariableType : std::uint8_t { Local, Upvalue, Global };
@@ -62,7 +64,6 @@ private:
   std::size_t add_local(const ast::Identifier &name);
   std::vector<std::vector<std::size_t>> break_jumps_stack;
   std::vector<std::vector<std::size_t>> continue_jumps_stack;
-  std::vector<std::size_t> loop_body_locals_snapshot;
 
   std::size_t push_context();
   void pop_context();

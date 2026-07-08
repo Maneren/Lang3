@@ -10,10 +10,6 @@ namespace l3::vm {
 namespace {
 
 std::string function_name_for_frame(const BytecodeVM::CallFrame &frame) {
-  if (!frame.closure) {
-    return "<toplevel>";
-  }
-
   return frame.closure->first.name;
 }
 
@@ -173,15 +169,11 @@ runtime::StackValue BytecodeVM::evaluate(
                     std::pair{bc_func, function}
                 );
                 auto &new_frame = frames.back();
-                for (const auto &sv : bc_func.captured_upvalue_refs) {
-                  new_frame.upvalues.push_back(sv);
-                }
-                for (const auto &arg : bc_func.curried_args) {
-                  stack.push_back(arg);
-                }
-                for (const auto &arg : arguments) {
-                  stack.push_back(arg);
-                }
+                new_frame.upvalues = bc_func.captured_upvalue_refs;
+                stack.reserve(stack.size() + total_args + bc_func.local_count);
+                stack.append_range(bc_func.curried_args);
+                stack.append_range(arguments);
+                stack.resize(stack.size() + bc_func.local_count);
                 execute_loop(previous_frames);
                 return stack_pop();
               }
@@ -240,7 +232,15 @@ void BytecodeVM::maybe_gc() {
 
 void BytecodeVM::execute(bytecode::ProgramBytecode &program) {
   current_program = &program;
-  frames.emplace_back();
+  auto main_func_sv = store_value(
+      runtime::Function{runtime::BytecodeFunction{program.main_function}}
+  );
+  frames.emplace_back(
+      0, 0, 0, std::nullopt, std::pair{program.main_function, main_func_sv}
+  );
+  for (std::size_t i = program.main_function.local_count; i > 0; --i) {
+    stack.emplace_back();
+  }
   try {
     execute_loop(0);
   } catch (runtime::RuntimeError &error) {
@@ -487,9 +487,15 @@ void BytecodeVM::execute_op(const bytecode::OpGetLocal &op, CallFrame &frame) {
 }
 
 void BytecodeVM::execute_op(const bytecode::OpSetLocal &op, CallFrame &frame) {
-  debug_print("SET_LOCAL index={} value={}", op.index, stack_top());
+  debug_print(
+      "SET_LOCAL index={} fp={} stack size={} value={}",
+      op.index,
+      frame.frame_pointer,
+      stack.size(),
+      stack_top()
+  );
   auto val = stack_pop();
-  stack_at(frame.frame_pointer + op.index) = val;
+  stack_local(op.index) = val;
   auto it = frame.captured_locals.find(op.index);
   if (it != frame.captured_locals.end()) {
     it->second->get() = val;
@@ -635,17 +641,17 @@ void BytecodeVM::execute_op(const bytecode::OpCall &op, CallFrame & /*frame*/) {
                   current_instruction_location(),
                   std::pair{bc_func, func_sv}
               );
-              for (const auto &sv : bc_func.captured_upvalue_refs) {
-                new_frame.upvalues.push_back(sv);
+              for (auto *uv : bc_func.captured_upvalue_refs) {
+                new_frame.upvalues.push_back(uv);
               }
 
-              if (!bc_func.curried_args.empty()) {
-                const auto curried_count = bc_func.curried_args.size();
-                stack.resize(stack.size() + curried_count);
+              const auto curried_count = bc_func.curried_args.size();
 
-                for (std::size_t i = 1; i <= op.arg_count; i++) {
-                  stack[stack.size() - i] =
-                      stack[stack.size() - i - curried_count];
+              stack.resize(base + bc_func.local_count + curried_count);
+
+              if (!bc_func.curried_args.empty()) {
+                for (std::size_t i = op.arg_count - 1; i >= 0; --i) {
+                  stack[base + i + curried_count] = stack[base + i];
                 }
 
                 for (const auto &[i, arg] :

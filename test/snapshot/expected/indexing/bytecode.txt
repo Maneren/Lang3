@@ -1,76 +1,80 @@
 == Chunk 0 ==
 0000 | CONSTANT      0 ("lang3")
-0001 | GET_GLOBAL    1 '"println"'
-0002 | GET_LOCAL     0
-0003 | CONSTANT      2 (0)
-0004 | GET_INDEX
-0005 | CALL          1 false
-0006 | GET_GLOBAL    1 '"println"'
-0007 | GET_LOCAL     0
-0008 | CONSTANT      3 (4)
-0009 | GET_INDEX
-0010 | CALL          1 false
-0011 | CONSTANT      4 (10)
-0012 | CONSTANT      5 (20)
-0013 | CONSTANT      6 (30)
-0014 | CONSTANT      7 (40)
-0015 | MAKE_ARRAY    4
-0016 | GET_GLOBAL    1 '"println"'
-0017 | GET_LOCAL     1
-0018 | CONSTANT      2 (0)
-0019 | GET_INDEX
-0020 | CALL          1 false
-0021 | GET_GLOBAL    1 '"println"'
-0022 | GET_LOCAL     1
-0023 | CONSTANT      8 (2)
-0024 | GET_INDEX
-0025 | CALL          1 false
-0026 | CONSTANT      9 (1)
-0027 | GET_GLOBAL    1 '"println"'
-0028 | GET_LOCAL     1
-0029 | GET_LOCAL     2
-0030 | CONSTANT      9 (1)
-0031 | ADD
-0032 | GET_INDEX
-0033 | CALL          1 false
-0034 | GET_LOCAL     1
-0035 | CONSTANT      9 (1)
-0036 | CONSTANT     10 (25)
-0037 | SET_INDEX
-0038 | GET_LOCAL     1
-0039 | CONSTANT     11 (3)
-0040 | GET_LOCAL     1
-0041 | CONSTANT      9 (1)
-0042 | GET_INDEX
-0043 | CONSTANT      4 (10)
-0044 | ADD
-0045 | SET_INDEX
-0046 | GET_GLOBAL    1 '"println"'
-0047 | GET_LOCAL     1
-0048 | CALL          1 false
-0049 | CONSTANT      9 (1)
-0050 | CONSTANT      8 (2)
-0051 | MAKE_ARRAY    2
-0052 | CONSTANT     11 (3)
-0053 | CONSTANT      3 (4)
+0001 | SET_LOCAL     0
+0002 | GET_GLOBAL    1 '"println"'
+0003 | GET_LOCAL     0
+0004 | CONSTANT      2 (0)
+0005 | GET_INDEX
+0006 | CALL          1 false
+0007 | GET_GLOBAL    1 '"println"'
+0008 | GET_LOCAL     0
+0009 | CONSTANT      3 (4)
+0010 | GET_INDEX
+0011 | CALL          1 false
+0012 | CONSTANT      4 (10)
+0013 | CONSTANT      5 (20)
+0014 | CONSTANT      6 (30)
+0015 | CONSTANT      7 (40)
+0016 | MAKE_ARRAY    4
+0017 | SET_LOCAL     1
+0018 | GET_GLOBAL    1 '"println"'
+0019 | GET_LOCAL     1
+0020 | CONSTANT      2 (0)
+0021 | GET_INDEX
+0022 | CALL          1 false
+0023 | GET_GLOBAL    1 '"println"'
+0024 | GET_LOCAL     1
+0025 | CONSTANT      8 (2)
+0026 | GET_INDEX
+0027 | CALL          1 false
+0028 | CONSTANT      9 (1)
+0029 | SET_LOCAL     2
+0030 | GET_GLOBAL    1 '"println"'
+0031 | GET_LOCAL     1
+0032 | GET_LOCAL     2
+0033 | CONSTANT      9 (1)
+0034 | ADD
+0035 | GET_INDEX
+0036 | CALL          1 false
+0037 | GET_LOCAL     1
+0038 | CONSTANT      9 (1)
+0039 | CONSTANT     10 (25)
+0040 | SET_INDEX
+0041 | GET_LOCAL     1
+0042 | CONSTANT     11 (3)
+0043 | GET_LOCAL     1
+0044 | CONSTANT      9 (1)
+0045 | GET_INDEX
+0046 | CONSTANT      4 (10)
+0047 | ADD
+0048 | SET_INDEX
+0049 | GET_GLOBAL    1 '"println"'
+0050 | GET_LOCAL     1
+0051 | CALL          1 false
+0052 | CONSTANT      9 (1)
+0053 | CONSTANT      8 (2)
 0054 | MAKE_ARRAY    2
-0055 | MAKE_ARRAY    2
-0056 | GET_GLOBAL    1 '"println"'
-0057 | GET_LOCAL     3
-0058 | CALL          1 false
-0059 | GET_GLOBAL    1 '"println"'
-0060 | GET_LOCAL     3
-0061 | CONSTANT      2 (0)
-0062 | GET_INDEX
-0063 | CONSTANT      9 (1)
-0064 | GET_INDEX
-0065 | CALL          1 false
-0066 | GET_GLOBAL    1 '"println"'
-0067 | GET_LOCAL     3
-0068 | CONSTANT      9 (1)
-0069 | GET_INDEX
-0070 | CONSTANT      2 (0)
-0071 | GET_INDEX
-0072 | CALL          1 false
-0073 | CONSTANT     12 (nil)
-0074 | RETURN
+0055 | CONSTANT     11 (3)
+0056 | CONSTANT      3 (4)
+0057 | MAKE_ARRAY    2
+0058 | MAKE_ARRAY    2
+0059 | SET_LOCAL     3
+0060 | GET_GLOBAL    1 '"println"'
+0061 | GET_LOCAL     3
+0062 | CALL          1 false
+0063 | GET_GLOBAL    1 '"println"'
+0064 | GET_LOCAL     3
+0065 | CONSTANT      2 (0)
+0066 | GET_INDEX
+0067 | CONSTANT      9 (1)
+0068 | GET_INDEX
+0069 | CALL          1 false
+0070 | GET_GLOBAL    1 '"println"'
+0071 | GET_LOCAL     3
+0072 | CONSTANT      9 (1)
+0073 | GET_INDEX
+0074 | CONSTANT      2 (0)
+0075 | GET_INDEX
+0076 | CALL          1 false
+0077 | CONSTANT     12 (nil)
+0078 | RETURN

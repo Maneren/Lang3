@@ -1,11 +1,11 @@
 == Chunk 0 ==
-0000 | CONSTANT      0 (nil)
-0001 | CONSTANT      1 (function <set_index>)
-0002 | SET_LOCAL     0
-0003 | CONSTANT      2 (1)
-0004 | CONSTANT      3 (2)
-0005 | CONSTANT      4 (3)
-0006 | MAKE_ARRAY    3
+0000 | CONSTANT      1 (function <set_index>)
+0001 | SET_LOCAL     0
+0002 | CONSTANT      2 (1)
+0003 | CONSTANT      3 (2)
+0004 | CONSTANT      4 (3)
+0005 | MAKE_ARRAY    3
+0006 | SET_LOCAL     1
 0007 | GET_LOCAL     0
 0008 | GET_LOCAL     1
 0009 | CONSTANT      5 (0)
