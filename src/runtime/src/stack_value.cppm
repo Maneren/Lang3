@@ -14,7 +14,7 @@ struct Slice {
 };
 
 struct Nil {
-  std::strong_ordering operator<=>(Nil) const {
+  std::strong_ordering operator<=>(Nil /*unused*/) const {
     return std::strong_ordering::equal;
   };
 };
@@ -50,12 +50,12 @@ public:
 
   [[nodiscard]] utils::optional_cref<Primitive> as_primitive() const;
 
-  bool holds_gc_value() const {
+  [[nodiscard]] bool holds_gc_value() const {
     return std::holds_alternative<GCValue *>(inner);
   }
 
-  GCValue *get_gc_ptr() const noexcept {
-    if (auto *ptr = std::get_if<GCValue *>(&inner)) {
+  [[nodiscard]] GCValue *get_gc_ptr() const noexcept {
+    if (const auto *ptr = std::get_if<GCValue *>(&inner)) {
       return *ptr;
     }
     return nullptr;
