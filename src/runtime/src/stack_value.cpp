@@ -7,7 +7,9 @@ namespace l3::runtime {
 StackValue::StackValue() : inner{Nil{}} {}
 StackValue::StackValue(Nil /*unused*/) : inner{Nil{}} {}
 StackValue::StackValue(Primitive primitive) : inner{primitive} {}
-StackValue::StackValue(GCValue *gc_value) : inner{gc_value} {}
+StackValue::StackValue(GCValue *gc_value) : inner{gc_value} {
+  // GCValue* variant must never be null — nil is always represented by Nil
+}
 
 bool StackValue::is_nil() const { return std::holds_alternative<Nil>(inner); }
 
@@ -20,9 +22,6 @@ bool StackValue::is_truthy() const {
       [](Nil) { return false; },
       [](const Primitive &p) -> bool { return p.is_truthy(); },
       [](GCValue *gcv) -> bool {
-        if (!gcv) {
-          return false;
-        }
         return gcv->get_value().visit(
             [](const std::string &s) { return !s.empty(); },
             [](const std::vector<StackValue> &v) { return !v.empty(); },
@@ -38,9 +37,6 @@ std::string_view StackValue::type_name() const {
       [](const Primitive &p) { return p.type_name(); },
       [](Nil) { return "nil"sv; },
       [](GCValue *gcv) -> std::string_view {
-        if (!gcv) {
-          return "nil"sv;
-        }
         return gcv->get_value().visit(
             [](const Value::function_type &) { return "function"sv; },
             [](const std::vector<StackValue> &) { return "vector"sv; },

@@ -361,9 +361,6 @@ Value to_value(const StackValue &sv) {
       [](Nil) -> Value { return {}; },
       [](const Primitive &p) -> Value { return Value{p}; },
       [](GCValue *gcv) -> Value {
-        if (!gcv) {
-          return {};
-        }
         return gcv->get_value().visit(
             [](const std::unique_ptr<Function> &f) -> Value {
               return Value{*f};
