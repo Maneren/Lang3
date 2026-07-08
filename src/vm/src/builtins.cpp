@@ -21,10 +21,6 @@ void format_sv(
       [&](const Primitive &p) { std::format_to(out, "{}", p); },
       [&](l3::runtime::Nil) { std::format_to(out, "nil"); },
       [&](l3::runtime::GCValue *gcv) {
-        if (!gcv) {
-          std::format_to(out, "nil");
-          return;
-        }
         gcv->get_value().visit(
             [&](const l3::runtime::Value::function_type &f) {
               std::format_to(out, "{}", *f);

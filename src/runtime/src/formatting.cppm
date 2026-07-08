@@ -106,9 +106,6 @@ export {
             return std::format_to(ctx.out(), "nil");
           },
           [&ctx](l3::runtime::GCValue *gcv) -> decltype(auto) {
-            if (!gcv) {
-              return std::format_to(ctx.out(), "nil");
-            }
             return gcv->get_value().visit(
                 [&ctx](const l3::runtime::Value::function_type &f) {
                   return std::format_to(ctx.out(), "{}", *f);
