@@ -157,9 +157,7 @@ runtime::StackValue BytecodeVM::evaluate(
 
               if (total_args < bc_func.arity) {
                 auto new_func = bc_func;
-                for (const auto &arg : arguments) {
-                  new_func.curried_args.push_back(arg);
-                }
+                new_func.curried_args.append_range(arguments);
                 return store_value(runtime::Function{std::move(new_func)});
               }
               if (total_args == bc_func.arity) {
@@ -173,15 +171,10 @@ runtime::StackValue BytecodeVM::evaluate(
                     std::pair{bc_func, function}
                 );
                 auto &new_frame = frames.back();
-                for (const auto &sv : bc_func.captured_upvalue_refs) {
-                  new_frame.upvalues.push_back(sv);
-                }
-                for (const auto &arg : bc_func.curried_args) {
-                  stack.push_back(arg);
-                }
-                for (const auto &arg : arguments) {
-                  stack.push_back(arg);
-                }
+                new_frame.upvalues = bc_func.captured_upvalue_refs;
+                stack.reserve(stack.size() + total_args);
+                stack.append_range(bc_func.curried_args);
+                stack.append_range(arguments);
                 execute_loop(previous_frames);
                 return stack_pop();
               }
@@ -541,13 +534,11 @@ void BytecodeVM::execute_op(const bytecode::OpForLoop &op, CallFrame &frame) {
 
 void BytecodeVM::
     execute_op(const bytecode::OpMakeArray &op, CallFrame & /*frame*/) {
-  const auto start = stack.end() - static_cast<std::ptrdiff_t>(op.count);
-  auto elements = std::vector<runtime::StackValue>{};
-  elements.reserve(op.count);
-  for (auto it = start; it != stack.end(); ++it) {
-    elements.push_back(*it);
-  }
-  stack.erase(start, stack.end());
+  const auto start = stack.size() - op.count;
+  std::vector<runtime::StackValue> elements{
+      stack.begin() + static_cast<std::ptrdiff_t>(start), stack.end()
+  };
+  stack.resize(start);
   debug_print("MAKE_ARRAY count={}", op.count);
   stack_push(store_value(std::move(elements)));
 }
@@ -621,9 +612,7 @@ void BytecodeVM::execute_op(const bytecode::OpCall &op, CallFrame & /*frame*/) {
 
               if (total_args < bc_func.arity) {
                 auto new_func = bc_func;
-                for (auto &it : args_span) {
-                  new_func.curried_args.push_back(it);
-                }
+                new_func.curried_args.append_range(args_span);
                 return store_value(runtime::Function{std::move(new_func)});
               }
 
@@ -635,17 +624,14 @@ void BytecodeVM::execute_op(const bytecode::OpCall &op, CallFrame & /*frame*/) {
                   current_instruction_location(),
                   std::pair{bc_func, func_sv}
               );
-              for (const auto &sv : bc_func.captured_upvalue_refs) {
-                new_frame.upvalues.push_back(sv);
-              }
+              new_frame.upvalues = bc_func.captured_upvalue_refs;
 
               if (!bc_func.curried_args.empty()) {
                 const auto curried_count = bc_func.curried_args.size();
                 stack.resize(stack.size() + curried_count);
 
-                for (std::size_t i = 1; i <= op.arg_count; i++) {
-                  stack[stack.size() - i] =
-                      stack[stack.size() - i - curried_count];
+                for (std::size_t i = op.arg_count; i > 0; i--) {
+                  stack[base + i - 1 + curried_count] = stack[base + i - 1];
                 }
 
                 for (const auto &[i, arg] :
