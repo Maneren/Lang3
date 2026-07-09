@@ -4,6 +4,7 @@ import utils;
 import :gc_value;
 import :value;
 import :formatting;
+import :chunk_list;
 
 namespace l3::runtime {
 
@@ -21,35 +22,8 @@ GCValue &GCStorage::emplace(Value &&value) {
 std::size_t GCStorage::sweep() {
   debug_print("[GC] Sweeping");
   sweep_count++;
-  std::size_t erased = 0;
-  // Remove all unmarked items from the front to ensure we start from a marked
-  // value
-  while (!backing_store.empty() && !backing_store.front().is_marked()) {
-    backing_store.pop_front();
-    ++erased;
-    --size;
-  }
-
-  if (backing_store.empty()) {
-    return erased;
-  }
-
-  // Erase the unmarked items and reset the marks
-  auto iter = backing_store.begin();
-  iter->unmark();
-
-  while (std::next(iter) != backing_store.end()) {
-    auto next = std::next(iter);
-    if (!next->is_marked()) {
-      backing_store.erase_after(iter);
-      ++erased;
-      --size;
-    } else {
-      next->unmark();
-      ++iter;
-    }
-  }
-
+  auto erased = sweep_marked_forward_list(backing_store);
+  size -= erased;
   added_since_last_sweep = 0;
   next_gc_threshold = std::max(size * 2, std::size_t{1024});
   return erased;

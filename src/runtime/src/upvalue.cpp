@@ -1,6 +1,8 @@
 module l3.runtime;
 
 import :upvalue;
+import :chunk_list;
+import :gc_value;
 
 namespace l3::runtime {
 
@@ -20,32 +22,7 @@ void GCUpvalue::mark() {
 }
 
 std::size_t GCUpvalueStorage::sweep() {
-  std::size_t erased = 0;
-
-  while (!backing_store.empty() && !backing_store.front().is_marked()) {
-    backing_store.pop_front();
-    ++erased;
-  }
-
-  if (backing_store.empty()) {
-    return erased;
-  }
-
-  auto iter = backing_store.begin();
-  iter->unmark();
-
-  while (std::next(iter) != backing_store.end()) {
-    auto next = std::next(iter);
-    if (!next->is_marked()) {
-      backing_store.erase_after(iter);
-      ++erased;
-    } else {
-      next->unmark();
-      ++iter;
-    }
-  }
-
-  return erased;
+  return sweep_marked_forward_list(backing_store);
 }
 
 } // namespace l3::runtime

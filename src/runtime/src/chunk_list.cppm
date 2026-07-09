@@ -180,4 +180,34 @@ public:
 template <typename T, std::size_t ChunkSize>
 using ChunkedForwardList = std::forward_list<T, ChunkedAllocator<T, ChunkSize>>;
 
+template <typename ForwardList>
+std::size_t sweep_marked_forward_list(ForwardList &list) {
+  std::size_t erased = 0;
+
+  while (!list.empty() && !list.front().is_marked()) {
+    list.pop_front();
+    ++erased;
+  }
+
+  if (list.empty()) {
+    return erased;
+  }
+
+  auto iter = list.begin();
+  iter->unmark();
+
+  while (std::next(iter) != list.end()) {
+    auto next = std::next(iter);
+    if (!next->is_marked()) {
+      list.erase_after(iter);
+      ++erased;
+    } else {
+      next->unmark();
+      ++iter;
+    }
+  }
+
+  return erased;
+}
+
 } // namespace l3::runtime
