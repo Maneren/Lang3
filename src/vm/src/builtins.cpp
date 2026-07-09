@@ -175,10 +175,7 @@ Value builtin_head(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
     auto head = vec.front();
     auto rest = Value(std::vector<StackValue>(vec.begin() + 1, vec.end()));
 
-    auto result = std::vector<StackValue>{};
-    result.push_back(head);
-    result.push_back(vm.store_value(std::move(rest)));
-    return {std::move(result)};
+    return {std::vector{head, vm.store_value(std::move(rest))}};
   }
 
   if (const auto &string_opt = argument.as_string()) {
@@ -191,10 +188,9 @@ Value builtin_head(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
     auto head = Value(std::string{string.front()});
     auto rest = Value(string.substr(1));
 
-    auto result = std::vector<StackValue>{};
-    result.push_back(vm.store_value(std::move(head)));
-    result.push_back(vm.store_value(std::move(rest)));
-    return {std::move(result)};
+    return {std::vector{
+        vm.store_value(std::move(head)), vm.store_value(std::move(rest))
+    }};
   }
 
   throw TypeError("head() takes only vector and string values");
@@ -216,10 +212,7 @@ Value builtin_tail(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
     auto tail = vec.back();
     auto rest = Value(std::vector<StackValue>(vec.begin(), vec.end() - 1));
 
-    auto result = std::vector<StackValue>{};
-    result.push_back(vm.store_value(std::move(rest)));
-    result.push_back(tail);
-    return {std::move(result)};
+    return {std::vector{vm.store_value(std::move(rest)), tail}};
   }
 
   if (const auto &string_opt = argument.as_string()) {
@@ -232,10 +225,9 @@ Value builtin_tail(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
     auto tail = Value(std::string{string.back()});
     auto rest = Value(string.substr(0, string.size() - 1));
 
-    auto result = std::vector<StackValue>{};
-    result.push_back(vm.store_value(std::move(rest)));
-    result.push_back(vm.store_value(std::move(tail)));
-    return {std::move(result)};
+    return {std::vector{
+        vm.store_value(std::move(rest)), vm.store_value(std::move(tail))
+    }};
   }
 
   throw TypeError("tail() takes only vector and string values");
@@ -363,11 +355,13 @@ Value builtin_map(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
   }
   const auto &list = list_opt->get();
 
-  std::vector<StackValue> result;
-  result.reserve(list.size());
-  for (const auto &item : list) {
-    result.push_back(vm.evaluate(args[0], std::array{item}));
-  }
+  auto result = std::views::transform(
+                    list,
+                    [&](const auto &item) {
+                      return vm.evaluate(args[0], std::array{item});
+                    }
+                ) |
+                std::ranges::to<std::vector>();
 
   return {std::move(result)};
 }

@@ -26,9 +26,9 @@ void multiply_container_inplace(
 
   container.reserve(count * container.size());
 
-  const auto span = std::span(container);
+  const auto saved = container;
   for (std::size_t i = 0; i < count - 1; ++i) {
-    container.insert(container.end(), span.begin(), span.end());
+    container.append_range(saved);
   }
 };
 
