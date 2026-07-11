@@ -8,11 +8,6 @@ import :storage;
 
 export namespace l3::runtime {
 
-struct PrimitivePrettyPrinter {
-  const Primitive
-      &primitive; // NOLINT(cppcoreguidelines-avoid-const-or-ref-data-members)
-};
-
 struct ValuePrettyPrinter {
   const Value
       &value; // NOLINT(cppcoreguidelines-avoid-const-or-ref-data-members)
@@ -36,25 +31,6 @@ export {
     static constexpr auto
     format(const auto &primitive, std::format_context &ctx) {
       return primitive.visit(
-          [&ctx](const bool &value) {
-            return std::format_to(ctx.out(), "{}", value);
-          },
-          [&ctx](const std::int64_t &value) {
-            return std::format_to(ctx.out(), "{}", value);
-          },
-          [&ctx](const double &value) {
-            return std::format_to(ctx.out(), "{}", value);
-          }
-      );
-    }
-  };
-
-  template <>
-  struct std::formatter<l3::runtime::PrimitivePrettyPrinter>
-      : utils::static_formatter<l3::runtime::PrimitivePrettyPrinter> {
-    static constexpr auto
-    format(const auto &primitive_pp, std::format_context &ctx) {
-      return primitive_pp.primitive.visit(
           [&ctx](const bool &value) {
             return std::format_to(ctx.out(), "{}", value);
           },
@@ -172,9 +148,7 @@ export {
     format(const auto &value_pp, std::format_context &ctx) {
       return value_pp.value.visit(
           [&ctx](const l3::runtime::Primitive &primitive) {
-            return std::format_to(
-                ctx.out(), "{}", l3::runtime::PrimitivePrettyPrinter{primitive}
-            );
+            return std::format_to(ctx.out(), "{}", primitive);
           },
           [&ctx](const l3::runtime::Value::string_type &value) {
             return std::format_to(ctx.out(), "{}", value);
