@@ -298,7 +298,8 @@ void BytecodeVM::
 }
 
 void BytecodeVM::execute_op(const bytecode::OpPop &op, CallFrame & /*frame*/) {
-  if (stack.empty() || stack.size() == current_frame_pointer()) {
+  auto available = stack.size() - current_frame_pointer();
+  if (available < op.count) {
     throw runtime::RuntimeError("stack underflow");
   }
 
@@ -306,7 +307,6 @@ void BytecodeVM::execute_op(const bytecode::OpPop &op, CallFrame & /*frame*/) {
     debug_print("POP value={}", stack_pop());
   } else {
     auto base = stack.end() - static_cast<std::ptrdiff_t>(op.count);
-    debug_print("POP values={}", 0); // Temporary fix
     stack.erase(base, stack.end());
   }
 }
