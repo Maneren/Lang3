@@ -739,8 +739,7 @@ void Compiler::compile_name_assignment(const ast::NameAssignment &assign) {
       std::to_string(locals().size())
   };
 
-  std::size_t hidden_name_idx = -1UZ;
-  hidden_name_idx = add_local(hidden_name);
+  std::size_t hidden_name_idx = add_local(hidden_name);
 
   for (std::size_t i = 0; i < names.size(); ++i) {
     emit(OpGetLocal{hidden_name_idx});
