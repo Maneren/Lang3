@@ -147,6 +147,10 @@ struct ProgramBytecode {
   std::vector<runtime::GCValue> constants;
 };
 
+[[nodiscard]] std::string format_instruction(
+    const Instruction &inst, const ProgramBytecode &program, std::size_t offset
+);
+
 } // namespace l3::bytecode
 
 export {
@@ -165,183 +169,8 @@ export {
 
         for (const auto &[offset, instruction] :
              utils::ranges::enumerate(chunk.code)) {
-          out = std::format_to(out, "{:04d} | ", offset);
-
-          out = match::match(
-              instruction,
-              [&](const l3::bytecode::OpReturn &) {
-                return std::format_to(out, "RETURN\n");
-              },
-              [&](const l3::bytecode::OpConstant &op) {
-                return std::format_to(
-                    out,
-                    "{:<10} {:4d} ({})\n",
-                    "CONSTANT",
-                    op.index,
-                    program.constants[op.index]
-                );
-              },
-              [&](const l3::bytecode::OpPop &op) {
-                return std::format_to(out, "{:<10} {:4d}\n", "POP", op.count);
-              },
-              [&](const l3::bytecode::OpDuplicate &op) {
-                return std::format_to(
-                    out, "{:<10} {:4d}\n", "DUPLICATE", op.index
-                );
-              },
-              [&](const l3::bytecode::OpAdd &) {
-                return std::format_to(out, "ADD\n");
-              },
-              [&](const l3::bytecode::OpSubtract &) {
-                return std::format_to(out, "SUBTRACT\n");
-              },
-              [&](const l3::bytecode::OpMultiply &) {
-                return std::format_to(out, "MULTIPLY\n");
-              },
-              [&](const l3::bytecode::OpDivide &) {
-                return std::format_to(out, "DIVIDE\n");
-              },
-              [&](const l3::bytecode::OpModulo &) {
-                return std::format_to(out, "MODULO\n");
-              },
-              [&](const l3::bytecode::OpPower &) {
-                return std::format_to(out, "POWER\n");
-              },
-              [&](const l3::bytecode::OpNegate &) {
-                return std::format_to(out, "NEGATE\n");
-              },
-              [&](const l3::bytecode::OpEqual &) {
-                return std::format_to(out, "EQUAL\n");
-              },
-              [&](const l3::bytecode::OpNotEqual &) {
-                return std::format_to(out, "NOT_EQUAL\n");
-              },
-              [&](const l3::bytecode::OpGreater &) {
-                return std::format_to(out, "GREATER\n");
-              },
-              [&](const l3::bytecode::OpGreaterEqual &) {
-                return std::format_to(out, "GREATER_EQUAL\n");
-              },
-              [&](const l3::bytecode::OpLess &) {
-                return std::format_to(out, "LESS\n");
-              },
-              [&](const l3::bytecode::OpLessEqual &) {
-                return std::format_to(out, "LESS_EQUAL\n");
-              },
-              [&](const l3::bytecode::OpNot &) {
-                return std::format_to(out, "NOT\n");
-              },
-              [&](const l3::bytecode::OpGetGlobal &op) {
-                return std::format_to(
-                    out,
-                    "{:<10} {:4d} '{}'\n",
-                    "GET_GLOBAL",
-                    op.name_index,
-                    program.constants[op.name_index]
-                );
-              },
-              [&](const l3::bytecode::OpSetGlobal &op) {
-                return std::format_to(
-                    out,
-                    "{:<10} {:4d} '{}'\n",
-                    "SET_GLOBAL",
-                    op.name_index,
-                    program.constants[op.name_index]
-                );
-              },
-              [&](const l3::bytecode::OpGetLocal &op) {
-                return std::format_to(
-                    out, "{:<10} {:4d}\n", "GET_LOCAL", op.index
-                );
-              },
-              [&](const l3::bytecode::OpSetLocal &op) {
-                return std::format_to(
-                    out, "{:<10} {:4d}\n", "SET_LOCAL", op.index
-                );
-              },
-              [&](const l3::bytecode::OpForLoop &op) {
-                return std::format_to(
-                    out,
-                    "{:<10} ctrl={:4d} lim={:4d} body={:4d} {} {}\n",
-                    "FOR_LOOP",
-                    op.control_index,
-                    op.limit_index,
-                    op.body_offset,
-                    op.inclusive ? "LE" : "LT",
-                    op.step_index ? std::format("step={:4d}", *op.step_index)
-                                  : "step=const1"
-                );
-              },
-              [&](const l3::bytecode::OpJump &op) {
-                return std::format_to(out, "{:<10} {:4d}\n", "JUMP", op.offset);
-              },
-              [&](const l3::bytecode::OpJumpIf &op) {
-                std::format_to(
-                    out, "{:<10} {:4d} {}", "JUMP_IF", op.offset, op.expected
-                );
-
-                if (op.keep_jump || op.keep_stay) {
-                  out = std::format_to(out, " keep after");
-                }
-
-                if (op.keep_jump) {
-                  out = std::format_to(out, " jump");
-                }
-                if (op.keep_stay) {
-                  out = std::format_to(out, " stay");
-                }
-
-                return std::format_to(out, "\n");
-              },
-              [&](const l3::bytecode::OpCall &op) {
-                return std::format_to(
-                    out,
-                    "{:<10} {:4d} {}\n",
-                    "CALL",
-                    op.arg_count,
-                    op.keep_return_value
-                );
-              },
-              [&](const l3::bytecode::OpMakeArray &op) {
-                return std::format_to(
-                    out, "{:<10} {:4d}\n", "MAKE_ARRAY", op.count
-                );
-              },
-              [&](const l3::bytecode::OpGetIndex &) {
-                return std::format_to(out, "GET_INDEX\n");
-              },
-              [&](const l3::bytecode::OpSetIndex &) {
-                return std::format_to(out, "SET_INDEX\n");
-              },
-              [&](const l3::bytecode::OpClosure &op) {
-                out = std::format_to(
-                    out,
-                    "{:<10} {:4d} '{}'\n",
-                    "CLOSURE",
-                    op.function_index,
-                    program.constants[op.function_index]
-                );
-                for (const auto &upvalue : op.upvalues) {
-                  out = std::format_to(
-                      out,
-                      "{:04d} |                     {} {}\n",
-                      offset,
-                      upvalue.is_local ? "local" : "upvalue",
-                      upvalue.index
-                  );
-                }
-                return out;
-              },
-              [&](const l3::bytecode::OpGetUpvalue &op) {
-                return std::format_to(
-                    out, "{:<10} {:4d}\n", "GET_UPVALUE", op.index
-                );
-              },
-              [&](const l3::bytecode::OpSetUpvalue &op) {
-                return std::format_to(
-                    out, "{:<10} {:4d}\n", "SET_UPVALUE", op.index
-                );
-              }
+          out = std::format_to(
+              out, "{}", format_instruction(instruction, program, offset)
           );
         }
       }
