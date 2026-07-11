@@ -448,7 +448,9 @@ void BytecodeVM::
         debug_print("GET_GLOBAL name={} value={}", name, sv);
         stack.push_back(sv);
       },
-      [](const auto &) { std::unreachable(); }
+      [](const auto &) {
+        throw runtime::RuntimeError("OpGetGlobal: constant is not a string");
+      }
   );
 }
 
@@ -464,7 +466,9 @@ void BytecodeVM::
         debug_print("SET_GLOBAL name={} value={}", name, stack_top());
         *slot = stack_pop();
       },
-      [](const auto &) { std::unreachable(); }
+      [](const auto &) {
+        throw runtime::RuntimeError("OpSetGlobal: constant is not a string");
+      }
   );
 }
 

@@ -153,8 +153,7 @@ public:
       }
     }
 
-    // This should never happen unless there is a bug in the user code
-    std::unreachable();
+    std::abort();
   }
 
   template <typename U, typename... Args>
