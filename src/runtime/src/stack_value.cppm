@@ -61,7 +61,7 @@ public:
     return nullptr;
   }
 
-  GCValue *&get_gc_ptr_mut() { return std::get<GCValue *>(inner); }
+  GCValue *get_gc_ptr_mut() { return std::get<GCValue *>(inner); }
 
   [[nodiscard]] bool is_string() const;
   [[nodiscard]] bool is_vector() const;
