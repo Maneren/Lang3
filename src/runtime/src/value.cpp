@@ -118,7 +118,7 @@ template <typename T> bool is_impl(const Value &v) {
 template <typename... Vis>
 decltype(auto) visit_flat(const StackValue &sv, Vis &&...vis) {
   auto overloaded = match::Overloaded{std::forward<Vis>(vis)...};
-  return sv.visit(overloaded, [&](GCValue *gcv) {
+  return sv.visit(overloaded, [&](HeapCell *gcv) {
     return gcv->get_value().visit(overloaded);
   });
 }
@@ -383,7 +383,7 @@ Value to_value(const StackValue &sv) {
   return sv.visit(
       [](Nil) -> Value { return {}; },
       [](const Primitive &p) -> Value { return Value{p}; },
-      [](GCValue *gcv) -> Value {
+      [](HeapCell *gcv) -> Value {
         return gcv->get_value().visit(
             [](const std::unique_ptr<Function> &f) -> Value {
               return Value{*f};
@@ -608,7 +608,7 @@ StackValue &index_mut(StackValue &container, const StackValue &index_sv) {
   }
   const auto idx = static_cast<std::size_t>(*index_opt);
 
-  auto *gcv = container.get_gc_ptr();
+  auto *gcv = container.get_heap_ptr();
   if (gcv == nullptr) {
     throw TypeError("cannot index a {} value", container.type_name());
   }

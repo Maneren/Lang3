@@ -5,11 +5,11 @@ import :upvalue;
 
 namespace l3::runtime {
 
-GCValue::GCValue(Value &&value) : value{std::move(value)} {}
-GCValue::GCValue(GCValue &&other) noexcept = default;
-GCValue &GCValue::operator=(GCValue &&other) noexcept = default;
+HeapCell::HeapCell(Value &&value) : value{std::move(value)} {}
+HeapCell::HeapCell(HeapCell &&other) noexcept = default;
+HeapCell &HeapCell::operator=(HeapCell &&other) noexcept = default;
 
-void GCValue::mark() {
+void HeapCell::mark() {
   if (marked) {
     return;
   }
@@ -17,7 +17,7 @@ void GCValue::mark() {
   marked = true;
 
   auto mark_sv = [](StackValue &sv) {
-    if (auto *gcv = sv.get_gc_ptr()) {
+    if (auto *gcv = sv.get_heap_ptr()) {
       gcv->mark();
     }
   };

@@ -14,44 +14,15 @@ using l3::runtime::TypeError;
 using l3::runtime::Value;
 using l3::runtime::ValueError;
 
-void format_sv(
-    const std::output_iterator<char> auto &out, const StackValue &sv
-) {
-  sv.visit(
-      [&](const Primitive &p) { std::format_to(out, "{}", p); },
-      [&](l3::runtime::Nil) { std::format_to(out, "nil"); },
-      [&](l3::runtime::GCValue *gcv) {
-        gcv->get_value().visit(
-            [&](const l3::runtime::Value::function_type &f) {
-              std::format_to(out, "{}", *f);
-            },
-            [&](const std::vector<StackValue> &vec) {
-              auto o = std::format_to(out, "[");
-              for (std::size_t i = 0; i < vec.size(); ++i) {
-                if (i > 0)
-                  o = std::format_to(o, ", ");
-                o = std::format_to(o, "{}", vec[i]);
-              }
-              std::format_to(out, "]");
-            },
-            [&](const std::string &s) { std::format_to(out, "{}", s); },
-            [&](const Primitive &p) { std::format_to(out, "{}", p); },
-            [&](const l3::runtime::Nil &) { std::format_to(out, "nil"); }
-        );
-      }
-  );
-}
-
 void format_args(
     const std::output_iterator<char> auto &out, l3::runtime::L3Args args
 ) {
   if (args.empty()) {
     return;
   }
-  format_sv(out, args[0]);
+  std::format_to(out, "{}", args[0]);
   for (const auto &arg : args | std::views::drop(1)) {
-    std::format_to(out, " ");
-    format_sv(out, arg);
+    std::format_to(out, " {}", arg);
   }
 }
 
@@ -175,7 +146,7 @@ Value builtin_head(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
     auto head = vec.front();
     auto rest = Value(std::vector<StackValue>(vec.begin() + 1, vec.end()));
 
-    return {std::vector{head, vm.store_value(std::move(rest))}};
+    return {std::vector{head, vm.heap_store(std::move(rest))}};
   }
 
   if (const auto &string_opt = argument.as_string()) {
@@ -189,7 +160,7 @@ Value builtin_head(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
     auto rest = Value(string.substr(1));
 
     return {std::vector{
-        vm.store_value(std::move(head)), vm.store_value(std::move(rest))
+        vm.heap_store(std::move(head)), vm.heap_store(std::move(rest))
     }};
   }
 
@@ -212,7 +183,7 @@ Value builtin_tail(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
     auto tail = vec.back();
     auto rest = Value(std::vector<StackValue>(vec.begin(), vec.end() - 1));
 
-    return {std::vector{vm.store_value(std::move(rest)), tail}};
+    return {std::vector{vm.heap_store(std::move(rest)), tail}};
   }
 
   if (const auto &string_opt = argument.as_string()) {
@@ -226,7 +197,7 @@ Value builtin_tail(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
     auto rest = Value(string.substr(0, string.size() - 1));
 
     return {std::vector{
-        vm.store_value(std::move(rest)), vm.store_value(std::move(tail))
+        vm.heap_store(std::move(rest)), vm.heap_store(std::move(tail))
     }};
   }
 
@@ -525,7 +496,7 @@ Value builtin_range(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
 
   auto result = std::vector<StackValue>{};
   for (std::int64_t i = start; step > 0 ? i < end : i > end; i += step) {
-    result.push_back(vm.store_value(Primitive{i}));
+    result.push_back(vm.heap_store(Primitive{i}));
   }
   return {std::move(result)};
 }

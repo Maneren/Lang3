@@ -217,7 +217,7 @@ std::size_t Compiler::make_constant(runtime::Value &&value) {
 
 void Compiler::deduplicate_constants() {
   std::vector<std::size_t> index_map(program.constants.size(), 0UZ);
-  std::vector<runtime::GCValue> deduped_constants;
+  std::vector<runtime::HeapCell> deduped_constants;
 
   for (const auto &[old_index, constant] :
        utils::ranges::enumerate(program.constants)) {

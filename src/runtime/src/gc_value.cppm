@@ -4,17 +4,17 @@ import :value;
 
 export namespace l3::runtime {
 
-class GCValue {
+class HeapCell {
   Value value;
   bool marked = false;
 
 public:
-  GCValue(Value &&value);
-  GCValue(const GCValue &) = delete;
-  GCValue(GCValue &&other) noexcept;
-  GCValue &operator=(const GCValue &) = delete;
-  GCValue &operator=(GCValue &&other) noexcept;
-  ~GCValue() = default;
+  HeapCell(Value &&value);
+  HeapCell(const HeapCell &) = delete;
+  HeapCell(HeapCell &&other) noexcept;
+  HeapCell &operator=(const HeapCell &) = delete;
+  HeapCell &operator=(HeapCell &&other) noexcept;
+  ~HeapCell() = default;
 
   void mark();
   void unmark() { marked = false; }

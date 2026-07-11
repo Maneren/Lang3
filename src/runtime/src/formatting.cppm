@@ -81,7 +81,7 @@ export {
           [&ctx](const l3::runtime::Nil &) {
             return std::format_to(ctx.out(), "nil");
           },
-          [&ctx](l3::runtime::GCValue *gcv) -> decltype(auto) {
+          [&ctx](l3::runtime::HeapCell *gcv) -> decltype(auto) {
             return gcv->get_value().visit(
                 [&ctx](const l3::runtime::Value::function_type &f) {
                   return std::format_to(ctx.out(), "{}", *f);
@@ -96,7 +96,7 @@ export {
                   return std::format_to(out, "]");
                 },
                 [&ctx](const std::string &s) {
-                  return std::format_to(ctx.out(), R"("{}")", s);
+                  return std::format_to(ctx.out(), "{}", s);
                 },
                 [&ctx](const l3::runtime::Primitive &p) {
                   return std::format_to(ctx.out(), "{}", p);
@@ -174,8 +174,8 @@ export {
   };
 
   template <>
-  struct std::formatter<l3::runtime::GCValue>
-      : utils::static_formatter<l3::runtime::GCValue> {
+  struct std::formatter<l3::runtime::HeapCell>
+      : utils::static_formatter<l3::runtime::HeapCell> {
     static constexpr auto format(const auto &value, std::format_context &ctx) {
       if (value.is_marked()) {
         return std::format_to(ctx.out(), "{}*", value.get_value());

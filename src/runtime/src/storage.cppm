@@ -4,29 +4,29 @@ import :chunk_list;
 
 export namespace l3::runtime {
 
-class GCValue;
+class HeapCell;
 class Value;
 
-class GCStorage {
+class Heap {
   bool debug;
-  ChunkedForwardList<GCValue, 1024> backing_store;
+  ChunkedForwardList<HeapCell, 1024> backing_store;
   std::size_t sweep_count = 0;
   std::size_t size = 0;
   std::size_t added_since_last_sweep = 0;
   std::size_t next_gc_threshold = 1024;
 
 public:
-  GCStorage(bool debug = false);
+  Heap(bool debug = false);
 
-  GCStorage(const GCStorage &) = delete;
-  GCStorage(GCStorage &&) noexcept;
-  GCStorage &operator=(const GCStorage &) = delete;
-  GCStorage &operator=(GCStorage &&) noexcept;
-  ~GCStorage();
+  Heap(const Heap &) = delete;
+  Heap(Heap &&) noexcept;
+  Heap &operator=(const Heap &) = delete;
+  Heap &operator=(Heap &&) noexcept;
+  ~Heap();
 
   std::size_t sweep();
 
-  GCValue &emplace(Value &&value);
+  HeapCell &emplace(Value &&value);
 
   DEFINE_VALUE_ACCESSOR_X(debug);
   DEFINE_VALUE_ACCESSOR_X(size);

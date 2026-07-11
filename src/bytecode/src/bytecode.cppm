@@ -144,7 +144,7 @@ public:
 
 struct ProgramBytecode {
   std::vector<Chunk> chunks;
-  std::vector<runtime::GCValue> constants;
+  std::vector<runtime::HeapCell> constants;
 };
 
 [[nodiscard]] std::string format_instruction(

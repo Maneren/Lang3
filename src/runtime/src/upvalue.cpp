@@ -6,22 +6,22 @@ import :gc_value;
 
 namespace l3::runtime {
 
-GCUpvalue::GCUpvalue(StackValue &&value) : value{std::move(value)} {}
-GCUpvalue::GCUpvalue(const StackValue &value) : value{value} {}
+UpvalueCell::UpvalueCell(StackValue &&value) : value{std::move(value)} {}
+UpvalueCell::UpvalueCell(const StackValue &value) : value{value} {}
 
-void GCUpvalue::mark() {
+void UpvalueCell::mark() {
   if (marked) {
     return;
   }
 
   marked = true;
 
-  if (auto *gcv = value.get_gc_ptr()) {
+  if (auto *gcv = value.get_heap_ptr()) {
     gcv->mark();
   }
 }
 
-std::size_t GCUpvalueStorage::sweep() {
+std::size_t UpvalueStorage::sweep() {
   return sweep_marked_forward_list(backing_store);
 }
 

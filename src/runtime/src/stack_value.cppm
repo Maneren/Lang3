@@ -6,7 +6,7 @@ import :primitive;
 
 export namespace l3::runtime {
 
-class GCValue;
+class HeapCell;
 class Value;
 
 struct Slice {
@@ -20,13 +20,13 @@ struct Nil {
 };
 
 class StackValue {
-  std::variant<Nil, Primitive, GCValue *> inner;
+  std::variant<Nil, Primitive, HeapCell *> inner;
 
 public:
   StackValue();
   StackValue(Nil);
   StackValue(Primitive primitive);
-  StackValue(GCValue *gc_value);
+  StackValue(HeapCell *gc_value);
 
   StackValue(const StackValue &) = default;
   StackValue(StackValue &&) = default;
@@ -50,18 +50,18 @@ public:
 
   [[nodiscard]] utils::optional_cref<Primitive> as_primitive() const;
 
-  [[nodiscard]] bool holds_gc_value() const {
-    return std::holds_alternative<GCValue *>(inner);
+  [[nodiscard]] bool holds_heap_cell() const {
+    return std::holds_alternative<HeapCell *>(inner);
   }
 
-  [[nodiscard]] GCValue *get_gc_ptr() const noexcept {
-    if (const auto *ptr = std::get_if<GCValue *>(&inner)) {
+  [[nodiscard]] HeapCell *get_heap_ptr() const noexcept {
+    if (const auto *ptr = std::get_if<HeapCell *>(&inner)) {
       return *ptr;
     }
     return nullptr;
   }
 
-  GCValue *get_gc_ptr_mut() { return std::get<GCValue *>(inner); }
+  HeapCell *get_heap_ptr_mut() { return std::get<HeapCell *>(inner); }
 
   [[nodiscard]] bool is_string() const;
   [[nodiscard]] bool is_vector() const;

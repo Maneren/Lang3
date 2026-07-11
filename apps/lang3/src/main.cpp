@@ -1,7 +1,7 @@
 #include <lexer/lexer.hpp>
 
 import std;
-import cli;
+import l3.cli;
 import l3.ast;
 import l3.ast.printer;
 import l3.ast.dot_printer;

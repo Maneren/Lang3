@@ -8,18 +8,18 @@ import :chunk_list;
 
 namespace l3::runtime {
 
-GCStorage::GCStorage(bool debug) : debug{debug} {}
-GCStorage::GCStorage(GCStorage &&) noexcept = default;
-GCStorage &GCStorage::operator=(GCStorage &&) noexcept = default;
-GCStorage::~GCStorage() = default;
+Heap::Heap(bool debug) : debug{debug} {}
+Heap::Heap(Heap &&) noexcept = default;
+Heap &Heap::operator=(Heap &&) noexcept = default;
+Heap::~Heap() = default;
 
-GCValue &GCStorage::emplace(Value &&value) {
+HeapCell &Heap::emplace(Value &&value) {
   size++;
   added_since_last_sweep++;
   return backing_store.emplace_front(std::move(value));
 }
 
-std::size_t GCStorage::sweep() {
+std::size_t Heap::sweep() {
   debug_print("[GC] Sweeping");
   sweep_count++;
   auto erased = sweep_marked_forward_list(backing_store);

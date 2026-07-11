@@ -2,7 +2,7 @@ module;
 
 #include <cstdlib>
 
-module cli;
+module l3.cli;
 
 std::optional<std::string_view> ParsingContext::next() {
   if (i + 1 < arguments.size()) {

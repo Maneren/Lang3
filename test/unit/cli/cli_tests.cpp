@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-import cli;
+import l3.cli;
 
 using namespace cli;
 

@@ -6,19 +6,19 @@ import std;
 
 export namespace l3::runtime {
 
-class GCUpvalue {
+class UpvalueCell {
   StackValue value;
   bool marked = false;
 
 public:
-  GCUpvalue(StackValue &&value);
-  GCUpvalue(const StackValue &value);
+  UpvalueCell(StackValue &&value);
+  UpvalueCell(const StackValue &value);
 
-  GCUpvalue(const GCUpvalue &) = delete;
-  GCUpvalue &operator=(const GCUpvalue &) = delete;
-  GCUpvalue(GCUpvalue &&) noexcept = default;
-  GCUpvalue &operator=(GCUpvalue &&) noexcept = default;
-  ~GCUpvalue() = default;
+  UpvalueCell(const UpvalueCell &) = delete;
+  UpvalueCell &operator=(const UpvalueCell &) = delete;
+  UpvalueCell(UpvalueCell &&) noexcept = default;
+  UpvalueCell &operator=(UpvalueCell &&) noexcept = default;
+  ~UpvalueCell() = default;
 
   void mark();
 
@@ -29,23 +29,23 @@ public:
   [[nodiscard]] const StackValue &get() const { return value; }
 };
 
-class GCUpvalueStorage {
-  ChunkedForwardList<GCUpvalue, 1024> backing_store;
+class UpvalueStorage {
+  ChunkedForwardList<UpvalueCell, 1024> backing_store;
 
 public:
-  GCUpvalueStorage() = default;
+  UpvalueStorage() = default;
 
-  GCUpvalueStorage(const GCUpvalueStorage &) = delete;
-  GCUpvalueStorage &operator=(const GCUpvalueStorage &) = delete;
-  GCUpvalueStorage(GCUpvalueStorage &&) noexcept = default;
-  GCUpvalueStorage &operator=(GCUpvalueStorage &&) noexcept = default;
-  ~GCUpvalueStorage() = default;
+  UpvalueStorage(const UpvalueStorage &) = delete;
+  UpvalueStorage &operator=(const UpvalueStorage &) = delete;
+  UpvalueStorage(UpvalueStorage &&) noexcept = default;
+  UpvalueStorage &operator=(UpvalueStorage &&) noexcept = default;
+  ~UpvalueStorage() = default;
 
-  GCUpvalue &emplace(StackValue &&value) {
+  UpvalueCell &emplace(StackValue &&value) {
     return backing_store.emplace_front(std::move(value));
   }
 
-  GCUpvalue &emplace(const StackValue &value) {
+  UpvalueCell &emplace(const StackValue &value) {
     return backing_store.emplace_front(value);
   }
 

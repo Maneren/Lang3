@@ -30,12 +30,12 @@ class BytecodeVM {
 public:
   explicit BytecodeVM(bool debug_ = false);
 
-  runtime::StackValue store_value(runtime::Value &&value);
+  runtime::StackValue heap_store(runtime::Value &&value);
 
   template <typename T>
     requires std::constructible_from<runtime::Value, T &&>
-  runtime::StackValue store_value(T &&value) {
-    return store_value(runtime::Value{std::forward<T>(value)});
+  runtime::StackValue heap_store(T &&value) {
+    return heap_store(runtime::Value{std::forward<T>(value)});
   }
 
   runtime::StackValue call_function(
@@ -54,8 +54,8 @@ public:
     std::optional<location::Location> call_location;
     std::optional<std::pair<runtime::BytecodeFunction, runtime::StackValue>>
         closure;
-    std::vector<runtime::GCUpvalue *> upvalues;
-    std::unordered_map<std::size_t, runtime::GCUpvalue *> captured_locals;
+    std::vector<runtime::UpvalueCell *> upvalues;
+    std::unordered_map<std::size_t, runtime::UpvalueCell *> captured_locals;
   };
 
   void execute(bytecode::ProgramBytecode &program);
@@ -118,8 +118,8 @@ private:
   void debug_print(std::format_string<Args...> fmt, Args &&...args);
 
   bool debug;
-  runtime::GCStorage gc_storage;
-  runtime::GCUpvalueStorage upvalue_storage;
+  runtime::Heap heap;
+  runtime::UpvalueStorage upvalues;
   std::vector<runtime::StackValue> stack;
   std::unordered_map<
       std::string,

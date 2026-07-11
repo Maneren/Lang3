@@ -7,7 +7,7 @@ import std;
 
 export namespace l3::runtime {
 
-class GCUpvalue;
+class UpvalueCell;
 
 using L3Args = std::span<const StackValue>;
 
@@ -33,7 +33,7 @@ struct BytecodeFunction {
   std::string name;
   std::size_t arity;
   std::vector<StackValue> curried_args;
-  std::vector<GCUpvalue *> captured_upvalue_refs;
+  std::vector<UpvalueCell *> captured_upvalue_refs;
 };
 
 class Function {

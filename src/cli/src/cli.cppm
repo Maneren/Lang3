@@ -1,4 +1,4 @@
-export module cli;
+export module l3.cli;
 
 import std;
 
