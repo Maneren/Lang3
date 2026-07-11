@@ -622,8 +622,7 @@ void Compiler::compile_declaration(const ast::Declaration &decl) {
 }
 
 void Compiler::compile_for_loop(const ast::ForLoop &loop) {
-  break_jumps_stack.emplace_back();
-  continue_jumps_stack.emplace_back();
+  loop_contexts.emplace_back();
   begin_scope();
 
   compile_expression(loop.get_collection());
@@ -641,7 +640,7 @@ void Compiler::compile_for_loop(const ast::ForLoop &loop) {
 
   const auto body_offset = current_instruction_offset();
 
-  loop_body_locals_snapshot.push_back(locals().size());
+  loop_contexts.back().body_locals_snapshot = locals().size();
 
   begin_scope();
   emit(OpGetLocal{coll_idx});
@@ -652,7 +651,6 @@ void Compiler::compile_for_loop(const ast::ForLoop &loop) {
   compile_block(loop.get_body());
 
   end_scope();
-  loop_body_locals_snapshot.pop_back();
 
   const auto control_offset = current_instruction_offset();
 
@@ -670,15 +668,13 @@ void Compiler::compile_for_loop(const ast::ForLoop &loop) {
 
   end_scope();
 
-  for (auto jump : break_jumps_stack.back()) {
+  for (auto jump : loop_contexts.back().break_jumps) {
     patch_jump_here(jump);
   }
-  break_jumps_stack.pop_back();
-
-  for (auto jump : continue_jumps_stack.back()) {
+  for (auto jump : loop_contexts.back().continue_jumps) {
     patch_jump(jump, control_offset);
   }
-  continue_jumps_stack.pop_back();
+  loop_contexts.pop_back();
 }
 
 void Compiler::compile_function_call_statement(const ast::FunctionCall &call) {
@@ -894,8 +890,7 @@ void Compiler::compile_operator_assignment(
 }
 
 void Compiler::compile_range_for_loop(const ast::RangeForLoop &loop) {
-  break_jumps_stack.emplace_back();
-  continue_jumps_stack.emplace_back();
+  loop_contexts.emplace_back();
   begin_scope();
 
   compile_expression(loop.get_start());
@@ -920,7 +915,7 @@ void Compiler::compile_range_for_loop(const ast::RangeForLoop &loop) {
 
   const auto body_offset = current_instruction_offset();
 
-  loop_body_locals_snapshot.push_back(locals().size());
+  loop_contexts.back().body_locals_snapshot = locals().size();
 
   begin_scope();
   emit(OpGetLocal{current_idx});
@@ -929,7 +924,6 @@ void Compiler::compile_range_for_loop(const ast::RangeForLoop &loop) {
   compile_block(loop.get_body());
 
   end_scope();
-  loop_body_locals_snapshot.pop_back();
 
   const auto control_offset = current_instruction_offset();
 
@@ -947,46 +941,37 @@ void Compiler::compile_range_for_loop(const ast::RangeForLoop &loop) {
 
   end_scope();
 
-  for (auto jump : break_jumps_stack.back()) {
+  for (auto jump : loop_contexts.back().break_jumps) {
     patch_jump_here(jump);
   }
-  break_jumps_stack.pop_back();
-
-  for (auto jump : continue_jumps_stack.back()) {
+  for (auto jump : loop_contexts.back().continue_jumps) {
     patch_jump(jump, control_offset);
   }
-  continue_jumps_stack.pop_back();
+  loop_contexts.pop_back();
 }
 
 void Compiler::compile_while_loop(const ast::While &loop) {
-  break_jumps_stack.emplace_back();
-  continue_jumps_stack.emplace_back();
+  loop_contexts.emplace_back();
   const auto loop_start = current_instruction_offset();
-  // `continue` in a while loop jumps back to the condition check.
 
   compile_expression(loop.get_condition());
 
   const auto exit_jump = emit_jump(OpJumpIf{});
 
-  // Snapshot locals before the body scope so continue can compute how many
-  // body-scope locals to pop.
-  loop_body_locals_snapshot.push_back(locals().size());
+  loop_contexts.back().body_locals_snapshot = locals().size();
   compile_block(loop.get_body());
-  loop_body_locals_snapshot.pop_back();
 
   emit_loop(loop_start);
 
   patch_jump_here(exit_jump);
 
-  for (auto jump : break_jumps_stack.back()) {
+  for (auto jump : loop_contexts.back().break_jumps) {
     patch_jump_here(jump);
   }
-  break_jumps_stack.pop_back();
-
-  for (auto jump : continue_jumps_stack.back()) {
+  for (auto jump : loop_contexts.back().continue_jumps) {
     patch_jump(jump, loop_start);
   }
-  continue_jumps_stack.pop_back();
+  loop_contexts.pop_back();
 }
 
 void Compiler::compile_last_statement(const ast::LastStatement &stmt) {
@@ -1015,21 +1000,22 @@ void Compiler::compile_return_statement(const ast::ReturnStatement &ret) {
 }
 
 void Compiler::compile_break_statement(const ast::BreakStatement & /* brk */) {
-  if (break_jumps_stack.empty()) {
+  if (loop_contexts.empty()) {
     throw std::runtime_error("Break statement outside of loop");
   }
-  break_jumps_stack.back().push_back(emit_jump(OpJump{}));
+  loop_contexts.back().break_jumps.push_back(emit_jump(OpJump{}));
 }
 
 void Compiler::
     compile_continue_statement(const ast::ContinueStatement & /* cont */) {
-  if (continue_jumps_stack.empty()) {
+  if (loop_contexts.empty()) {
     throw std::runtime_error("Continue statement outside of loop");
   }
 
-  const auto body_locals = locals().size() - loop_body_locals_snapshot.back();
+  const auto body_locals =
+      locals().size() - loop_contexts.back().body_locals_snapshot;
   emit(OpPop{.count = body_locals});
-  continue_jumps_stack.back().push_back(emit_jump(OpJump{}));
+  loop_contexts.back().continue_jumps.push_back(emit_jump(OpJump{}));
 }
 
 } // namespace l3::compiler

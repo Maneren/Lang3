@@ -60,9 +60,13 @@ private:
   Instruction emit_set_variable(const ast::Identifier &name);
 
   std::size_t add_local(const ast::Identifier &name);
-  std::vector<std::vector<std::size_t>> break_jumps_stack;
-  std::vector<std::vector<std::size_t>> continue_jumps_stack;
-  std::vector<std::size_t> loop_body_locals_snapshot;
+
+  struct LoopContext {
+    std::vector<std::size_t> break_jumps;
+    std::vector<std::size_t> continue_jumps;
+    std::size_t body_locals_snapshot;
+  };
+  std::vector<LoopContext> loop_contexts;
 
   std::size_t push_context();
   void pop_context();
