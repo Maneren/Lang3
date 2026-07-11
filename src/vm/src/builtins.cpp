@@ -100,7 +100,7 @@ Value builtin_input(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
 
 Value builtin_int(l3::vm::BytecodeVM & /*vm*/, l3::runtime::L3Args args) {
   if (args.empty()) {
-    throw RuntimeError("int() takes at least one arguments");
+    throw RuntimeError("int() takes at least one argument");
   }
 
   if (args.size() > 2) {
@@ -150,7 +150,7 @@ Value builtin_int(l3::vm::BytecodeVM & /*vm*/, l3::runtime::L3Args args) {
 
 Value builtin_str(l3::vm::BytecodeVM & /*vm*/, l3::runtime::L3Args args) {
   if (args.size() != 1) {
-    throw RuntimeError("str() takes one arguments");
+    throw RuntimeError("str() takes one argument");
   }
 
   std::string result;
@@ -161,7 +161,7 @@ Value builtin_str(l3::vm::BytecodeVM & /*vm*/, l3::runtime::L3Args args) {
 
 Value builtin_head(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
   if (args.empty()) {
-    throw RuntimeError("head() takes at least one arguments");
+    throw RuntimeError("head() takes at least one argument");
   }
 
   const auto &argument = args[0];
@@ -198,7 +198,7 @@ Value builtin_head(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
 
 Value builtin_tail(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
   if (args.empty()) {
-    throw RuntimeError("tail() takes at least one arguments");
+    throw RuntimeError("tail() takes at least one argument");
   }
 
   const auto &argument = args[0];
@@ -235,7 +235,7 @@ Value builtin_tail(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
 
 Value builtin_len(l3::vm::BytecodeVM & /*vm*/, l3::runtime::L3Args args) {
   if (args.size() != 1) {
-    throw RuntimeError("len() takes exactly one arguments");
+    throw RuntimeError("len() takes exactly one argument");
   }
 
   const auto &arg = args[0];
