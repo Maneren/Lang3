@@ -104,23 +104,22 @@ struct Match {
   std::optional<Instruction> replacement;
 };
 
-using Pattern = auto (*)(
-    std::size_t i,
-    const std::vector<Instruction> &code,
-    ProgramBytecode &program
-) -> Match;
-
 // OpPop{0} → remove
 Match match_pop_zero(
     std::size_t i,
     const std::vector<Instruction> &code,
     ProgramBytecode & /*unused*/
 ) {
-  const auto *pop = std::get_if<OpPop>(&code[i]);
-  if ((pop == nullptr) || pop->count != 0) {
-    return {};
-  }
-  return {.consumed = 1, .replacement = std::nullopt};
+  return match::match<Match>(
+      code[i],
+      [](const OpPop &pop) -> Match {
+        if (pop.count != 0) {
+          return {};
+        }
+        return {.consumed = 1, .replacement = std::nullopt};
+      },
+      [](const auto &) -> Match { return {}; }
+  );
 }
 
 // OpJump{next_instruction} → remove
@@ -129,17 +128,22 @@ Match match_zero_jump(
     const std::vector<Instruction> &code,
     ProgramBytecode & /*unused*/
 ) {
-  const auto *jump = std::get_if<OpJump>(&code[i]);
-  if ((jump != nullptr) && jump->offset == i + 1) {
-    return {.consumed = 1, .replacement = std::nullopt};
-  }
-
-  const auto *jumpif = std::get_if<OpJumpIf>(&code[i]);
-  if ((jumpif != nullptr) && jumpif->offset == i + 1) {
-    return {.consumed = 1, .replacement = std::nullopt};
-  }
-
-  return {};
+  return match::match<Match>(
+      code[i],
+      [i](const OpJump &jump) -> Match {
+        if (jump.offset == i + 1) {
+          return {.consumed = 1, .replacement = std::nullopt};
+        }
+        return {};
+      },
+      [i](const OpJumpIf &jumpif) -> Match {
+        if (jumpif.offset == i + 1) {
+          return {.consumed = 1, .replacement = std::nullopt};
+        }
+        return {};
+      },
+      [](const auto &) -> Match { return {}; }
+  );
 }
 
 // OpConstant{idx} + OpNegate/OpNot → OpConstant{folded}
@@ -148,24 +152,44 @@ Match match_unary_fold(
     const std::vector<Instruction> &code,
     ProgramBytecode &program
 ) {
-  const auto *cnst = std::get_if<OpConstant>(&code[i]);
-  if ((cnst == nullptr) || i + 1 >= code.size()) {
+  if (i + 1 >= code.size()) {
     return {};
   }
-  const auto &next = code[i + 1];
-  if (!is_primitive_constant(cnst->index, program) ||
-      (!std::holds_alternative<OpNegate>(next) &&
-       !std::holds_alternative<OpNot>(next))) {
-    return {};
-  }
-  auto val = read_primitive_constant(cnst->index, program);
-  auto folded = fold_unary(next, val);
-  if (!folded) {
-    return {};
-  }
-  return {
-      .consumed = 2, .replacement = add_constant(program, std::move(*folded))
-  };
+  return match::match<Match>(
+      code[i],
+      [&](const OpConstant &cnst) -> Match {
+        if (!is_primitive_constant(cnst.index, program)) {
+          return {};
+        }
+        return match::match<Match>(
+            code[i + 1],
+            [&](const OpNegate &) -> Match {
+              auto val = read_primitive_constant(cnst.index, program);
+              auto folded = fold_unary(code[i + 1], val);
+              if (!folded) {
+                return {};
+              }
+              return {
+                  .consumed = 2,
+                  .replacement = add_constant(program, std::move(*folded))
+              };
+            },
+            [&](const OpNot &) -> Match {
+              auto val = read_primitive_constant(cnst.index, program);
+              auto folded = fold_unary(code[i + 1], val);
+              if (!folded) {
+                return {};
+              }
+              return {
+                  .consumed = 2,
+                  .replacement = add_constant(program, std::move(*folded))
+              };
+            },
+            [](const auto &) -> Match { return {}; }
+        );
+      },
+      [](const auto &) -> Match { return {}; }
+  );
 }
 
 // OpConstant{x} + OpJumpIf{expected, keep=false, stay=false}
@@ -176,23 +200,35 @@ Match match_const_jumpif(
     const std::vector<Instruction> &code,
     ProgramBytecode &program
 ) {
-  const auto *cnst = std::get_if<OpConstant>(&code[i]);
-  if ((cnst == nullptr) || i + 1 >= code.size() ||
-      cnst->index >= program.constants.size()) {
+  if (i + 1 >= code.size()) {
     return {};
   }
-  const auto &val = program.constants[cnst->index].get_value();
-  if (!val.is_primitive() && !val.is_nil()) {
-    return {};
-  }
-  const auto *jump = std::get_if<OpJumpIf>(&code[i + 1]);
-  if ((jump == nullptr) || jump->keep_jump || jump->keep_stay) {
-    return {};
-  }
-  if (val.is_truthy() == jump->expected) {
-    return {.consumed = 2, .replacement = OpJump{jump->offset}};
-  }
-  return {.consumed = 2, .replacement = std::nullopt};
+  return match::match<Match>(
+      code[i],
+      [&](const OpConstant &cnst) -> Match {
+        if (cnst.index >= program.constants.size()) {
+          return {};
+        }
+        const auto &val = program.constants[cnst.index].get_value();
+        if (!val.is_primitive() && !val.is_nil()) {
+          return {};
+        }
+        return match::match<Match>(
+            code[i + 1],
+            [&](const OpJumpIf &jump) -> Match {
+              if (jump.keep_jump || jump.keep_stay) {
+                return {};
+              }
+              if (val.is_truthy() == jump.expected) {
+                return {.consumed = 2, .replacement = OpJump{jump.offset}};
+              }
+              return {.consumed = 2, .replacement = std::nullopt};
+            },
+            [](const auto &) -> Match { return {}; }
+        );
+      },
+      [](const auto &) -> Match { return {}; }
+  );
 }
 
 // OpConstant{a} + OpConstant{b} + arithmetic/comparison → OpConstant{folded}
@@ -201,71 +237,94 @@ Match match_binary_fold(
     const std::vector<Instruction> &code,
     ProgramBytecode &program
 ) {
-  const auto *cnst = std::get_if<OpConstant>(&code[i]);
-  if ((cnst == nullptr) || !is_primitive_constant(cnst->index, program) ||
-      i + 2 >= code.size()) {
+  if (i + 2 >= code.size()) {
     return {};
   }
-  const auto *cnst2 = std::get_if<OpConstant>(&code[i + 1]);
-  if ((cnst2 == nullptr) || !is_primitive_constant(cnst2->index, program)) {
-    return {};
-  }
-  const auto &third = code[i + 2];
-  auto lhs = read_primitive_constant(cnst->index, program);
-  auto rhs = read_primitive_constant(cnst2->index, program);
-
-  if (auto folded = fold_binary(third, lhs, rhs); folded) {
-    return {
-        .consumed = 3, .replacement = add_constant(program, std::move(*folded))
-    };
-  }
-  return {};
+  return match::match<Match>(
+      code[i],
+      [&](const OpConstant &cnst) -> Match {
+        if (!is_primitive_constant(cnst.index, program)) {
+          return {};
+        }
+        return match::match<Match>(
+            code[i + 1],
+            [&](const OpConstant &cnst2) -> Match {
+              if (!is_primitive_constant(cnst2.index, program)) {
+                return {};
+              }
+              const auto &third = code[i + 2];
+              auto lhs = read_primitive_constant(cnst.index, program);
+              auto rhs = read_primitive_constant(cnst2.index, program);
+              if (auto folded = fold_binary(third, lhs, rhs); folded) {
+                return {
+                    .consumed = 3,
+                    .replacement = add_constant(program, std::move(*folded))
+                };
+              }
+              return {};
+            },
+            [](const auto &) -> Match { return {}; }
+        );
+      },
+      [](const auto &) -> Match { return {}; }
+  );
 }
 
-// OpJump{target} → OpJump{target2} where code[target] is OpJump{target2}
-// OpJumpIf{target} → OpJumpIf{target2} where code[target] is OpJump{target2}
-template <typename JumpT>
-Match try_jump_chain(const JumpT &jump, const std::vector<Instruction> &code) {
-  if (const auto *tj = std::get_if<OpJump>(&code[jump.offset])) {
-    if (tj->offset != jump.offset) {
-      auto replacement = jump;
-      replacement.offset = tj->offset;
-      return {.consumed = 1, .replacement = replacement};
+// Follow a chain of unconditional jumps to find the final target
+std::size_t
+follow_jump_chain(std::size_t offset, const std::vector<Instruction> &code) {
+  for (;;) {
+    auto jumped = match::match<std::optional<std::size_t>>(
+        code[offset],
+        [offset](const OpJump &tj) -> std::optional<std::size_t> {
+          if (tj.offset == offset) {
+            return std::nullopt;
+          }
+          return tj.offset;
+        },
+        [](const auto &) -> std::optional<std::size_t> { return std::nullopt; }
+    );
+    if (!jumped) {
+      break;
     }
+    offset = *jumped;
   }
-  return {};
+  return offset;
 }
 
+// OpJump{target} → OpJump{target_final} where code[target] jumps to final
+// OpJumpIf{target} → OpJumpIf{target_final} where code[target] jumps to final
 Match match_jump_chaining(
     std::size_t i,
     const std::vector<Instruction> &code,
     ProgramBytecode & /*unused*/
 ) {
-  const auto &inst = code[i];
-  if (const auto *jump = std::get_if<OpJump>(&inst)) {
-    return try_jump_chain(*jump, code);
-  }
-  if (const auto *jump = std::get_if<OpJumpIf>(&inst)) {
-    return try_jump_chain(*jump, code);
-  }
-  return {};
+  return match::match<Match>(code[i], [&](const auto &jump) -> Match {
+    using T = std::decay_t<decltype(jump)>;
+    if constexpr (std::same_as<T, OpJump> || std::same_as<T, OpJumpIf>) {
+      auto target = follow_jump_chain(jump.offset, code);
+      if (target != jump.offset) {
+        auto replacement = jump;
+        replacement.offset = target;
+        return {.consumed = 1, .replacement = std::move(replacement)};
+      }
+    }
+    return Match{};
+  });
 }
-
-constexpr std::array<Pattern, 6> patterns{
-    match_pop_zero,
-    match_zero_jump,
-    match_unary_fold,
-    match_const_jumpif,
-    match_binary_fold,
-    match_jump_chaining,
-};
 
 Match try_match(
     std::size_t i,
     const std::vector<Instruction> &code,
     ProgramBytecode &program
 ) {
-  for (auto pattern : patterns) {
+  for (const auto &pattern :
+       {match_pop_zero,
+        match_zero_jump,
+        match_unary_fold,
+        match_const_jumpif,
+        match_binary_fold,
+        match_jump_chaining}) {
     if (auto m = pattern(i, code, program); m.consumed > 0) {
       return m;
     }
@@ -284,7 +343,7 @@ bool run_pass(Chunk &chunk, ProgramBytecode &program) {
 
   std::vector<Instruction> new_code;
   std::vector<Location> new_locations;
-  std::vector<std::size_t> old_to_new(chunk.code.size(), -1UZ);
+  std::vector<std::size_t> old_to_new(chunk.code.size());
   new_code.reserve(chunk.code.size());
   new_locations.reserve(chunk.code.size());
 
