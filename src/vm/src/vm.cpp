@@ -1,6 +1,7 @@
 module l3.vm;
 
 import std;
+import l3.ast;
 import l3.bytecode;
 import l3.runtime;
 import utils;
@@ -49,7 +50,7 @@ BytecodeVM::BytecodeVM(bool debug_) : debug(debug_) {
   for (const auto &[name, body] : l3::builtins::BUILTINS) {
     auto func = store_value(
         runtime::Function{runtime::BuiltinFunction{
-            runtime::Identifier{std::string(name)},
+            ast::Identifier{std::string(name)},
             [this, body](runtime::L3Args args) -> runtime::Value {
               return body(*this, args);
             }

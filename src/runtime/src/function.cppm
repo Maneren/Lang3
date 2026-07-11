@@ -1,7 +1,7 @@
 export module l3.runtime:function;
 
 import utils;
-import :identifier;
+import l3.ast;
 import :stack_value;
 import std;
 
@@ -16,11 +16,11 @@ public:
   using Body = std::function<Value(L3Args)>;
 
 private:
-  Identifier name;
+  ast::Identifier name;
   Body body;
 
 public:
-  BuiltinFunction(Identifier &&name, Body body)
+  BuiltinFunction(ast::Identifier &&name, Body body)
       : name{std::move(name)}, body{std::move(body)} {}
 
   [[nodiscard]] Value invoke(L3Args args) const;

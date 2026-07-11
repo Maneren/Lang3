@@ -2,11 +2,9 @@ module l3.runtime;
 
 import l3.ast;
 import l3.location;
-import :identifier;
-
 namespace l3::runtime {
 
-UndefinedVariableError::UndefinedVariableError(const Identifier &id)
+UndefinedVariableError::UndefinedVariableError(const ast::Identifier &id)
     : NameError("variable '{}' not declared", id.get_name()) {}
 
 RuntimeError::RuntimeError(const std::string &message)
