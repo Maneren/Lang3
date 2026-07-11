@@ -29,8 +29,4 @@ std::size_t GCStorage::sweep() {
   return erased;
 }
 
-GCValue GCStorage::NIL{Value()};
-GCValue GCStorage::TRUE{Value{Primitive{true}}};
-GCValue GCStorage::FALSE{Value{Primitive{false}}};
-
 } // namespace l3::runtime

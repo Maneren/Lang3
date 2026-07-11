@@ -28,10 +28,6 @@ public:
 
   GCValue &emplace(Value &&value);
 
-  static GCValue &nil() { return NIL; }
-  static GCValue &_true() { return TRUE; }
-  static GCValue &_false() { return FALSE; }
-
   DEFINE_VALUE_ACCESSOR_X(debug);
   DEFINE_VALUE_ACCESSOR_X(size);
   DEFINE_VALUE_ACCESSOR_X(sweep_count);
@@ -45,10 +41,6 @@ private:
       std::println(std::cerr, message, std::forward<Ts>(args)...);
     }
   }
-
-  static GCValue NIL;
-  static GCValue TRUE;
-  static GCValue FALSE;
 };
 
 } // namespace l3::runtime
