@@ -73,12 +73,17 @@ std::optional<ast::Program> parse_ast(
   return program;
 }
 
-bytecode::ProgramBytecode
+std::optional<bytecode::ProgramBytecode>
 compile_ast(const ast::Program &program, const Debug &debug) {
   const auto start_time = std::chrono::steady_clock::now();
   bytecode::ProgramBytecode program_bytecode;
-  compiler::Compiler compiler(program_bytecode);
-  compiler.compile(program);
+  try {
+    compiler::Compiler compiler(program_bytecode);
+    compiler.compile(program);
+  } catch (const compiler::CompileError &error) {
+    std::println(std::cerr, "Internal compiler error: {}", error.what());
+    return std::nullopt;
+  }
 
   if (debug.timings) {
     auto end_time = std::chrono::steady_clock::now();
@@ -162,7 +167,11 @@ int main(int argc, char *argv[]) {
     std::println(std::cerr, "=== VM ===");
   }
 
-  auto program_bytecode = compile_ast(program, debug);
+  auto compiled = compile_ast(program, debug);
+  if (!compiled) {
+    return EXIT_FAILURE;
+  }
+  auto &program_bytecode = *compiled;
 
   if (debug.bytecode) {
     std::print(std::cerr, "{}", program_bytecode);

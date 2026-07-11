@@ -39,7 +39,7 @@ void Compiler::compile(const ast::Program &ast_program) {
   program.chunks.emplace_back();
   compile_statements(ast_program.get_statements());
   if (const auto last = ast_program.get_last_statement(); last) {
-    throw std::runtime_error("Unexpected last statement in top-level scope");
+    throw CompileError("Unexpected last statement in top-level scope");
   }
   emit(OpConstant{make_constant()});
   emit(OpReturn{});
@@ -269,7 +269,7 @@ void Compiler::patch_jump(std::size_t jump_offset, std::size_t target) {
       [=](OpJump &jump) { jump.offset = target; },
       [=](OpJumpIf &jump) { jump.offset = target; },
       [](const auto &) {
-        throw std::runtime_error("Attempting to patch a non-jump instruction");
+        throw CompileError("Attempting to patch a non-jump instruction");
       }
   );
 }
@@ -779,7 +779,7 @@ void Compiler::compile_named_function(const ast::NamedFunction &func) {
 
   auto local_opt = resolve_local(name);
   if (!local_opt) {
-    throw std::runtime_error(
+    throw CompileError(
         std::format(
             "Expected function {} to be already defined", name.get_name()
         )
@@ -1001,7 +1001,7 @@ void Compiler::compile_return_statement(const ast::ReturnStatement &ret) {
 
 void Compiler::compile_break_statement(const ast::BreakStatement & /* brk */) {
   if (loop_contexts.empty()) {
-    throw std::runtime_error("Break statement outside of loop");
+    throw CompileError("Break statement outside of loop");
   }
   loop_contexts.back().break_jumps.push_back(emit_jump(OpJump{}));
 }
@@ -1009,7 +1009,7 @@ void Compiler::compile_break_statement(const ast::BreakStatement & /* brk */) {
 void Compiler::
     compile_continue_statement(const ast::ContinueStatement & /* cont */) {
   if (loop_contexts.empty()) {
-    throw std::runtime_error("Continue statement outside of loop");
+    throw CompileError("Continue statement outside of loop");
   }
 
   const auto body_locals =

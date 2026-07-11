@@ -11,6 +11,10 @@ using namespace l3::bytecode;
 
 namespace l3::compiler {
 
+export class CompileError : public std::runtime_error {
+  using std::runtime_error::runtime_error;
+};
+
 struct Local {
   ast::Identifier name;
   int depth = -1;
