@@ -9,10 +9,6 @@ export namespace l3::runtime {
 
 using NewValue = std::variant<StackValue, Value>;
 
-struct Slice {
-  std::optional<std::int64_t> start, end;
-};
-
 class Value {
 public:
   using function_type = std::unique_ptr<Function>;
