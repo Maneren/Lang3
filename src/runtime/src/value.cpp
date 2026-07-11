@@ -255,6 +255,29 @@ Value Value::mod(const Value &other) const {
   );
 }
 
+Value Value::pow(const Value &other) const {
+  return binary_op(
+      "power", *this, other, [](const Primitive &lhs, const Primitive &rhs) {
+        return Value{match::match(
+            std::forward_as_tuple(lhs.get_inner(), rhs.get_inner()),
+            [](std::int64_t base, std::int64_t exp) -> Primitive {
+              std::int64_t result = 1;
+              for (std::int64_t i = 0; i < exp; ++i) {
+                result *= base;
+              }
+              return Primitive{result};
+            },
+            [](double base, double exp) -> Primitive {
+              return Primitive{std::pow(base, exp)};
+            },
+            [](const auto &, const auto &) -> Primitive {
+              throw UnsupportedOperation("power not supported for these types");
+            }
+        )};
+      }
+  );
+}
+
 std::partial_ordering Value::compare(const Value &other) const {
   return match::match(
       std::forward_as_tuple(inner, other.inner),
@@ -460,6 +483,34 @@ Value mod(const StackValue &a, const StackValue &b) {
       },
       [](const auto &, const auto &) -> Value {
         throw UnsupportedOperation("modulo requires primitives");
+      }
+  );
+}
+
+Value pow(const StackValue &a, const StackValue &b) {
+  return visit_pair(
+      a,
+      b,
+      [](const Primitive &lhs, const Primitive &rhs) -> Value {
+        return Value{match::match(
+            std::forward_as_tuple(lhs.get_inner(), rhs.get_inner()),
+            [](std::int64_t base, std::int64_t exp) -> Primitive {
+              std::int64_t result = 1;
+              for (std::int64_t i = 0; i < exp; ++i) {
+                result *= base;
+              }
+              return Primitive{result};
+            },
+            [](double base, double exp) -> Primitive {
+              return Primitive{std::pow(base, exp)};
+            },
+            [](const auto &, const auto &) -> Primitive {
+              throw UnsupportedOperation("power not supported for these types");
+            }
+        )};
+      },
+      [&](const auto &, const auto &) -> Value {
+        throw UnsupportedOperation("power", a.type_name(), b.type_name());
       }
   );
 }

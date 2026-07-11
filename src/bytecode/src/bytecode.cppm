@@ -26,6 +26,7 @@ struct OpSubtract {};
 struct OpMultiply {};
 struct OpDivide {};
 struct OpModulo {};
+struct OpPower {};
 struct OpNegate {};
 
 struct OpEqual {};
@@ -105,6 +106,7 @@ using Instruction = std::variant<
     OpMultiply,
     OpDivide,
     OpModulo,
+    OpPower,
     OpNegate,
     OpEqual,
     OpNotEqual,
@@ -201,6 +203,9 @@ export {
               },
               [&](const l3::bytecode::OpModulo &) {
                 return std::format_to(out, "MODULO\n");
+              },
+              [&](const l3::bytecode::OpPower &) {
+                return std::format_to(out, "POWER\n");
               },
               [&](const l3::bytecode::OpNegate &) {
                 return std::format_to(out, "NEGATE\n");

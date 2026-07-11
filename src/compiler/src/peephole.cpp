@@ -43,6 +43,7 @@ fold_binary(const Instruction &op, const Value &lhs, const Value &rhs) {
       [&](const OpMultiply &) { return lhs.mul(rhs); },
       [&](const OpDivide &) { return lhs.div(rhs); },
       [&](const OpModulo &) { return lhs.mod(rhs); },
+      [&](const OpPower &) { return lhs.pow(rhs); },
       [&](const OpEqual &) {
         return Value{Primitive{cmp == std::partial_ordering::equivalent}};
       },

@@ -87,6 +87,7 @@ private:
   void execute_op(const bytecode::OpMultiply &op, CallFrame &);
   void execute_op(const bytecode::OpDivide &op, CallFrame &);
   void execute_op(const bytecode::OpModulo &op, CallFrame &);
+  void execute_op(const bytecode::OpPower &op, CallFrame &);
   void execute_op(const bytecode::OpNegate &op, CallFrame &);
   void execute_op(const bytecode::OpNot &op, CallFrame &);
   void execute_op(const bytecode::OpEqual &op, CallFrame &);

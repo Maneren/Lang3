@@ -49,6 +49,7 @@ public:
   [[nodiscard]] Value mul(const Value &other) const;
   [[nodiscard]] Value div(const Value &other) const;
   [[nodiscard]] Value mod(const Value &other) const;
+  [[nodiscard]] Value pow(const Value &other) const;
   [[nodiscard]] std::partial_ordering compare(const Value &other) const;
 
   [[nodiscard]] Value not_op() const;
@@ -96,6 +97,7 @@ index_mut(StackValue &container, const StackValue &index);
 [[nodiscard]] Value mul(const StackValue &a, const StackValue &b);
 [[nodiscard]] Value div(const StackValue &a, const StackValue &b);
 [[nodiscard]] Value mod(const StackValue &a, const StackValue &b);
+[[nodiscard]] Value pow(const StackValue &a, const StackValue &b);
 
 // Comparison
 [[nodiscard]] std::partial_ordering

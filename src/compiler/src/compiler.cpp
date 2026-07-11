@@ -362,7 +362,8 @@ void Compiler::compile_binary_expression(const ast::BinaryExpression &binary) {
   case ast::BinaryOperator::Modulo:
     emit(OpModulo{});
     break;
-  case ast::BinaryOperator::Power: /* emit(OpPower{}); */
+  case ast::BinaryOperator::Power:
+    emit(OpPower{});
     break;
   }
 }

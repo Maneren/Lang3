@@ -347,6 +347,12 @@ void BytecodeVM::
 }
 
 void BytecodeVM::
+    execute_op(const bytecode::OpPower & /*op*/, CallFrame & /*frame*/) {
+  debug_print("POWER a={} b={}", stack_top(1), stack_top());
+  binary_op(*this, stack, runtime::pow);
+}
+
+void BytecodeVM::
     execute_op(const bytecode::OpNegate & /*op*/, CallFrame & /*frame*/) {
   debug_print("NEGATE a={}", stack_top());
   unary_op(*this, stack, runtime::negative);
