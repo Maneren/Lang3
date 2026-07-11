@@ -71,6 +71,7 @@ private:
     std::size_t body_locals_snapshot;
   };
   std::vector<LoopContext> loop_contexts;
+  std::size_t synthetic_counter = 0;
 
   std::size_t push_context();
   void pop_context();

@@ -599,10 +599,7 @@ void Compiler::compile_declaration(const ast::Declaration &decl) {
 
   compile_expression(*decl.get_expression());
 
-  ast::Identifier hidden_name{
-      "_destruct_" + std::to_string(scope_depth()) + "_" +
-      std::to_string(locals().size())
-  };
+  ast::Identifier hidden_name{std::format("_destruct_{}", synthetic_counter++)};
 
   std::size_t hidden_name_index = add_local(hidden_name);
 
@@ -732,8 +729,7 @@ void Compiler::compile_name_assignment(const ast::NameAssignment &assign) {
   }
 
   ast::Identifier hidden_name{
-      "_destruct_assign_" + std::to_string(scope_depth()) + "_" +
-      std::to_string(locals().size())
+      std::format("_destruct_assign_{}", synthetic_counter++)
   };
 
   std::size_t hidden_name_idx = add_local(hidden_name);
