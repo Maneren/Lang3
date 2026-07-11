@@ -38,7 +38,7 @@ public:
     return store_value(runtime::Value{std::forward<T>(value)});
   }
 
-  runtime::StackValue evaluate(
+  runtime::StackValue call_function(
       const runtime::StackValue &function,
       runtime::L3Args arguments,
       const location::Location &call_location = {}

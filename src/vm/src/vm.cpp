@@ -138,13 +138,13 @@ void BytecodeVM::debug_print(std::format_string<Args...> fmt, Args &&...args) {
   }
 }
 
-runtime::StackValue BytecodeVM::evaluate(
+runtime::StackValue BytecodeVM::call_function(
     const runtime::StackValue &function,
     runtime::L3Args arguments,
     const location::Location &call_location
 ) {
   if (!function.holds_gc_value()) {
-    throw runtime::RuntimeError("evaluate: not a function");
+    throw runtime::RuntimeError("call_function: not a function");
   }
   auto *gcv = function.get_gc_ptr();
   return gcv->get_value_mut().visit(
@@ -180,12 +180,12 @@ runtime::StackValue BytecodeVM::evaluate(
                 return stack_pop();
               }
 
-              throw runtime::RuntimeError("evaluate arity mismatch");
+              throw runtime::RuntimeError("call_function arity mismatch");
             }
         );
       },
       [&](auto &) -> runtime::StackValue {
-        throw runtime::RuntimeError("evaluate: not a function");
+        throw runtime::RuntimeError("call_function: not a function");
       }
   );
 }
@@ -618,7 +618,7 @@ void BytecodeVM::execute_op(const bytecode::OpCall &op, CallFrame & /*frame*/) {
               auto total_args = bc_func.curried_args.size() + op.arg_count;
 
               if (total_args > bc_func.arity) {
-                throw runtime::RuntimeError("evaluate arity mismatch");
+                throw runtime::RuntimeError("call_function arity mismatch");
               }
 
               if (total_args < bc_func.arity) {

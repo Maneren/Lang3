@@ -358,7 +358,7 @@ Value builtin_map(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
   auto result = std::views::transform(
                     list,
                     [&](const auto &item) {
-                      return vm.evaluate(args[0], std::array{item});
+                      return vm.call_function(args[0], std::array{item});
                     }
                 ) |
                 std::ranges::to<std::vector>();
@@ -383,7 +383,7 @@ Value builtin_filter(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
 
   auto result = std::vector<StackValue>{};
   for (const auto &item : list) {
-    if (vm.evaluate(args[0], std::array{item}).is_truthy()) {
+    if (vm.call_function(args[0], std::array{item}).is_truthy()) {
       result.push_back(item);
     }
   }
@@ -471,7 +471,7 @@ Value builtin_count(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
 
   std::int64_t count = 0;
   for (const auto &item : list) {
-    if (vm.evaluate(args[0], std::array{item}).is_truthy()) {
+    if (vm.call_function(args[0], std::array{item}).is_truthy()) {
       ++count;
     }
   }
