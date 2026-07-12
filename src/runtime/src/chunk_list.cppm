@@ -83,19 +83,8 @@ template <typename T, std::size_t ChunkSize> class ChunkedAllocator {
       return;
     }
 
-    for (auto &chunk_ptr : std::views::reverse(free_chunks_)) {
-      if (chunk_ptr->is_empty()) {
-        chunk_ptr = free_chunks_.back();
-        free_chunks_.pop_back();
-      }
-    }
-
-    for (auto &chunk_ptr : std::views::reverse(chunks_)) {
-      if (chunk_ptr->is_empty()) {
-        chunk_ptr = std::move(chunks_.back());
-        chunks_.pop_back();
-      }
-    }
+    std::erase_if(free_chunks_, [](Chunk *chunk) { return chunk->is_empty(); });
+    std::erase_if(chunks_, [](const auto &chunk) { return chunk->is_empty(); });
   }
 
 public:
