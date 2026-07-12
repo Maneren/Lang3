@@ -85,7 +85,7 @@ private:
 
   void emit(const Instruction &instruction);
   void emit(const Instruction &instruction, const location::Location &location);
-  std::size_t make_constant(runtime::Value &&value = {});
+  std::size_t make_constant(runtime::HeapData &&value = {});
   void deduplicate_constants();
   void emit_loop(std::size_t loop_start);
   void patch_jump(std::size_t jump_offset, std::size_t target);

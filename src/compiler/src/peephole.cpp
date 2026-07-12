@@ -20,12 +20,13 @@ bool is_primitive_constant(std::size_t idx, const ProgramBytecode &program) {
   return program.constants[idx].get_value().is_primitive();
 }
 
-Value read_primitive_constant(std::size_t idx, const ProgramBytecode &program) {
+HeapData
+read_primitive_constant(std::size_t idx, const ProgramBytecode &program) {
   return program.constants[idx].get_value();
 }
 
-std::optional<Value> fold_unary(const Instruction &op, const Value &val) {
-  return match::match<std::optional<Value>>(
+std::optional<HeapData> fold_unary(const Instruction &op, const HeapData &val) {
+  return match::match<std::optional<HeapData>>(
       op,
       [&](const OpNegate &) { return val.negative(); },
       [&](const OpNot &) { return val.not_op(); },
@@ -33,10 +34,10 @@ std::optional<Value> fold_unary(const Instruction &op, const Value &val) {
   );
 }
 
-std::optional<Value>
-fold_binary(const Instruction &op, const Value &lhs, const Value &rhs) {
+std::optional<HeapData>
+fold_binary(const Instruction &op, const HeapData &lhs, const HeapData &rhs) {
   const auto cmp = lhs.compare(rhs);
-  return match::match<std::optional<Value>>(
+  return match::match<std::optional<HeapData>>(
       op,
       [&](const OpAdd &) { return lhs.add(rhs); },
       [&](const OpSubtract &) { return lhs.sub(rhs); },
@@ -45,25 +46,25 @@ fold_binary(const Instruction &op, const Value &lhs, const Value &rhs) {
       [&](const OpModulo &) { return lhs.mod(rhs); },
       [&](const OpPower &) { return lhs.pow(rhs); },
       [&](const OpEqual &) {
-        return Value{Primitive{cmp == std::partial_ordering::equivalent}};
+        return HeapData{Primitive{cmp == std::partial_ordering::equivalent}};
       },
       [&](const OpNotEqual &) {
-        return Value{Primitive{cmp != std::partial_ordering::equivalent}};
+        return HeapData{Primitive{cmp != std::partial_ordering::equivalent}};
       },
       [&](const OpLess &) {
-        return Value{Primitive{cmp == std::partial_ordering::less}};
+        return HeapData{Primitive{cmp == std::partial_ordering::less}};
       },
       [&](const OpLessEqual &) {
-        return Value{Primitive{
+        return HeapData{Primitive{
             cmp == std::partial_ordering::less ||
             cmp == std::partial_ordering::equivalent
         }};
       },
       [&](const OpGreater &) {
-        return Value{Primitive{cmp == std::partial_ordering::greater}};
+        return HeapData{Primitive{cmp == std::partial_ordering::greater}};
       },
       [&](const OpGreaterEqual &) {
-        return Value{Primitive{
+        return HeapData{Primitive{
             cmp == std::partial_ordering::greater ||
             cmp == std::partial_ordering::equivalent
         }};
@@ -72,7 +73,7 @@ fold_binary(const Instruction &op, const Value &lhs, const Value &rhs) {
   );
 }
 
-OpConstant add_constant(ProgramBytecode &program, Value &&value) {
+OpConstant add_constant(ProgramBytecode &program, HeapData &&value) {
   program.constants.emplace_back(std::move(value));
   return {program.constants.size() - 1};
 }

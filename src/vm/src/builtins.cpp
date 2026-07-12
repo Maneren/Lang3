@@ -7,11 +7,11 @@ import l3.runtime;
 namespace l3::builtins {
 
 namespace {
+using l3::runtime::HeapData;
 using l3::runtime::Primitive;
 using l3::runtime::RuntimeError;
 using l3::runtime::StackValue;
 using l3::runtime::TypeError;
-using l3::runtime::Value;
 using l3::runtime::ValueError;
 
 void format_args(
@@ -26,18 +26,20 @@ void format_args(
   }
 }
 
-Value builtin_print(l3::vm::BytecodeVM & /*vm*/, l3::runtime::L3Args args) {
+StackValue
+builtin_print(l3::vm::BytecodeVM & /*vm*/, l3::runtime::L3Args args) {
   format_args(std::ostream_iterator<char>(std::cout), args);
   return {};
 }
 
-Value builtin_println(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
+StackValue builtin_println(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
   builtin_print(vm, args);
   std::print("\n");
   return {};
 }
 
-Value builtin_trigger_gc(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
+StackValue
+builtin_trigger_gc(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
   if (!args.empty()) {
     throw RuntimeError("trigger_gc() takes no arguments");
   }
@@ -45,7 +47,8 @@ Value builtin_trigger_gc(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
   return {};
 }
 
-Value builtin_assert(l3::vm::BytecodeVM & /*vm*/, l3::runtime::L3Args args) {
+StackValue
+builtin_assert(l3::vm::BytecodeVM & /*vm*/, l3::runtime::L3Args args) {
   if (args[0].is_truthy()) {
     return {};
   }
@@ -54,22 +57,23 @@ Value builtin_assert(l3::vm::BytecodeVM & /*vm*/, l3::runtime::L3Args args) {
   throw RuntimeError("{}", result);
 }
 
-Value builtin_error(l3::vm::BytecodeVM & /*vm*/, l3::runtime::L3Args args) {
+StackValue
+builtin_error(l3::vm::BytecodeVM & /*vm*/, l3::runtime::L3Args args) {
   std::string result;
   format_args(std::back_inserter(result), args);
   throw RuntimeError("{}", result);
 }
 
-Value builtin_input(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
+StackValue builtin_input(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
   if (!args.empty()) {
     builtin_print(vm, args);
   }
   std::string input;
   std::getline(std::cin, input);
-  return {std::move(input)};
+  return vm.heap_store(std::move(input));
 }
 
-Value builtin_int(l3::vm::BytecodeVM & /*vm*/, l3::runtime::L3Args args) {
+StackValue builtin_int(l3::vm::BytecodeVM & /*vm*/, l3::runtime::L3Args args) {
   if (args.empty()) {
     throw RuntimeError("int() takes at least one argument");
   }
@@ -119,7 +123,7 @@ Value builtin_int(l3::vm::BytecodeVM & /*vm*/, l3::runtime::L3Args args) {
   return {Primitive{value}};
 }
 
-Value builtin_str(l3::vm::BytecodeVM & /*vm*/, l3::runtime::L3Args args) {
+StackValue builtin_str(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
   if (args.size() != 1) {
     throw RuntimeError("str() takes one argument");
   }
@@ -127,10 +131,10 @@ Value builtin_str(l3::vm::BytecodeVM & /*vm*/, l3::runtime::L3Args args) {
   std::string result;
   format_args(std::back_inserter(result), args);
 
-  return {std::move(result)};
+  return vm.heap_store(std::move(result));
 }
 
-Value builtin_head(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
+StackValue builtin_head(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
   if (args.empty()) {
     throw RuntimeError("head() takes at least one argument");
   }
@@ -144,9 +148,9 @@ Value builtin_head(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
     }
 
     auto head = vec.front();
-    auto rest = Value(std::vector<StackValue>(vec.begin() + 1, vec.end()));
+    auto rest = std::vector<StackValue>(vec.begin() + 1, vec.end());
 
-    return {std::vector{head, vm.heap_store(std::move(rest))}};
+    return vm.heap_store(std::vector{head, vm.heap_store(std::move(rest))});
   }
 
   if (const auto &string_opt = argument.as_string()) {
@@ -156,18 +160,16 @@ Value builtin_head(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
       throw RuntimeError("head() takes a non-empty string");
     }
 
-    auto head = Value(std::string{string.front()});
-    auto rest = Value(string.substr(1));
+    auto head = vm.heap_store(std::string{string.front()});
+    auto rest = vm.heap_store(std::string(string.substr(1)));
 
-    return {std::vector{
-        vm.heap_store(std::move(head)), vm.heap_store(std::move(rest))
-    }};
+    return vm.heap_store(std::vector{head, rest});
   }
 
   throw TypeError("head() takes only vector and string values");
 }
 
-Value builtin_tail(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
+StackValue builtin_tail(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
   if (args.empty()) {
     throw RuntimeError("tail() takes at least one argument");
   }
@@ -181,9 +183,9 @@ Value builtin_tail(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
     }
 
     auto tail = vec.back();
-    auto rest = Value(std::vector<StackValue>(vec.begin(), vec.end() - 1));
+    auto rest = std::vector<StackValue>(vec.begin(), vec.end() - 1);
 
-    return {std::vector{vm.heap_store(std::move(rest)), tail}};
+    return vm.heap_store(std::vector{vm.heap_store(std::move(rest)), tail});
   }
 
   if (const auto &string_opt = argument.as_string()) {
@@ -193,18 +195,16 @@ Value builtin_tail(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
       throw RuntimeError("tail() takes a non-empty string");
     }
 
-    auto tail = Value(std::string{string.back()});
-    auto rest = Value(string.substr(0, string.size() - 1));
+    auto tail = vm.heap_store(std::string{string.back()});
+    auto rest = vm.heap_store(std::string(string.substr(0, string.size() - 1)));
 
-    return {std::vector{
-        vm.heap_store(std::move(rest)), vm.heap_store(std::move(tail))
-    }};
+    return vm.heap_store(std::vector{rest, tail});
   }
 
   throw TypeError("tail() takes only vector and string values");
 }
 
-Value builtin_len(l3::vm::BytecodeVM & /*vm*/, l3::runtime::L3Args args) {
+StackValue builtin_len(l3::vm::BytecodeVM & /*vm*/, l3::runtime::L3Args args) {
   if (args.size() != 1) {
     throw RuntimeError("len() takes exactly one argument");
   }
@@ -223,7 +223,7 @@ Value builtin_len(l3::vm::BytecodeVM & /*vm*/, l3::runtime::L3Args args) {
   throw TypeError("len() does not support {} values");
 }
 
-Value builtin_drop(l3::vm::BytecodeVM & /*vm*/, l3::runtime::L3Args args) {
+StackValue builtin_drop(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
   if (args.size() != 2) {
     throw RuntimeError("drop() takes two arguments");
   }
@@ -234,10 +234,12 @@ Value builtin_drop(l3::vm::BytecodeVM & /*vm*/, l3::runtime::L3Args args) {
   }
   auto index = *index_opt;
 
-  return args[0].slice(l3::runtime::Slice{.start = index, .end = std::nullopt});
+  return vm.heap_store(
+      args[0].slice(l3::runtime::Slice{.start = index, .end = std::nullopt})
+  );
 }
 
-Value builtin_take(l3::vm::BytecodeVM & /*vm*/, l3::runtime::L3Args args) {
+StackValue builtin_take(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
   if (args.size() != 2) {
     throw RuntimeError("take() takes two arguments");
   }
@@ -248,10 +250,12 @@ Value builtin_take(l3::vm::BytecodeVM & /*vm*/, l3::runtime::L3Args args) {
   }
   auto index = *index_opt;
 
-  return args[0].slice(l3::runtime::Slice{.start = std::nullopt, .end = index});
+  return vm.heap_store(
+      args[0].slice(l3::runtime::Slice{.start = std::nullopt, .end = index})
+  );
 }
 
-Value builtin_slice(l3::vm::BytecodeVM & /*vm*/, l3::runtime::L3Args args) {
+StackValue builtin_slice(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
   if (args.size() != 3) {
     throw RuntimeError("slice() takes three arguments");
   }
@@ -264,10 +268,13 @@ Value builtin_slice(l3::vm::BytecodeVM & /*vm*/, l3::runtime::L3Args args) {
   auto start = *start_opt;
   auto end = *end_opt;
 
-  return args[0].slice(l3::runtime::Slice{.start = start, .end = end});
+  return vm.heap_store(
+      args[0].slice(l3::runtime::Slice{.start = start, .end = end})
+  );
 }
 
-Value builtin_random(l3::vm::BytecodeVM & /*vm*/, l3::runtime::L3Args args) {
+StackValue
+builtin_random(l3::vm::BytecodeVM & /*vm*/, l3::runtime::L3Args args) {
   static std::random_device rd;
   static std::mt19937 gen(rd());
 
@@ -298,7 +305,8 @@ Value builtin_random(l3::vm::BytecodeVM & /*vm*/, l3::runtime::L3Args args) {
   return {Primitive{distribution(gen)}};
 }
 
-Value builtin_sleep(l3::vm::BytecodeVM & /*vm*/, l3::runtime::L3Args args) {
+StackValue
+builtin_sleep(l3::vm::BytecodeVM & /*vm*/, l3::runtime::L3Args args) {
   if (args.size() != 1) {
     throw RuntimeError("sleep() takes one argument");
   }
@@ -311,7 +319,7 @@ Value builtin_sleep(l3::vm::BytecodeVM & /*vm*/, l3::runtime::L3Args args) {
   return {};
 }
 
-Value builtin_map(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
+StackValue builtin_map(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
   if (args.size() != 2) {
     throw TypeError("map() takes exactly 2 arguments");
   }
@@ -334,10 +342,10 @@ Value builtin_map(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
                 ) |
                 std::ranges::to<std::vector>();
 
-  return {std::move(result)};
+  return vm.heap_store(std::move(result));
 }
 
-Value builtin_filter(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
+StackValue builtin_filter(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
   if (args.size() != 2) {
     throw TypeError("filter() takes exactly 2 arguments");
   }
@@ -359,10 +367,10 @@ Value builtin_filter(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
     }
   }
 
-  return {std::move(result)};
+  return vm.heap_store(std::move(result));
 }
 
-Value builtin_sum(l3::vm::BytecodeVM & /*vm*/, l3::runtime::L3Args args) {
+StackValue builtin_sum(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
   if (args.size() != 1) {
     throw TypeError("sum() takes exactly 1 argument");
   }
@@ -377,15 +385,15 @@ Value builtin_sum(l3::vm::BytecodeVM & /*vm*/, l3::runtime::L3Args args) {
     throw TypeError("sum() cannot be applied to an empty vector");
   }
 
-  Value total = l3::runtime::to_value(list.front());
+  HeapData total = l3::runtime::to_owned(list.front());
   for (const auto &item : list | std::views::drop(1)) {
-    total.add_assign(l3::runtime::to_value(item));
+    total.add_assign(l3::runtime::to_owned(item));
   }
 
-  return total;
+  return vm.heap_store(std::move(total));
 }
 
-Value builtin_all(l3::vm::BytecodeVM & /*vm*/, l3::runtime::L3Args args) {
+StackValue builtin_all(l3::vm::BytecodeVM & /*vm*/, l3::runtime::L3Args args) {
   if (args.size() != 1) {
     throw TypeError("all() takes exactly 1 argument");
   }
@@ -405,7 +413,7 @@ Value builtin_all(l3::vm::BytecodeVM & /*vm*/, l3::runtime::L3Args args) {
   return {Primitive{true}};
 }
 
-Value builtin_any(l3::vm::BytecodeVM & /*vm*/, l3::runtime::L3Args args) {
+StackValue builtin_any(l3::vm::BytecodeVM & /*vm*/, l3::runtime::L3Args args) {
   if (args.size() != 1) {
     throw TypeError("any() takes exactly 1 argument");
   }
@@ -425,7 +433,7 @@ Value builtin_any(l3::vm::BytecodeVM & /*vm*/, l3::runtime::L3Args args) {
   return {Primitive{false}};
 }
 
-Value builtin_count(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
+StackValue builtin_count(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
   if (args.size() != 2) {
     throw TypeError("count() takes exactly 2 arguments");
   }
@@ -450,14 +458,15 @@ Value builtin_count(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
   return {Primitive{count}};
 }
 
-Value builtin_identity(l3::vm::BytecodeVM & /*vm*/, l3::runtime::L3Args args) {
+StackValue
+builtin_identity(l3::vm::BytecodeVM & /*vm*/, l3::runtime::L3Args args) {
   if (args.size() != 1) {
     throw TypeError("id() takes exactly 1 argument");
   }
-  return l3::runtime::to_value(args[0]);
+  return args[0];
 }
 
-Value builtin_range(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
+StackValue builtin_range(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
   std::int64_t start = 0;
   std::int64_t end = 0;
   std::int64_t step = 1;
@@ -498,14 +507,14 @@ Value builtin_range(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
   for (std::int64_t i = start; step > 0 ? i < end : i > end; i += step) {
     result.push_back(vm.heap_store(Primitive{i}));
   }
-  return {std::move(result)};
+  return vm.heap_store(std::move(result));
 }
 
 } // namespace
 
 const std::initializer_list<std::pair<
     std::string_view,
-    runtime::Value (*)(l3::vm::BytecodeVM &, runtime::L3Args)>>
+    runtime::StackValue (*)(l3::vm::BytecodeVM &, runtime::L3Args)>>
     BUILTINS{
         {"print", builtin_print},
         {"println", builtin_println},

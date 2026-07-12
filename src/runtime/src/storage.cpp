@@ -13,7 +13,7 @@ Heap::Heap(Heap &&) noexcept = default;
 Heap &Heap::operator=(Heap &&) noexcept = default;
 Heap::~Heap() = default;
 
-HeapCell &Heap::emplace(Value &&value) {
+HeapCell &Heap::emplace(HeapData &&value) {
   size++;
   added_since_last_sweep++;
   return backing_store.emplace_front(std::move(value));

@@ -30,12 +30,12 @@ class BytecodeVM {
 public:
   explicit BytecodeVM(bool debug_ = false);
 
-  runtime::StackValue heap_store(runtime::Value &&value);
+  runtime::StackValue heap_store(runtime::HeapData &&value);
 
   template <typename T>
-    requires std::constructible_from<runtime::Value, T &&>
+    requires std::constructible_from<runtime::HeapData, T &&>
   runtime::StackValue heap_store(T &&value) {
-    return heap_store(runtime::Value{std::forward<T>(value)});
+    return heap_store(runtime::HeapData{std::forward<T>(value)});
   }
 
   runtime::StackValue call_function(

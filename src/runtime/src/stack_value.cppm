@@ -7,7 +7,7 @@ import :primitive;
 export namespace l3::runtime {
 
 class HeapCell;
-class Value;
+class HeapData;
 
 struct Slice {
   std::optional<std::int64_t> start, end;
@@ -71,7 +71,7 @@ public:
   [[nodiscard]] utils::optional_cref<std::vector<StackValue>> as_vector() const;
   [[nodiscard]] utils::optional_ref<std::vector<StackValue>> as_mut_vector();
 
-  [[nodiscard]] Value slice(Slice slice) const;
+  [[nodiscard]] HeapData slice(Slice slice) const;
 
   DEFINE_ACCESSOR_X(inner)
 };

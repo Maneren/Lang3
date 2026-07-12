@@ -5,7 +5,7 @@ import :chunk_list;
 export namespace l3::runtime {
 
 class HeapCell;
-class Value;
+class HeapData;
 
 class Heap {
   bool debug;
@@ -26,7 +26,7 @@ public:
 
   std::size_t sweep();
 
-  HeapCell &emplace(Value &&value);
+  HeapCell &emplace(HeapData &&value);
 
   DEFINE_VALUE_ACCESSOR_X(debug);
   DEFINE_VALUE_ACCESSOR_X(size);

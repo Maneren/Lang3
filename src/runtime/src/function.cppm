@@ -13,7 +13,7 @@ using L3Args = std::span<const StackValue>;
 
 class BuiltinFunction {
 public:
-  using Body = std::function<Value(L3Args)>;
+  using Body = std::function<StackValue(L3Args)>;
 
 private:
   ast::Identifier name;
@@ -23,7 +23,7 @@ public:
   BuiltinFunction(ast::Identifier &&name, Body body)
       : name{std::move(name)}, body{std::move(body)} {}
 
-  [[nodiscard]] Value invoke(L3Args args) const;
+  [[nodiscard]] StackValue invoke(L3Args args) const;
 
   DEFINE_ACCESSOR_X(name);
 };

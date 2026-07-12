@@ -51,7 +51,7 @@ BytecodeVM::BytecodeVM(bool debug_) : debug(debug_) {
     auto func = heap_store(
         runtime::Function{runtime::BuiltinFunction{
             ast::Identifier{std::string(name)},
-            [this, body](runtime::L3Args args) -> runtime::Value {
+            [this, body](runtime::L3Args args) -> runtime::StackValue {
               return body(*this, args);
             }
         }}
@@ -60,14 +60,14 @@ BytecodeVM::BytecodeVM(bool debug_) : debug(debug_) {
   }
 }
 
-runtime::StackValue BytecodeVM::heap_store(runtime::Value &&value) {
-  return std::move(value).visit(
-      [](runtime::Nil) -> runtime::StackValue { return {}; },
-      [](runtime::Primitive p) -> runtime::StackValue { return {p}; },
-      [this](auto &f) -> runtime::StackValue {
-        return {&heap.emplace(runtime::Value{std::move(f)})};
-      }
-  );
+runtime::StackValue BytecodeVM::heap_store(runtime::HeapData &&value) {
+  if (std::holds_alternative<runtime::Nil>(value.get_inner())) {
+    return {};
+  }
+  if (auto *prim = std::get_if<runtime::Primitive>(&value.get_inner())) {
+    return {*prim};
+  }
+  return {&heap.emplace(std::move(value))};
 }
 
 auto &&BytecodeVM::current_frame(this auto &&self) {
@@ -148,10 +148,10 @@ runtime::StackValue BytecodeVM::call_function(
   }
   auto *gcv = function.get_heap_ptr();
   return gcv->get_value_mut().visit(
-      [&](runtime::Value::function_type &f) {
+      [&](runtime::HeapData::function_type &f) {
         return f->visit(
             [&](const runtime::BuiltinFunction &func) {
-              return heap_store(func.invoke(arguments));
+              return func.invoke(arguments);
             },
             [&](runtime::BytecodeFunction &bc_func) {
               auto total_args = bc_func.curried_args.size() + arguments.size();
@@ -560,15 +560,8 @@ void BytecodeVM::
 
   debug_print("GET_INDEX array={} index={}", array_sv, index_sv);
 
-  auto result = runtime::index(array_sv, index_sv);
   stack.pop_back();
-  match::match(
-      std::move(result),
-      [this](runtime::StackValue sv) { stack.back() = sv; },
-      [this](runtime::Value &&value) {
-        stack.back() = heap_store(std::move(value));
-      }
-  );
+  stack.back() = runtime::index(array_sv, index_sv, heap);
 }
 
 void BytecodeVM::
@@ -608,10 +601,10 @@ void BytecodeVM::execute_op(const bytecode::OpCall &op, CallFrame & /*frame*/) {
 
   auto *gcv = func_sv.get_heap_ptr();
   auto result = gcv->get_value_mut().visit(
-      [&](runtime::Value::function_type &f) {
+      [&](runtime::HeapData::function_type &f) {
         return f->visit(
             [&](const runtime::BuiltinFunction &bf) {
-              return heap_store(bf.invoke(args_span));
+              return bf.invoke(args_span);
             },
             [&](runtime::BytecodeFunction &bc_func) {
               auto total_args = bc_func.curried_args.size() + op.arg_count;
@@ -674,7 +667,7 @@ void BytecodeVM::execute_op(const bytecode::OpCall &op, CallFrame & /*frame*/) {
 void BytecodeVM::execute_op(const bytecode::OpClosure &op, CallFrame &frame) {
   auto &constant = current_program->constants[op.function_index];
   auto *func_ptr = constant.get_value_mut().visit(
-      [](runtime::Value::function_type &f) -> runtime::BytecodeFunction * {
+      [](runtime::HeapData::function_type &f) -> runtime::BytecodeFunction * {
         if (auto bc_opt = f->as_mut_bytecode_function()) {
           return &bc_opt->get();
         }
