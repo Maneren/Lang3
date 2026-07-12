@@ -41,7 +41,7 @@ void Compiler::compile(const ast::Program &ast_program) {
   if (const auto last = ast_program.get_last_statement(); last) {
     throw CompileError("Unexpected last statement in top-level scope");
   }
-  emit(OpConstant{make_constant()});
+  emit_nil();
   emit(OpReturn{});
   optimize(program);
   deduplicate_constants();
@@ -210,6 +210,8 @@ void Compiler::emit(
   current_chunk().write(instruction, location);
 }
 
+void Compiler::emit_nil() { emit(OpConstant{make_constant({})}); }
+
 std::size_t Compiler::make_constant(runtime::HeapData &&value) {
   auto index = program.constants.size();
   program.constants.emplace_back(std::move(value));
@@ -290,7 +292,7 @@ void Compiler::compile_statements(std::ranges::input_range auto &statements) {
     LocationScope scope(location_stack, stmt.get_location());
     stmt.visit(
         [this](const ast::NamedFunction &func) {
-          emit(OpConstant{make_constant()});
+          emit_nil();
           add_local(func.get_name());
         },
         [](const auto &) {}
@@ -527,7 +529,7 @@ void Compiler::compile_variable(const ast::Variable &variable) {
 
 void Compiler::compile_literal(const ast::Literal &literal) {
   literal.visit(
-      [this](const ast::Nil &) { emit(OpConstant{make_constant()}); },
+      [this](const ast::Nil &) { emit_nil(); },
       [this](const ast::Array &array) {
         const auto &elements = array.get_elements();
         for (const auto &elem : elements) {
@@ -581,7 +583,7 @@ void Compiler::compile_declaration(const ast::Declaration &decl) {
     if (decl.get_expression()) {
       compile_expression(*decl.get_expression());
     } else {
-      emit(OpConstant{make_constant()});
+      emit_nil();
     }
 
     add_local(names.front());
@@ -589,7 +591,7 @@ void Compiler::compile_declaration(const ast::Declaration &decl) {
   }
   if (!decl.get_expression()) {
     for (const auto &ident : names) {
-      emit(OpConstant{make_constant()});
+      emit_nil();
       add_local(ident);
     }
     return;
@@ -750,7 +752,7 @@ Compiler::compile_function_body(const ast::FunctionBody &body) {
   compile_block(body.get_block());
 
   if (!body.get_block().get_last_statement()) {
-    emit(OpConstant{make_constant()});
+    emit_nil();
     emit(OpReturn{});
   }
 
@@ -960,7 +962,7 @@ void Compiler::compile_return_statement(const ast::ReturnStatement &ret) {
   if (const auto &expr = ret.get_expression(); expr) {
     compile_expression(*expr);
   } else {
-    emit(OpConstant{make_constant()});
+    emit_nil();
   }
   if (!was_in_expression) {
     emit(OpReturn{});
