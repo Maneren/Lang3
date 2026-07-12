@@ -7,24 +7,36 @@ namespace l3::runtime {
 
 namespace {
 
-template <bool backup = true>
+template <typename Fn>
 auto handle_bin_op(
-    std::string_view name,
-    const Primitive &lhs,
-    const Primitive &rhs,
-    auto &&...handlers
+    std::string_view name, const Primitive &lhs, const Primitive &rhs, Fn &&fn
 ) {
   using Result = std::invoke_result_t<
-      match::Overloaded<std::decay_t<decltype(handlers)>...>,
+      match::Overloaded<std::decay_t<Fn>>,
       const std::int64_t &,
       const std::int64_t &>;
   return match::match(
       std::forward_as_tuple(lhs.get_inner(), rhs.get_inner()),
-      handlers...,
-      [name](const auto &lhs, const auto &rhs) -> Result
-        requires(backup)
-      { throw UnsupportedOperation(name, lhs, rhs); }
-      );
+      std::forward<Fn>(fn),
+      [name](const auto &lhs, const auto &rhs) -> Result {
+        throw UnsupportedOperation(name, lhs, rhs);
+      }
+  );
+}
+
+template <typename Fn, typename Fallback>
+auto handle_bin_op(
+    std::string_view /*name*/,
+    const Primitive &lhs,
+    const Primitive &rhs,
+    Fn &&fn,
+    Fallback &&fallback
+) {
+  return match::match(
+      std::forward_as_tuple(lhs.get_inner(), rhs.get_inner()),
+      std::forward<Fn>(fn),
+      std::forward<Fallback>(fallback)
+  );
 }
 
 template <typename Result>
@@ -127,7 +139,7 @@ Primitive operator+(const Primitive &value) {
 }
 
 std::partial_ordering operator<=>(const Primitive &lhs, const Primitive &rhs) {
-  return handle_bin_op<false>(
+  return handle_bin_op(
       "comparison",
       lhs,
       rhs,
@@ -187,8 +199,7 @@ std::string_view Primitive::type_name() const {
   return visit(
       [](const bool &) -> std::string_view { return "bool"; },
       [](const std::int64_t &) -> std::string_view { return "int"; },
-      [](const double &) -> std::string_view { return "double"; },
-      [](const string_type &) -> std::string_view { return "string"; }
+      [](const double &) -> std::string_view { return "double"; }
   );
 }
 
