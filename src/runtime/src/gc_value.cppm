@@ -5,11 +5,11 @@ import :value;
 export namespace l3::runtime {
 
 class HeapCell {
-  Value value;
+  HeapData value;
   bool marked = false;
 
 public:
-  HeapCell(Value &&value);
+  HeapCell(HeapData &&value);
   HeapCell(const HeapCell &) = delete;
   HeapCell(HeapCell &&other) noexcept;
   HeapCell &operator=(const HeapCell &) = delete;

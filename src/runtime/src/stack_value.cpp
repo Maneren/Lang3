@@ -66,7 +66,7 @@ utils::optional_ref<std::vector<StackValue>> StackValue::as_mut_vector() {
   return std::nullopt;
 }
 
-Value StackValue::slice(Slice slice) const {
+HeapData StackValue::slice(Slice slice) const {
   if (auto *gcv = get_heap_ptr()) {
     return gcv->get_value().slice(slice);
   }

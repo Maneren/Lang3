@@ -171,7 +171,8 @@ Compiler::resolve_variable(const ast::Identifier &identifier) {
 
   return {
       .type = Compiler::VariableType::Global,
-      .index = make_constant(runtime::Value{std::string{identifier.get_name()}})
+      .index =
+          make_constant(runtime::HeapData{std::string{identifier.get_name()}})
   };
 }
 
@@ -209,7 +210,7 @@ void Compiler::emit(
   current_chunk().write(instruction, location);
 }
 
-std::size_t Compiler::make_constant(runtime::Value &&value) {
+std::size_t Compiler::make_constant(runtime::HeapData &&value) {
   auto index = program.constants.size();
   program.constants.emplace_back(std::move(value));
   return index;
@@ -536,15 +537,15 @@ void Compiler::compile_literal(const ast::Literal &literal) {
       },
       [this](const ast::String &string) {
         emit(
-            OpConstant{
-                make_constant(runtime::Value{std::string{string.get_value()}})
-            }
+            OpConstant{make_constant(
+                runtime::HeapData{std::string{string.get_value()}}
+            )}
         );
       },
       [this](const auto &literal_value) {
         emit(
             OpConstant{make_constant(
-                runtime::Value{runtime::Primitive{literal_value.get_value()}}
+                runtime::HeapData{runtime::Primitive{literal_value.get_value()}}
             )}
         );
       }
@@ -605,7 +606,7 @@ void Compiler::compile_declaration(const ast::Declaration &decl) {
 
     emit(
         OpConstant{make_constant(
-            runtime::Value{runtime::Primitive{static_cast<std::int64_t>(i)}}
+            runtime::HeapData{runtime::Primitive{static_cast<std::int64_t>(i)}}
         )}
     );
     emit(OpGetIndex{});
@@ -646,7 +647,7 @@ void Compiler::compile_for_loop(const ast::ForLoop &loop) {
   emit(OpCall{.arg_count = 1, .keep_return_value = true});
   const auto len_idx = add_local("_for_len");
 
-  emit(OpConstant{make_constant(runtime::Value{runtime::Primitive{-1L}})});
+  emit(OpConstant{make_constant(runtime::HeapData{runtime::Primitive{-1L}})});
   const auto index_idx = add_local("_for_index");
 
   const auto preamble = begin_loop();
@@ -727,7 +728,7 @@ void Compiler::compile_name_assignment(const ast::NameAssignment &assign) {
 
     emit(
         OpConstant{make_constant(
-            runtime::Value{runtime::Primitive{static_cast<std::int64_t>(i)}}
+            runtime::HeapData{runtime::Primitive{static_cast<std::int64_t>(i)}}
         )}
     );
     emit(OpGetIndex{});
@@ -885,7 +886,7 @@ void Compiler::compile_range_for_loop(const ast::RangeForLoop &loop) {
   if (loop.get_step()) {
     compile_expression(*loop.get_step());
   } else {
-    emit(OpConstant{make_constant(runtime::Value{runtime::Primitive{1L}})});
+    emit(OpConstant{make_constant(runtime::HeapData{runtime::Primitive{1L}})});
   }
   const auto step_idx = add_local("_range_step");
 

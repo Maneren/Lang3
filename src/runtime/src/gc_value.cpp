@@ -5,7 +5,7 @@ import :upvalue;
 
 namespace l3::runtime {
 
-HeapCell::HeapCell(Value &&value) : value{std::move(value)} {}
+HeapCell::HeapCell(HeapData &&value) : value{std::move(value)} {}
 HeapCell::HeapCell(HeapCell &&other) noexcept = default;
 HeapCell &HeapCell::operator=(HeapCell &&other) noexcept = default;
 

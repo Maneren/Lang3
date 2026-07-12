@@ -4,6 +4,7 @@ import utils;
 import :error;
 import :primitive;
 import :gc_value;
+import :storage;
 
 namespace l3::runtime {
 
@@ -68,21 +69,21 @@ slice_bounds(std::size_t size, Slice slice) {
   return {start, end};
 }
 
-template <typename T> utils::optional_cref<T> as_impl(const Value &v) {
+template <typename T> utils::optional_cref<T> as_impl(const HeapData &v) {
   return v.visit(
       [](const T &val) -> utils::optional_cref<T> { return val; },
       [](const auto &) -> utils::optional_cref<T> { return std::nullopt; }
   );
 }
 
-template <typename T> utils::optional_ref<T> as_mut_impl(Value &v) {
+template <typename T> utils::optional_ref<T> as_mut_impl(HeapData &v) {
   return v.visit(
       [](T &val) -> utils::optional_ref<T> { return val; },
       [](auto &) -> utils::optional_ref<T> { return std::nullopt; }
   );
 }
 
-template <typename T> bool is_impl(const Value &v) {
+template <typename T> bool is_impl(const HeapData &v) {
   return v.visit(
       [](const T &) { return true; }, [](const auto &) { return false; }
   );
@@ -97,7 +98,7 @@ decltype(auto) visit_flat(const StackValue &sv, Vis &&...vis) {
 }
 
 template <typename... Vis>
-decltype(auto) visit_flat(const Value &v, Vis &&...vis) {
+decltype(auto) visit_flat(const HeapData &v, Vis &&...vis) {
   return match::match(v.get_inner(), std::forward<Vis>(vis)...);
 }
 
@@ -111,63 +112,61 @@ auto visit_pair(const auto &a, const auto &b, Handlers &&...handlers) {
   });
 }
 
-// Operation helpers — work with both Value and StackValue via visit_pair
+// Operation helpers — work with both HeapData and StackValue via visit_pair
 
-template <typename T> Value add_op(const T &a, const T &b) {
+template <typename T> HeapData add_op(const T &a, const T &b) {
   return visit_pair(
       a,
       b,
-      [](const Primitive &lhs, const Primitive &rhs) -> Value {
+      [](const Primitive &lhs, const Primitive &rhs) -> HeapData {
         return {lhs + rhs};
       },
-      [](const std::string &ls, const std::string &rs) -> Value {
+      [](const std::string &ls, const std::string &rs) -> HeapData {
         return {ls + rs};
       },
       [](const std::vector<StackValue> &lv,
-         const std::vector<StackValue> &rv) -> Value {
+         const std::vector<StackValue> &rv) -> HeapData {
         auto result = lv;
         result.append_range(rv);
         return {std::move(result)};
       },
-      [&](const auto &, const auto &) -> Value {
+      [&](const auto &, const auto &) -> HeapData {
         throw UnsupportedOperation("addition", a.type_name(), b.type_name());
       }
   );
 }
 
-template <typename T> Value sub_op(const T &a, const T &b) {
+template <typename T> HeapData sub_op(const T &a, const T &b) {
   return visit_pair(
       a,
       b,
-      [](const Primitive &lhs, const Primitive &rhs) -> Value {
+      [](const Primitive &lhs, const Primitive &rhs) -> HeapData {
         return {lhs - rhs};
       },
-      [&](const auto &, const auto &) -> Value {
+      [&](const auto &, const auto &) -> HeapData {
         throw UnsupportedOperation("subtraction", a.type_name(), b.type_name());
       }
   );
 }
 
-template <typename T> Value mul_op(const T &a, const T &b) {
+template <typename T> HeapData mul_op(const T &a, const T &b) {
   return visit_pair(
       a,
       b,
-      [](const Primitive &lhs, const Primitive &rhs) -> Value {
+      [](const Primitive &lhs, const Primitive &rhs) -> HeapData {
         return {lhs * rhs};
       },
-      [](const Primitive &count, const std::vector<StackValue> &vec) -> Value {
-        return multiply_container(vec, count);
-      },
-      [](const Primitive &count, const std::string &str) -> Value {
+      [](const Primitive &count, const std::vector<StackValue> &vec)
+          -> HeapData { return multiply_container(vec, count); },
+      [](const Primitive &count, const std::string &str) -> HeapData {
         return multiply_container(str, count);
       },
-      [](const std::vector<StackValue> &vec, const Primitive &count) -> Value {
-        return multiply_container(vec, count);
-      },
-      [](const std::string &str, const Primitive &count) -> Value {
+      [](const std::vector<StackValue> &vec, const Primitive &count)
+          -> HeapData { return multiply_container(vec, count); },
+      [](const std::string &str, const Primitive &count) -> HeapData {
         return multiply_container(str, count);
       },
-      [&](const auto &, const auto &) -> Value {
+      [&](const auto &, const auto &) -> HeapData {
         throw UnsupportedOperation(
             "multiplication", a.type_name(), b.type_name()
         );
@@ -175,38 +174,38 @@ template <typename T> Value mul_op(const T &a, const T &b) {
   );
 }
 
-template <typename T> Value div_op(const T &a, const T &b) {
+template <typename T> HeapData div_op(const T &a, const T &b) {
   return visit_pair(
       a,
       b,
-      [](const Primitive &lhs, const Primitive &rhs) -> Value {
+      [](const Primitive &lhs, const Primitive &rhs) -> HeapData {
         return {lhs / rhs};
       },
-      [&](const auto &, const auto &) -> Value {
+      [&](const auto &, const auto &) -> HeapData {
         throw UnsupportedOperation("division", a.type_name(), b.type_name());
       }
   );
 }
 
-template <typename T> Value mod_op(const T &a, const T &b) {
+template <typename T> HeapData mod_op(const T &a, const T &b) {
   return visit_pair(
       a,
       b,
-      [](const Primitive &lhs, const Primitive &rhs) -> Value {
+      [](const Primitive &lhs, const Primitive &rhs) -> HeapData {
         return {lhs % rhs};
       },
-      [&](const auto &, const auto &) -> Value {
+      [&](const auto &, const auto &) -> HeapData {
         throw UnsupportedOperation("modulo", a.type_name(), b.type_name());
       }
   );
 }
 
-template <typename T> Value pow_op(const T &a, const T &b) {
+template <typename T> HeapData pow_op(const T &a, const T &b) {
   return visit_pair(
       a,
       b,
-      [](const Primitive &lhs, const Primitive &rhs) -> Value {
-        return Value{match::match(
+      [](const Primitive &lhs, const Primitive &rhs) -> HeapData {
+        return HeapData{match::match(
             std::forward_as_tuple(lhs.get_inner(), rhs.get_inner()),
             [](std::int64_t base, std::int64_t exp) -> Primitive {
               std::int64_t result = 1;
@@ -223,17 +222,17 @@ template <typename T> Value pow_op(const T &a, const T &b) {
             }
         )};
       },
-      [&](const auto &, const auto &) -> Value {
+      [&](const auto &, const auto &) -> HeapData {
         throw UnsupportedOperation("power", a.type_name(), b.type_name());
       }
   );
 }
 
-template <typename T> Value negative_op(const T &v) {
+template <typename T> HeapData negative_op(const T &v) {
   return visit_flat(
       v,
-      [](const Primitive &p) -> Value { return {-p}; },
-      [&](const auto &) -> Value {
+      [](const Primitive &p) -> HeapData { return {-p}; },
+      [&](const auto &) -> HeapData {
         throw UnsupportedOperation("cannot negate a {} value", v.type_name());
       }
   );
@@ -293,16 +292,16 @@ template <typename T> std::string_view type_name_op(const T &v) {
   );
 }
 
-template <typename T> Value not_op_impl(const T &v) {
+template <typename T> HeapData not_op_impl(const T &v) {
   return visit_flat(
       v,
-      [](const Primitive &p) -> Value { return {!p}; },
-      [](Nil) -> Value { return {Primitive{true}}; },
-      [](const std::string &s) -> Value { return {Primitive{s.empty()}}; },
-      [](const std::vector<StackValue> &vec) -> Value {
+      [](const Primitive &p) -> HeapData { return {!p}; },
+      [](Nil) -> HeapData { return {Primitive{true}}; },
+      [](const std::string &s) -> HeapData { return {Primitive{s.empty()}}; },
+      [](const std::vector<StackValue> &vec) -> HeapData {
         return {Primitive{vec.empty()}};
       },
-      [](const auto &) -> Value {
+      [](const auto &) -> HeapData {
         throw TypeError(
             "cannot convert a function to bool, did you mean to call the "
             "function?"
@@ -313,10 +312,10 @@ template <typename T> Value not_op_impl(const T &v) {
 
 } // namespace
 
-Value::Value() : inner{Nil{}} {}
-Value::Value(Nil /*unused*/) : inner{Nil{}} {}
-Value::Value(Primitive primitive) : inner{primitive} {}
-Value::Value(const Value &other)
+HeapData::HeapData() : inner{Nil{}} {}
+HeapData::HeapData(Nil /*unused*/) : inner{Nil{}} {}
+HeapData::HeapData(Primitive primitive) : inner{primitive} {}
+HeapData::HeapData(const HeapData &other)
     : inner{other.visit(
           [](const function_type &f) -> variant {
             return std::make_unique<Function>(*f);
@@ -324,7 +323,7 @@ Value::Value(const Value &other)
           [](const auto &value) -> variant { return value; }
       )} {}
 
-Value &Value::operator=(const Value &other) {
+HeapData &HeapData::operator=(const HeapData &other) {
   other.visit(
       [this](const function_type &f) {
         inner = std::make_unique<Function>(*f);
@@ -334,17 +333,19 @@ Value &Value::operator=(const Value &other) {
   return *this;
 }
 
-Value::Value(std::unique_ptr<Function> &&function)
+HeapData::HeapData(std::unique_ptr<Function> &&function)
     : inner{std::move(function)} {}
-Value::Value(const Function &function)
+HeapData::HeapData(const Function &function)
     : inner{std::make_unique<Function>(function)} {}
-Value::Value(Function &&function)
+HeapData::HeapData(Function &&function)
     : inner{std::make_unique<Function>(std::move(function))} {}
-Value::Value(vector_type &&vector) : inner{std::move(vector)} {}
-Value::Value(string_type &&string) : inner{std::move(string)} {}
+HeapData::HeapData(vector_type &&vector) : inner{std::move(vector)} {}
+HeapData::HeapData(string_type &&string) : inner{std::move(string)} {}
 
-Value Value::add(const Value &other) const { return add_op(*this, other); }
-void Value::add_assign(const Value &other) {
+HeapData HeapData::add(const HeapData &other) const {
+  return add_op(*this, other);
+}
+void HeapData::add_assign(const HeapData &other) {
   match::match(
       std::forward_as_tuple(inner, other.inner),
       [](Primitive &lhs, const Primitive &rhs) { lhs = lhs + rhs; },
@@ -355,73 +356,83 @@ void Value::add_assign(const Value &other) {
       }
   );
 }
-Value Value::sub(const Value &other) const { return sub_op(*this, other); }
-Value Value::mul(const Value &other) const { return mul_op(*this, other); }
-Value Value::div(const Value &other) const { return div_op(*this, other); }
-Value Value::mod(const Value &other) const { return mod_op(*this, other); }
-Value Value::pow(const Value &other) const { return pow_op(*this, other); }
+HeapData HeapData::sub(const HeapData &other) const {
+  return sub_op(*this, other);
+}
+HeapData HeapData::mul(const HeapData &other) const {
+  return mul_op(*this, other);
+}
+HeapData HeapData::div(const HeapData &other) const {
+  return div_op(*this, other);
+}
+HeapData HeapData::mod(const HeapData &other) const {
+  return mod_op(*this, other);
+}
+HeapData HeapData::pow(const HeapData &other) const {
+  return pow_op(*this, other);
+}
 
-std::partial_ordering Value::compare(const Value &other) const {
+std::partial_ordering HeapData::compare(const HeapData &other) const {
   return compare_op(*this, other);
 }
 
-bool Value::is_truthy() const { return is_truthy_op(*this); }
+bool HeapData::is_truthy() const { return is_truthy_op(*this); }
 
-bool Value::is_nil() const { return is_impl<Nil>(*this); }
-bool Value::is_function() const { return is_impl<function_type>(*this); }
-bool Value::is_primitive() const { return is_impl<Primitive>(*this); }
-bool Value::is_vector() const { return is_impl<vector_type>(*this); }
-bool Value::is_string() const { return is_impl<string_type>(*this); }
+bool HeapData::is_nil() const { return is_impl<Nil>(*this); }
+bool HeapData::is_function() const { return is_impl<function_type>(*this); }
+bool HeapData::is_primitive() const { return is_impl<Primitive>(*this); }
+bool HeapData::is_vector() const { return is_impl<vector_type>(*this); }
+bool HeapData::is_string() const { return is_impl<string_type>(*this); }
 
-utils::optional_cref<Primitive> Value::as_primitive() const {
+utils::optional_cref<Primitive> HeapData::as_primitive() const {
   return as_impl<Primitive>(*this);
 }
 
-utils::optional_cref<Value::vector_type> Value::as_vector() const {
+utils::optional_cref<HeapData::vector_type> HeapData::as_vector() const {
   return as_impl<vector_type>(*this);
 }
 
-utils::optional_ref<Value::vector_type> Value::as_mut_vector() {
+utils::optional_ref<HeapData::vector_type> HeapData::as_mut_vector() {
   return as_mut_impl<vector_type>(*this);
 }
 
-utils::optional_cref<Value::string_type> Value::as_string() const {
+utils::optional_cref<HeapData::string_type> HeapData::as_string() const {
   return as_impl<string_type>(*this);
 }
 
-Value Value::slice(Slice slice) const {
+HeapData HeapData::slice(Slice slice) const {
   return visit(
-      [slice](const vector_type &vector) -> Value {
+      [slice](const vector_type &vector) -> HeapData {
         const auto [start, end] = slice_bounds(vector.size(), slice);
         return {
-            Value::vector_type(vector.begin() + start, vector.begin() + end)
+            HeapData::vector_type(vector.begin() + start, vector.begin() + end)
         };
       },
-      [slice](const string_type &string) -> Value {
+      [slice](const string_type &string) -> HeapData {
         const auto [start, end] = slice_bounds(string.size(), slice);
         return {string.substr(
-            static_cast<Value::string_type::size_type>(start),
-            static_cast<Value::string_type::size_type>(end - start)
+            static_cast<HeapData::string_type::size_type>(start),
+            static_cast<HeapData::string_type::size_type>(end - start)
         )};
       },
-      [this](const auto &) -> Value {
+      [this](const auto &) -> HeapData {
         throw TypeError("cannot slice a {} value", type_name());
       }
   );
 }
 
-Value Value::not_op() const { return not_op_impl(*this); }
+HeapData HeapData::not_op() const { return not_op_impl(*this); }
 
-Value Value::negative() const {
+HeapData HeapData::negative() const {
   return visit(
-      [](const Primitive &primitive) -> Value { return {-primitive}; },
-      [this](const auto &) -> Value {
+      [](const Primitive &primitive) -> HeapData { return {-primitive}; },
+      [this](const auto &) -> HeapData {
         throw UnsupportedOperation("cannot negate a {} value", type_name());
       }
   );
 }
 
-std::string_view Value::type_name() const { return type_name_op(*this); }
+std::string_view HeapData::type_name() const { return type_name_op(*this); }
 
 bool StackValue::is_truthy() const { return is_truthy_op(*this); }
 
@@ -431,40 +442,43 @@ std::string_view StackValue::type_name() const { return type_name_op(*this); }
 // StackValue operations — using unified visitor
 // ---------------------------------------------------------------------------
 
-Value to_value(const StackValue &sv) {
+HeapData to_owned(const StackValue &sv) {
   return sv.visit(
-      [](Nil) -> Value { return {}; },
-      [](const Primitive &p) -> Value { return Value{p}; },
-      [](HeapCell *gcv) -> Value {
+      [](Nil) -> HeapData { return {}; },
+      [](const Primitive &p) -> HeapData { return HeapData{p}; },
+      [](HeapCell *gcv) -> HeapData {
         return gcv->get_value().visit(
-            [](const std::unique_ptr<Function> &f) -> Value {
-              return Value{*f};
+            [](const std::unique_ptr<Function> &f) -> HeapData {
+              return HeapData{*f};
             },
-            [](const std::vector<StackValue> &v) -> Value {
-              return Value{std::vector<StackValue>(v)};
+            [](const std::vector<StackValue> &v) -> HeapData {
+              return HeapData{std::vector<StackValue>(v)};
             },
-            [](const std::string &s) -> Value { return Value{std::string(s)}; },
-            [](Primitive p) -> Value { return Value{p}; },
-            [](Nil) -> Value { return {}; }
+            [](const std::string &s) -> HeapData {
+              return HeapData{std::string(s)};
+            },
+            [](Primitive p) -> HeapData { return HeapData{p}; },
+            [](Nil) -> HeapData { return {}; }
         );
       }
   );
 }
 
-Value add(const StackValue &a, const StackValue &b) { return add_op(a, b); }
-Value sub(const StackValue &a, const StackValue &b) { return sub_op(a, b); }
-Value mul(const StackValue &a, const StackValue &b) { return mul_op(a, b); }
-Value div(const StackValue &a, const StackValue &b) { return div_op(a, b); }
-Value mod(const StackValue &a, const StackValue &b) { return mod_op(a, b); }
-Value pow(const StackValue &a, const StackValue &b) { return pow_op(a, b); }
-Value negative(const StackValue &sv) { return negative_op(sv); }
-Value not_op(const StackValue &sv) { return not_op_impl(sv); }
+HeapData add(const StackValue &a, const StackValue &b) { return add_op(a, b); }
+HeapData sub(const StackValue &a, const StackValue &b) { return sub_op(a, b); }
+HeapData mul(const StackValue &a, const StackValue &b) { return mul_op(a, b); }
+HeapData div(const StackValue &a, const StackValue &b) { return div_op(a, b); }
+HeapData mod(const StackValue &a, const StackValue &b) { return mod_op(a, b); }
+HeapData pow(const StackValue &a, const StackValue &b) { return pow_op(a, b); }
+HeapData negative(const StackValue &sv) { return negative_op(sv); }
+HeapData not_op(const StackValue &sv) { return not_op_impl(sv); }
 
 std::partial_ordering compare(const StackValue &a, const StackValue &b) {
   return compare_op(a, b);
 }
 
-NewValue index(const StackValue &container, const StackValue &index_sv) {
+StackValue
+index(const StackValue &container, const StackValue &index_sv, Heap &heap) {
   const auto index_opt =
       index_sv.as_primitive().and_then(&Primitive::as_integer);
   if (!index_opt) {
@@ -477,19 +491,19 @@ NewValue index(const StackValue &container, const StackValue &index_sv) {
 
   return visit_flat(
       container,
-      [&](const std::vector<StackValue> &vec) -> NewValue {
+      [&](const std::vector<StackValue> &vec) -> StackValue {
         if (idx >= vec.size()) {
           throw ValueError("index out of bounds");
         }
         return vec[idx];
       },
-      [&](const std::string &s) -> NewValue {
+      [&](const std::string &s) -> StackValue {
         if (idx >= s.size()) {
           throw ValueError("index out of bounds");
         }
-        return Value{std::string{s.substr(idx, 1)}};
+        return {&heap.emplace(HeapData{std::string{s.substr(idx, 1)}})};
       },
-      [&](const auto &) -> NewValue {
+      [&](const auto &) -> StackValue {
         throw TypeError("cannot index a {} value", container.type_name());
       }
   );
