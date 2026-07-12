@@ -41,33 +41,6 @@ auto multiply_container(
   return result;
 }
 
-template <bool backup = true>
-auto binary_op(
-    std::string_view name,
-    const Value &lhs,
-    const Value &rhs,
-    const auto &...handlers
-) {
-  using R = std::invoke_result_t<
-      match::Overloaded<std::decay_t<decltype(handlers)>...>,
-      const Primitive &,
-      const Primitive &>;
-  return match::match(
-      std::forward_as_tuple(lhs.get_inner(), rhs.get_inner()),
-      handlers...,
-      [name, &lhs, &rhs](const auto &, const auto &) -> R
-        requires(backup)
-      {
-        throw UnsupportedOperation(
-            "{} between {} and {} not supported",
-            name,
-            lhs.type_name(),
-            rhs.type_name()
-        );
-      }
-      );
-}
-
 std::pair<std::int64_t, std::int64_t>
 slice_bounds(std::size_t size, Slice slice) {
   const auto [start_opt, end_opt] = slice;
@@ -138,6 +111,206 @@ auto visit_pair(const auto &a, const auto &b, Handlers &&...handlers) {
   });
 }
 
+// Operation helpers — work with both Value and StackValue via visit_pair
+
+template <typename T> Value add_op(const T &a, const T &b) {
+  return visit_pair(
+      a,
+      b,
+      [](const Primitive &lhs, const Primitive &rhs) -> Value {
+        return {lhs + rhs};
+      },
+      [](const std::string &ls, const std::string &rs) -> Value {
+        return {ls + rs};
+      },
+      [](const std::vector<StackValue> &lv,
+         const std::vector<StackValue> &rv) -> Value {
+        auto result = lv;
+        result.append_range(rv);
+        return {std::move(result)};
+      },
+      [&](const auto &, const auto &) -> Value {
+        throw UnsupportedOperation("addition", a.type_name(), b.type_name());
+      }
+  );
+}
+
+template <typename T> Value sub_op(const T &a, const T &b) {
+  return visit_pair(
+      a,
+      b,
+      [](const Primitive &lhs, const Primitive &rhs) -> Value {
+        return {lhs - rhs};
+      },
+      [&](const auto &, const auto &) -> Value {
+        throw UnsupportedOperation("subtraction", a.type_name(), b.type_name());
+      }
+  );
+}
+
+template <typename T> Value mul_op(const T &a, const T &b) {
+  return visit_pair(
+      a,
+      b,
+      [](const Primitive &lhs, const Primitive &rhs) -> Value {
+        return {lhs * rhs};
+      },
+      [](const Primitive &count, const std::vector<StackValue> &vec) -> Value {
+        return multiply_container(vec, count);
+      },
+      [](const Primitive &count, const std::string &str) -> Value {
+        return multiply_container(str, count);
+      },
+      [](const std::vector<StackValue> &vec, const Primitive &count) -> Value {
+        return multiply_container(vec, count);
+      },
+      [](const std::string &str, const Primitive &count) -> Value {
+        return multiply_container(str, count);
+      },
+      [&](const auto &, const auto &) -> Value {
+        throw UnsupportedOperation(
+            "multiplication", a.type_name(), b.type_name()
+        );
+      }
+  );
+}
+
+template <typename T> Value div_op(const T &a, const T &b) {
+  return visit_pair(
+      a,
+      b,
+      [](const Primitive &lhs, const Primitive &rhs) -> Value {
+        return {lhs / rhs};
+      },
+      [&](const auto &, const auto &) -> Value {
+        throw UnsupportedOperation("division", a.type_name(), b.type_name());
+      }
+  );
+}
+
+template <typename T> Value mod_op(const T &a, const T &b) {
+  return visit_pair(
+      a,
+      b,
+      [](const Primitive &lhs, const Primitive &rhs) -> Value {
+        return {lhs % rhs};
+      },
+      [&](const auto &, const auto &) -> Value {
+        throw UnsupportedOperation("modulo", a.type_name(), b.type_name());
+      }
+  );
+}
+
+template <typename T> Value pow_op(const T &a, const T &b) {
+  return visit_pair(
+      a,
+      b,
+      [](const Primitive &lhs, const Primitive &rhs) -> Value {
+        return Value{match::match(
+            std::forward_as_tuple(lhs.get_inner(), rhs.get_inner()),
+            [](std::int64_t base, std::int64_t exp) -> Primitive {
+              std::int64_t result = 1;
+              for (std::int64_t i = 0; i < exp; ++i) {
+                result *= base;
+              }
+              return Primitive{result};
+            },
+            [](double base, double exp) -> Primitive {
+              return Primitive{std::pow(base, exp)};
+            },
+            [](const auto &, const auto &) -> Primitive {
+              throw UnsupportedOperation("power not supported for these types");
+            }
+        )};
+      },
+      [&](const auto &, const auto &) -> Value {
+        throw UnsupportedOperation("power", a.type_name(), b.type_name());
+      }
+  );
+}
+
+template <typename T> Value negative_op(const T &v) {
+  return visit_flat(
+      v,
+      [](const Primitive &p) -> Value { return {-p}; },
+      [&](const auto &) -> Value {
+        throw UnsupportedOperation("cannot negate a {} value", v.type_name());
+      }
+  );
+}
+
+template <typename T> std::partial_ordering compare_op(const T &a, const T &b) {
+  return visit_pair(
+      a,
+      b,
+      []<typename U>(const U &lhs, const U &rhs) -> std::partial_ordering
+        requires requires(U lhs, U rhs) { lhs <=> rhs; }
+      { return lhs <=> rhs; },
+      [](const std::vector<StackValue> &lv,
+         const std::vector<StackValue> &rv) -> std::partial_ordering {
+        if (lv.size() != rv.size()) {
+          return lv.size() <=> rv.size();
+        }
+        for (std::size_t i = 0; i < lv.size(); ++i) {
+          const auto elem_cmp = compare_op(lv[i], rv[i]);
+          if (elem_cmp != std::partial_ordering::equivalent) {
+            return elem_cmp;
+          }
+        }
+        return std::partial_ordering::equivalent;
+      },
+      [](const auto &, const auto &) -> std::partial_ordering {
+        return std::partial_ordering::unordered;
+      }
+      );
+}
+
+template <typename T> bool is_truthy_op(const T &v) {
+  return visit_flat(
+      v,
+      [](const Primitive &p) { return p.is_truthy(); },
+      [](Nil) { return false; },
+      [](const std::string &s) { return !s.empty(); },
+      [](const std::vector<StackValue> &vec) { return !vec.empty(); },
+      [](const auto &) -> bool {
+        throw TypeError(
+            "cannot convert a function to bool, did you mean to call the "
+            "function?"
+        );
+      }
+  );
+}
+
+template <typename T> std::string_view type_name_op(const T &v) {
+  using std::string_view_literals::operator""sv;
+  return visit_flat(
+      v,
+      [](const Primitive &p) { return p.type_name(); },
+      [](Nil) { return "nil"sv; },
+      [](const std::unique_ptr<Function> &) { return "function"sv; },
+      [](const std::vector<StackValue> &) { return "vector"sv; },
+      [](const std::string &) { return "string"sv; }
+  );
+}
+
+template <typename T> Value not_op_impl(const T &v) {
+  return visit_flat(
+      v,
+      [](const Primitive &p) -> Value { return {!p}; },
+      [](Nil) -> Value { return {Primitive{true}}; },
+      [](const std::string &s) -> Value { return {Primitive{s.empty()}}; },
+      [](const std::vector<StackValue> &vec) -> Value {
+        return {Primitive{vec.empty()}};
+      },
+      [](const auto &) -> Value {
+        throw TypeError(
+            "cannot convert a function to bool, did you mean to call the "
+            "function?"
+        );
+      }
+  );
+}
+
 } // namespace
 
 Value::Value() : inner{Nil{}} {}
@@ -170,26 +343,7 @@ Value::Value(Function &&function)
 Value::Value(vector_type &&vector) : inner{std::move(vector)} {}
 Value::Value(string_type &&string) : inner{std::move(string)} {}
 
-Value Value::add(const Value &other) const {
-  return match::match(
-      std::forward_as_tuple(inner, other.inner),
-      [](const Primitive &lhs, const Primitive &rhs) -> Value {
-        return {lhs + rhs};
-      },
-      [](const vector_type &lv, const vector_type &rv) -> Value {
-        auto result = lv;
-        result.append_range(rv);
-        return {std::move(result)};
-      },
-      [](const string_type &ls, const string_type &rs) -> Value {
-        return {ls + rs};
-      },
-      [&other, this](const auto &, const auto &) -> Value {
-        throw UnsupportedOperation("addition", type_name(), other.type_name());
-      }
-  );
-}
-
+Value Value::add(const Value &other) const { return add_op(*this, other); }
 void Value::add_assign(const Value &other) {
   match::match(
       std::forward_as_tuple(inner, other.inner),
@@ -201,109 +355,17 @@ void Value::add_assign(const Value &other) {
       }
   );
 }
-
-Value Value::sub(const Value &other) const {
-  return binary_op(
-      "subtraction",
-      *this,
-      other,
-      [](const Primitive &lhs, const Primitive &rhs) {
-        return Value{lhs - rhs};
-      }
-  );
-}
-
-Value Value::mul(const Value &other) const {
-  return match::match(
-      std::forward_as_tuple(inner, other.inner),
-      [](const Primitive &lhs, const Primitive &rhs) -> Value {
-        return {lhs * rhs};
-      },
-      [](const Primitive &count_prim, const vector_type &vec) -> Value {
-        return multiply_container(vec, count_prim);
-      },
-      [](const Primitive &count_prim, const string_type &str) -> Value {
-        return multiply_container(str, count_prim);
-      },
-      [](const vector_type &vec, const Primitive &count_prim) -> Value {
-        return multiply_container(vec, count_prim);
-      },
-      [](const string_type &str, const Primitive &count_prim) -> Value {
-        return multiply_container(str, count_prim);
-      },
-      [&other, this](const auto &, const auto &) -> Value {
-        throw UnsupportedOperation(
-            "multiplication", type_name(), other.type_name()
-        );
-      }
-  );
-}
-
-Value Value::div(const Value &other) const {
-  return binary_op(
-      "division", *this, other, [](const Primitive &lhs, const Primitive &rhs) {
-        return Value{lhs / rhs};
-      }
-  );
-}
-
-Value Value::mod(const Value &other) const {
-  return binary_op(
-      "modulo", *this, other, [](const Primitive &lhs, const Primitive &rhs) {
-        return Value{lhs % rhs};
-      }
-  );
-}
-
-Value Value::pow(const Value &other) const {
-  return binary_op(
-      "power", *this, other, [](const Primitive &lhs, const Primitive &rhs) {
-        return Value{match::match(
-            std::forward_as_tuple(lhs.get_inner(), rhs.get_inner()),
-            [](std::int64_t base, std::int64_t exp) -> Primitive {
-              std::int64_t result = 1;
-              for (std::int64_t i = 0; i < exp; ++i) {
-                result *= base;
-              }
-              return Primitive{result};
-            },
-            [](double base, double exp) -> Primitive {
-              return Primitive{std::pow(base, exp)};
-            },
-            [](const auto &, const auto &) -> Primitive {
-              throw UnsupportedOperation("power not supported for these types");
-            }
-        )};
-      }
-  );
-}
+Value Value::sub(const Value &other) const { return sub_op(*this, other); }
+Value Value::mul(const Value &other) const { return mul_op(*this, other); }
+Value Value::div(const Value &other) const { return div_op(*this, other); }
+Value Value::mod(const Value &other) const { return mod_op(*this, other); }
+Value Value::pow(const Value &other) const { return pow_op(*this, other); }
 
 std::partial_ordering Value::compare(const Value &other) const {
-  return match::match(
-      std::forward_as_tuple(inner, other.inner),
-      []<typename T>(const T &lhs, const T &rhs) -> std::partial_ordering
-        requires requires(T lhs, T rhs) { lhs <=> rhs; }
-      { return lhs <=> rhs; },
-      [](const auto &, const auto &) -> std::partial_ordering {
-        return std::partial_ordering::unordered;
-      }
-      );
+  return compare_op(*this, other);
 }
 
-bool Value::is_truthy() const {
-  return visit(
-      [](const Primitive &primitive) { return primitive.is_truthy(); },
-      [](const Nil &) { return false; },
-      [](const function_type &) -> bool {
-        throw TypeError(
-            "cannot convert a function to bool, did you mean to call the "
-            "function?"
-        );
-      },
-      [](const vector_type &value) { return !value.empty(); },
-      [](const string_type &value) { return !value.empty(); }
-  );
-}
+bool Value::is_truthy() const { return is_truthy_op(*this); }
 
 bool Value::is_nil() const { return is_impl<Nil>(*this); }
 bool Value::is_function() const { return is_impl<function_type>(*this); }
@@ -348,12 +410,7 @@ Value Value::slice(Slice slice) const {
   );
 }
 
-Value Value::not_op() const {
-  return visit(
-      [](const Primitive &primitive) -> Value { return {!primitive}; },
-      [this](const auto &) -> Value { return {Primitive{!is_truthy()}}; }
-  );
-}
+Value Value::not_op() const { return not_op_impl(*this); }
 
 Value Value::negative() const {
   return visit(
@@ -364,16 +421,11 @@ Value Value::negative() const {
   );
 }
 
-std::string_view Value::type_name() const {
-  using std::string_view_literals::operator""sv;
-  return visit(
-      [](const Primitive &primitive) { return primitive.type_name(); },
-      [](const Nil &) { return "nil"sv; },
-      [](const function_type &) { return "function"sv; },
-      [](const Value::vector_type &) { return "vector"sv; },
-      [](const Value::string_type &) { return "string"sv; }
-  );
-}
+std::string_view Value::type_name() const { return type_name_op(*this); }
+
+bool StackValue::is_truthy() const { return is_truthy_op(*this); }
+
+std::string_view StackValue::type_name() const { return type_name_op(*this); }
 
 // ---------------------------------------------------------------------------
 // StackValue operations — using unified visitor
@@ -399,171 +451,17 @@ Value to_value(const StackValue &sv) {
   );
 }
 
-Value add(const StackValue &a, const StackValue &b) {
-  return visit_pair(
-      a,
-      b,
-      [](const Primitive &lhs, const Primitive &rhs) -> Value {
-        return {lhs + rhs};
-      },
-      [](const std::string &ls, const std::string &rs) -> Value {
-        return {ls + rs};
-      },
-      [](const std::vector<StackValue> &lv,
-         const std::vector<StackValue> &rv) -> Value {
-        std::vector<StackValue> result;
-        result.reserve(lv.size() + rv.size());
-        result.append_range(lv);
-        result.append_range(rv);
-        return {std::move(result)};
-      },
-      [&](const auto &, const auto &) -> Value {
-        throw UnsupportedOperation("addition", a.type_name(), b.type_name());
-      }
-  );
-}
-
-Value sub(const StackValue &a, const StackValue &b) {
-  return visit_pair(
-      a,
-      b,
-      [](const Primitive &lhs, const Primitive &rhs) -> Value {
-        return {lhs - rhs};
-      },
-      [](const auto &, const auto &) -> Value {
-        throw UnsupportedOperation("subtraction requires primitives");
-      }
-  );
-}
-
-Value mul(const StackValue &a, const StackValue &b) {
-  return visit_pair(
-      a,
-      b,
-      [](const Primitive &lhs, const Primitive &rhs) -> Value {
-        return {lhs * rhs};
-      },
-      [](const Primitive &count, const std::vector<StackValue> &vec) -> Value {
-        return multiply_container(vec, count);
-      },
-      [](const Primitive &count, const std::string &str) -> Value {
-        return multiply_container(str, count);
-      },
-      [](const std::vector<StackValue> &vec, const Primitive &count) -> Value {
-        return multiply_container(vec, count);
-      },
-      [](const std::string &str, const Primitive &count) -> Value {
-        return multiply_container(str, count);
-      },
-      [](const auto &, const auto &) -> Value {
-        throw UnsupportedOperation("multiplication");
-      }
-  );
-}
-
-Value div(const StackValue &a, const StackValue &b) {
-  return visit_pair(
-      a,
-      b,
-      [](const Primitive &lhs, const Primitive &rhs) -> Value {
-        return {lhs / rhs};
-      },
-      [](const auto &, const auto &) -> Value {
-        throw UnsupportedOperation("division requires primitives");
-      }
-  );
-}
-
-Value mod(const StackValue &a, const StackValue &b) {
-  return visit_pair(
-      a,
-      b,
-      [](const Primitive &lhs, const Primitive &rhs) -> Value {
-        return {lhs % rhs};
-      },
-      [](const auto &, const auto &) -> Value {
-        throw UnsupportedOperation("modulo requires primitives");
-      }
-  );
-}
-
-Value pow(const StackValue &a, const StackValue &b) {
-  return visit_pair(
-      a,
-      b,
-      [](const Primitive &lhs, const Primitive &rhs) -> Value {
-        return Value{match::match(
-            std::forward_as_tuple(lhs.get_inner(), rhs.get_inner()),
-            [](std::int64_t base, std::int64_t exp) -> Primitive {
-              std::int64_t result = 1;
-              for (std::int64_t i = 0; i < exp; ++i) {
-                result *= base;
-              }
-              return Primitive{result};
-            },
-            [](double base, double exp) -> Primitive {
-              return Primitive{std::pow(base, exp)};
-            },
-            [](const auto &, const auto &) -> Primitive {
-              throw UnsupportedOperation("power not supported for these types");
-            }
-        )};
-      },
-      [&](const auto &, const auto &) -> Value {
-        throw UnsupportedOperation("power", a.type_name(), b.type_name());
-      }
-  );
-}
+Value add(const StackValue &a, const StackValue &b) { return add_op(a, b); }
+Value sub(const StackValue &a, const StackValue &b) { return sub_op(a, b); }
+Value mul(const StackValue &a, const StackValue &b) { return mul_op(a, b); }
+Value div(const StackValue &a, const StackValue &b) { return div_op(a, b); }
+Value mod(const StackValue &a, const StackValue &b) { return mod_op(a, b); }
+Value pow(const StackValue &a, const StackValue &b) { return pow_op(a, b); }
+Value negative(const StackValue &sv) { return negative_op(sv); }
+Value not_op(const StackValue &sv) { return not_op_impl(sv); }
 
 std::partial_ordering compare(const StackValue &a, const StackValue &b) {
-  return visit_pair(
-      a,
-      b,
-      []<typename T>(const T &lhs, const T &rhs) -> std::partial_ordering
-        requires requires(T lhs, T rhs) { lhs <=> rhs; }
-      { return lhs <=> rhs; },
-      [](const std::vector<StackValue> &lv,
-         const std::vector<StackValue> &rv) -> std::partial_ordering {
-        if (lv.size() != rv.size()) {
-          return lv.size() <=> rv.size();
-        }
-        for (std::size_t i = 0; i < lv.size(); ++i) {
-          const auto elem_cmp = compare(lv[i], rv[i]);
-          if (elem_cmp != std::partial_ordering::equivalent) {
-            return elem_cmp;
-          }
-        }
-        return std::partial_ordering::equivalent;
-      },
-      [](const auto &, const auto &) {
-        return std::partial_ordering::unordered;
-      }
-      );
-}
-
-Value negative(const StackValue &sv) {
-  return visit_flat(
-      sv,
-      [](const Primitive &p) -> Value { return {-p}; },
-      [](const auto &) -> Value {
-        throw UnsupportedOperation("cannot negate a non-numeric value");
-      }
-  );
-}
-
-Value not_op(const StackValue &sv) {
-  return visit_flat(
-      sv,
-      [](const Primitive &p) -> Value { return {!p}; },
-      [](Nil) -> Value { return {Primitive{true}}; },
-      [](const std::string &s) -> Value { return {Primitive{s.empty()}}; },
-      [](const std::vector<StackValue> &v) -> Value {
-        return {Primitive{v.empty()}};
-      },
-      [](const auto &) -> Value {
-        throw TypeError("cannot convert a function to bool");
-      }
-  );
+  return compare_op(a, b);
 }
 
 NewValue index(const StackValue &container, const StackValue &index_sv) {

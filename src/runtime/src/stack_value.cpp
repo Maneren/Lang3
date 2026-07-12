@@ -17,37 +17,6 @@ bool StackValue::is_primitive() const {
   return std::holds_alternative<Primitive>(inner);
 }
 
-bool StackValue::is_truthy() const {
-  return visit(
-      [](Nil) { return false; },
-      [](const Primitive &p) -> bool { return p.is_truthy(); },
-      [](HeapCell *gcv) -> bool {
-        return gcv->get_value().visit(
-            [](const std::string &s) { return !s.empty(); },
-            [](const std::vector<StackValue> &v) { return !v.empty(); },
-            [](const auto &) -> bool { return true; }
-        );
-      }
-  );
-}
-
-std::string_view StackValue::type_name() const {
-  using std::string_view_literals::operator""sv;
-  return visit(
-      [](const Primitive &p) { return p.type_name(); },
-      [](Nil) { return "nil"sv; },
-      [](HeapCell *gcv) -> std::string_view {
-        return gcv->get_value().visit(
-            [](const Value::function_type &) { return "function"sv; },
-            [](const std::vector<StackValue> &) { return "vector"sv; },
-            [](const std::string &) { return "string"sv; },
-            [](const Primitive &p) { return p.type_name(); },
-            [](Nil) { return "nil"sv; }
-        );
-      }
-  );
-}
-
 utils::optional_cref<Primitive> StackValue::as_primitive() const {
   if (const auto *p = std::get_if<Primitive>(&inner)) {
     return *p;
