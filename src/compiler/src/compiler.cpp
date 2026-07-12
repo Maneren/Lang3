@@ -482,29 +482,26 @@ void Compiler::compile_function_call(const ast::FunctionCall &call) {
   emit(OpCall{.arg_count = args.size()});
 }
 
+void Compiler::compile_if_branch(
+    const ast::Expression &condition,
+    const ast::Block &block,
+    std::vector<std::size_t> &end_jumps
+) {
+  compile_expression(condition);
+  auto negative_jump = emit_jump(OpJumpIf{});
+  compile_block(block);
+  end_jumps.push_back(emit_jump(OpJump{}));
+  patch_jump_here(negative_jump);
+}
+
 void Compiler::compile_if_expression(const ast::IfExpression &if_expr) {
   std::vector<std::size_t> jumps_to_end;
 
   const auto &base_if = if_expr.get_base_if();
-
-  compile_expression(base_if.get_condition());
-  std::size_t negative_jump = emit_jump(OpJumpIf{});
-
-  compile_block(base_if.get_block());
-
-  jumps_to_end.push_back(emit_jump(OpJump{}));
-
-  patch_jump_here(negative_jump);
+  compile_if_branch(base_if.get_condition(), base_if.get_block(), jumps_to_end);
 
   for (const auto &elif : if_expr.get_elseif().get_elseifs()) {
-    compile_expression(elif.get_condition());
-    std::size_t elif_jump = emit_jump(OpJumpIf{});
-
-    compile_block(elif.get_block());
-
-    jumps_to_end.push_back(emit_jump(OpJump{}));
-
-    patch_jump_here(elif_jump);
+    compile_if_branch(elif.get_condition(), elif.get_block(), jumps_to_end);
   }
 
   compile_block(if_expr.get_else_block());
@@ -618,8 +615,27 @@ void Compiler::compile_declaration(const ast::Declaration &decl) {
   }
 }
 
-void Compiler::compile_for_loop(const ast::ForLoop &loop) {
+Compiler::LoopPreamble Compiler::begin_loop() {
   loop_contexts.emplace_back();
+  const auto control_jump = emit_jump(OpJump{});
+  const auto body_offset = current_instruction_offset();
+  loop_contexts.back().body_locals_snapshot = locals().size();
+  begin_scope();
+  return {control_jump, body_offset};
+}
+
+void Compiler::end_loop(LoopPreamble preamble, std::size_t control_offset) {
+  patch_jump(preamble.control_jump, control_offset);
+  for (auto jump : loop_contexts.back().break_jumps) {
+    patch_jump_here(jump);
+  }
+  for (auto jump : loop_contexts.back().continue_jumps) {
+    patch_jump(jump, control_offset);
+  }
+  loop_contexts.pop_back();
+}
+
+void Compiler::compile_for_loop(const ast::ForLoop &loop) {
   begin_scope();
 
   compile_expression(loop.get_collection());
@@ -633,13 +649,7 @@ void Compiler::compile_for_loop(const ast::ForLoop &loop) {
   emit(OpConstant{make_constant(runtime::Value{runtime::Primitive{-1L}})});
   const auto index_idx = add_local("_for_index");
 
-  const auto control_jump = emit_jump(OpJump{});
-
-  const auto body_offset = current_instruction_offset();
-
-  loop_contexts.back().body_locals_snapshot = locals().size();
-
-  begin_scope();
+  const auto preamble = begin_loop();
   emit(OpGetLocal{coll_idx});
   emit(OpGetLocal{index_idx});
   emit(OpGetIndex{});
@@ -648,30 +658,20 @@ void Compiler::compile_for_loop(const ast::ForLoop &loop) {
   compile_block(loop.get_body());
 
   end_scope();
-
   const auto control_offset = current_instruction_offset();
 
   emit(
       OpForLoop{
           .control_index = index_idx,
           .limit_index = len_idx,
-          .body_offset = body_offset,
+          .body_offset = preamble.body_offset,
           .inclusive = false,
           .step_index = std::nullopt
       }
   );
 
-  patch_jump(control_jump, control_offset);
-
+  end_loop(preamble, control_offset);
   end_scope();
-
-  for (auto jump : loop_contexts.back().break_jumps) {
-    patch_jump_here(jump);
-  }
-  for (auto jump : loop_contexts.back().continue_jumps) {
-    patch_jump(jump, control_offset);
-  }
-  loop_contexts.pop_back();
 }
 
 void Compiler::compile_function_call_statement(const ast::FunctionCall &call) {
@@ -692,22 +692,10 @@ void Compiler::compile_if_statement(const ast::IfStatement &if_stmt) {
   std::vector<std::size_t> jump_to_ends;
 
   const auto &base_if = if_stmt.get_base_if();
-  compile_expression(base_if.get_condition());
-  std::size_t negative_jump = emit_jump(OpJumpIf{});
-
-  compile_block(base_if.get_block());
-  jump_to_ends.push_back(emit_jump(OpJump{}));
-
-  patch_jump_here(negative_jump);
+  compile_if_branch(base_if.get_condition(), base_if.get_block(), jump_to_ends);
 
   for (const auto &elif : if_stmt.get_elseif().get_elseifs()) {
-    compile_expression(elif.get_condition());
-    std::size_t negative_jump = emit_jump(OpJumpIf{});
-
-    compile_block(elif.get_block());
-    jump_to_ends.push_back(emit_jump(OpJump{}));
-
-    patch_jump_here(negative_jump);
+    compile_if_branch(elif.get_condition(), elif.get_block(), jump_to_ends);
   }
 
   if (auto else_block = if_stmt.get_else_block(); else_block) {
@@ -886,7 +874,6 @@ void Compiler::compile_operator_assignment(
 }
 
 void Compiler::compile_range_for_loop(const ast::RangeForLoop &loop) {
-  loop_contexts.emplace_back();
   begin_scope();
 
   compile_expression(loop.get_start());
@@ -907,43 +894,27 @@ void Compiler::compile_range_for_loop(const ast::RangeForLoop &loop) {
   emit(OpSubtract{});
   emit(OpSetLocal{current_idx});
 
-  const auto control_jump = emit_jump(OpJump{});
-
-  const auto body_offset = current_instruction_offset();
-
-  loop_contexts.back().body_locals_snapshot = locals().size();
-
-  begin_scope();
+  const auto preamble = begin_loop();
   emit(OpGetLocal{current_idx});
   add_local(loop.get_variable());
 
   compile_block(loop.get_body());
 
   end_scope();
-
   const auto control_offset = current_instruction_offset();
 
   emit(
       OpForLoop{
           .control_index = current_idx,
           .limit_index = end_idx,
-          .body_offset = body_offset,
+          .body_offset = preamble.body_offset,
           .inclusive = loop.get_range_type() == ast::RangeOperator::Inclusive,
           .step_index = step_idx
       }
   );
 
-  patch_jump(control_jump, control_offset);
-
+  end_loop(preamble, control_offset);
   end_scope();
-
-  for (auto jump : loop_contexts.back().break_jumps) {
-    patch_jump_here(jump);
-  }
-  for (auto jump : loop_contexts.back().continue_jumps) {
-    patch_jump(jump, control_offset);
-  }
-  loop_contexts.pop_back();
 }
 
 void Compiler::compile_while_loop(const ast::While &loop) {

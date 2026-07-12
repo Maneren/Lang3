@@ -111,6 +111,14 @@ private:
   void compile_function_call(const ast::FunctionCall &call);
   void compile_if_expression(const ast::IfExpression &if_expr);
 
+  // Shared helper: compile a single condition+block pair and record the
+  // jump-to-end. Used by both if-statement and if-expression.
+  void compile_if_branch(
+      const ast::Expression &condition,
+      const ast::Block &block,
+      std::vector<std::size_t> &end_jumps
+  );
+
   // Extracted Statement Compilers
   void compile_declaration(const ast::Declaration &decl);
   void compile_for_loop(const ast::ForLoop &loop);
@@ -121,6 +129,13 @@ private:
   void compile_operator_assignment(const ast::OperatorAssignment &assign);
   void compile_range_for_loop(const ast::RangeForLoop &loop);
   void compile_while_loop(const ast::While &loop);
+
+  struct LoopPreamble {
+    std::size_t control_jump;
+    std::size_t body_offset;
+  };
+  [[nodiscard]] LoopPreamble begin_loop();
+  void end_loop(LoopPreamble preamble, std::size_t control_offset);
 
   // Extracted LastStatement Compilers
   void compile_return_statement(const ast::ReturnStatement &ret);
