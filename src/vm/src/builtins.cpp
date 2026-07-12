@@ -134,9 +134,10 @@ StackValue builtin_str(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
   return vm.heap_store(std::move(result));
 }
 
-StackValue builtin_head(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
+template <bool IsHead>
+StackValue builtin_head_tail(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
   if (args.empty()) {
-    throw RuntimeError("head() takes at least one argument");
+    throw RuntimeError("head/tail() takes at least one argument");
   }
 
   const auto &argument = args[0];
@@ -144,64 +145,48 @@ StackValue builtin_head(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
   if (const auto &vector_opt = argument.as_vector()) {
     const auto &vec = vector_opt->get();
     if (vec.empty()) {
-      throw RuntimeError("head() takes a non-empty vector");
+      throw RuntimeError("head/tail() takes a non-empty vector");
     }
 
-    auto head = vec.front();
-    auto rest = std::vector<StackValue>(vec.begin() + 1, vec.end());
-
-    return vm.heap_store(std::vector{head, vm.heap_store(std::move(rest))});
+    if constexpr (IsHead) {
+      auto h = vec.front();
+      auto rest = std::vector<StackValue>(vec.begin() + 1, vec.end());
+      return vm.heap_store(std::vector{h, vm.heap_store(std::move(rest))});
+    } else {
+      auto t = vec.back();
+      auto rest = std::vector<StackValue>(vec.begin(), vec.end() - 1);
+      return vm.heap_store(std::vector{vm.heap_store(std::move(rest)), t});
+    }
   }
 
   if (const auto &string_opt = argument.as_string()) {
     const auto &string = string_opt->get();
 
     if (string.empty()) {
-      throw RuntimeError("head() takes a non-empty string");
+      throw RuntimeError("head/tail() takes a non-empty string");
     }
 
-    auto head = vm.heap_store(std::string{string.front()});
-    auto rest = vm.heap_store(std::string(string.substr(1)));
-
-    return vm.heap_store(std::vector{head, rest});
+    if constexpr (IsHead) {
+      auto h = vm.heap_store(std::string{string.front()});
+      auto rest = vm.heap_store(std::string(string.substr(1)));
+      return vm.heap_store(std::vector{h, rest});
+    } else {
+      auto t = vm.heap_store(std::string{string.back()});
+      auto rest =
+          vm.heap_store(std::string(string.substr(0, string.size() - 1)));
+      return vm.heap_store(std::vector{rest, t});
+    }
   }
 
-  throw TypeError("head() takes only vector and string values");
+  throw TypeError("head/tail() takes only vector and string values");
+}
+
+StackValue builtin_head(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
+  return builtin_head_tail<true>(vm, args);
 }
 
 StackValue builtin_tail(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
-  if (args.empty()) {
-    throw RuntimeError("tail() takes at least one argument");
-  }
-
-  const auto &argument = args[0];
-
-  if (const auto &vector_opt = argument.as_vector()) {
-    const auto &vec = vector_opt->get();
-    if (vec.empty()) {
-      throw RuntimeError("tail() takes a non-empty vector");
-    }
-
-    auto tail = vec.back();
-    auto rest = std::vector<StackValue>(vec.begin(), vec.end() - 1);
-
-    return vm.heap_store(std::vector{vm.heap_store(std::move(rest)), tail});
-  }
-
-  if (const auto &string_opt = argument.as_string()) {
-    const auto &string = string_opt->get();
-
-    if (string.empty()) {
-      throw RuntimeError("tail() takes a non-empty string");
-    }
-
-    auto tail = vm.heap_store(std::string{string.back()});
-    auto rest = vm.heap_store(std::string(string.substr(0, string.size() - 1)));
-
-    return vm.heap_store(std::vector{rest, tail});
-  }
-
-  throw TypeError("tail() takes only vector and string values");
+  return builtin_head_tail<false>(vm, args);
 }
 
 StackValue builtin_len(l3::vm::BytecodeVM & /*vm*/, l3::runtime::L3Args args) {
@@ -223,36 +208,35 @@ StackValue builtin_len(l3::vm::BytecodeVM & /*vm*/, l3::runtime::L3Args args) {
   throw TypeError("len() does not support {} values");
 }
 
-StackValue builtin_drop(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
+template <bool IsDrop>
+StackValue builtin_drop_take(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
   if (args.size() != 2) {
-    throw RuntimeError("drop() takes two arguments");
+    throw RuntimeError("drop/take() takes two arguments");
   }
 
   auto index_opt = args[1].as_primitive().and_then(&Primitive::as_integer);
   if (!index_opt) {
-    throw TypeError("drop() takes only an integer as an index argument");
+    throw TypeError("drop/take() takes only an integer as an index argument");
   }
   auto index = *index_opt;
 
-  return vm.heap_store(
-      args[0].slice(l3::runtime::Slice{.start = index, .end = std::nullopt})
-  );
+  if constexpr (IsDrop) {
+    return vm.heap_store(
+        args[0].slice(l3::runtime::Slice{.start = index, .end = std::nullopt})
+    );
+  } else {
+    return vm.heap_store(
+        args[0].slice(l3::runtime::Slice{.start = std::nullopt, .end = index})
+    );
+  }
+}
+
+StackValue builtin_drop(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
+  return builtin_drop_take<true>(vm, args);
 }
 
 StackValue builtin_take(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
-  if (args.size() != 2) {
-    throw RuntimeError("take() takes two arguments");
-  }
-
-  auto index_opt = args[1].as_primitive().and_then(&Primitive::as_integer);
-  if (!index_opt) {
-    throw TypeError("take() takes only an integer as an index argument");
-  }
-  auto index = *index_opt;
-
-  return vm.heap_store(
-      args[0].slice(l3::runtime::Slice{.start = std::nullopt, .end = index})
-  );
+  return builtin_drop_take<false>(vm, args);
 }
 
 StackValue builtin_slice(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
@@ -393,44 +377,40 @@ StackValue builtin_sum(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
   return vm.heap_store(std::move(total));
 }
 
-StackValue builtin_all(l3::vm::BytecodeVM & /*vm*/, l3::runtime::L3Args args) {
+template <bool IsAll>
+StackValue
+builtin_all_any(l3::vm::BytecodeVM & /*vm*/, l3::runtime::L3Args args) {
   if (args.size() != 1) {
-    throw TypeError("all() takes exactly 1 argument");
+    throw TypeError("all/any() takes exactly 1 argument");
   }
 
   const auto list_opt = args[0].as_vector();
   if (!list_opt) {
-    throw TypeError("all() argument must be a vector");
+    throw TypeError("all/any() argument must be a vector");
   }
   const auto &list = list_opt->get();
 
   for (const auto &item : list) {
-    if (!item.is_truthy()) {
-      return {Primitive{false}};
+    if constexpr (IsAll) {
+      if (!item.is_truthy()) {
+        return StackValue{Primitive{false}};
+      }
+    } else {
+      if (item.is_truthy()) {
+        return StackValue{Primitive{true}};
+      }
     }
   }
 
-  return {Primitive{true}};
+  return StackValue{Primitive{IsAll}};
 }
 
-StackValue builtin_any(l3::vm::BytecodeVM & /*vm*/, l3::runtime::L3Args args) {
-  if (args.size() != 1) {
-    throw TypeError("any() takes exactly 1 argument");
-  }
+StackValue builtin_all(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
+  return builtin_all_any<true>(vm, args);
+}
 
-  const auto list_opt = args[0].as_vector();
-  if (!list_opt) {
-    throw TypeError("any() argument must be a vector");
-  }
-  const auto &list = list_opt->get();
-
-  for (const auto &item : list) {
-    if (item.is_truthy()) {
-      return {Primitive{true}};
-    }
-  }
-
-  return {Primitive{false}};
+StackValue builtin_any(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
+  return builtin_all_any<false>(vm, args);
 }
 
 StackValue builtin_count(l3::vm::BytecodeVM &vm, l3::runtime::L3Args args) {
