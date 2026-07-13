@@ -25,8 +25,7 @@ public:
   void unmark() { marked = false; }
   [[nodiscard]] bool is_marked() const { return marked; }
 
-  [[nodiscard]] StackValue &get() { return value; }
-  [[nodiscard]] const StackValue &get() const { return value; }
+  [[nodiscard]] decltype(auto) get(this auto &&self) { return (self.value); }
 };
 
 class UpvalueStorage {

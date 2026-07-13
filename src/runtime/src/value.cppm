@@ -53,11 +53,8 @@ public:
   [[nodiscard]] HeapData not_op() const;
   [[nodiscard]] HeapData negative() const;
 
-  auto visit(auto &&...visitor) -> decltype(auto) {
-    return match::match(inner, std::forward<decltype(visitor)>(visitor)...);
-  }
-  auto visit(auto &&...visitor) const -> decltype(auto) {
-    return match::match(inner, std::forward<decltype(visitor)>(visitor)...);
+  auto visit(this auto &&self, auto &&...visitor) -> decltype(auto) {
+    return match::match(self.inner, visitor...);
   }
 
   [[nodiscard]] bool is_nil() const;
