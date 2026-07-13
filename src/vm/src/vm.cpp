@@ -148,7 +148,7 @@ runtime::StackValue BytecodeVM::call_function_impl(
   }
 
   auto *func = function.get_heap_ptr();
-  return func->get_value_mut().visit(
+  return func->get_value().visit(
       [&](runtime::HeapData::function_type &f) {
         return f->visit(
             [&](const runtime::BuiltinFunction &builtin_function) {
@@ -304,7 +304,7 @@ void BytecodeVM::
 void BytecodeVM::
     execute_op(const bytecode::OpConstant &op, CallFrame & /*frame*/) {
   runtime::HeapCell &chunk_val = constant_at(op.index);
-  chunk_val.get_value_mut().visit(
+  chunk_val.get_value().visit(
       [&](runtime::Nil) { stack.emplace_back(); },
       [&](runtime::Primitive p) { stack.emplace_back(p); },
       [&](auto &) { stack.emplace_back(&chunk_val); }
@@ -651,7 +651,7 @@ void BytecodeVM::execute_op(const bytecode::OpCall &op, CallFrame & /*frame*/) {
 
 void BytecodeVM::execute_op(const bytecode::OpClosure &op, CallFrame &frame) {
   auto &constant = current_program->constants[op.function_index];
-  auto *func_ptr = constant.get_value_mut().visit(
+  auto *func_ptr = constant.get_value().visit(
       [](runtime::HeapData::function_type &f) -> runtime::BytecodeFunction * {
         if (auto bc_opt = f->as_mut_bytecode_function()) {
           return &bc_opt->get();
