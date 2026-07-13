@@ -55,7 +55,7 @@ class String {
   DEFINE_LOCATION_FIELD()
 
 public:
-  String(const std::string &literal, location::Location location = {});
+  String(std::string literal, location::Location location = {});
 
   DEFINE_ACCESSOR_X(value);
 };

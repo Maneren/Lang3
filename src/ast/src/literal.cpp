@@ -40,7 +40,7 @@ Float::Float(
   value += frac;
 }
 
-String::String(const std::string &literal, location::Location location)
+String::String(std::string literal, location::Location location)
     : location_(location) {
   using namespace std::ranges;
 

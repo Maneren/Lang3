@@ -139,7 +139,7 @@ public:
   std::vector<location::Location> locations;
 
   void
-  write(const Instruction &instruction, const location::Location &location);
+  write(Instruction instruction, location::Location location);
 };
 
 struct ProgramBytecode {

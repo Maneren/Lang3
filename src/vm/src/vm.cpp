@@ -20,27 +20,27 @@ std::string function_name_for_frame(const BytecodeVM::CallFrame &frame) {
 
 template <typename Op>
 void binary_op(
-    BytecodeVM &vm, std::vector<runtime::StackValue> &stack, const Op &op
+    BytecodeVM &vm, std::vector<runtime::StackValue> &stack, Op &&op
 ) {
   auto &a = stack[stack.size() - 2];
   auto &b = stack.back();
-  a = vm.heap_store(op(a, b));
+  a = vm.heap_store(std::forward<Op>(op)(a, b));
   stack.pop_back();
 }
 
 template <typename Op>
 void unary_op(
-    BytecodeVM &vm, std::vector<runtime::StackValue> &stack, const Op &op
+    BytecodeVM &vm, std::vector<runtime::StackValue> &stack, Op &&op
 ) {
   auto &a = stack.back();
-  a = vm.heap_store(op(a));
+  a = vm.heap_store(std::forward<Op>(op)(a));
 }
 
 template <typename Pred>
-void compare_op(std::vector<runtime::StackValue> &stack, const Pred &pred) {
+void compare_op(std::vector<runtime::StackValue> &stack, Pred &&pred) {
   auto &a = stack[stack.size() - 2];
   auto &b = stack.back();
-  a = {runtime::Primitive{pred(runtime::compare(a, b))}};
+  a = {runtime::Primitive{std::forward<Pred>(pred)(runtime::compare(a, b))}};
   stack.pop_back();
 }
 
