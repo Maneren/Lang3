@@ -200,14 +200,14 @@ Instruction Compiler::emit_set_variable(const ast::Identifier &name) {
   }
 }
 
-void Compiler::emit(const Instruction &instruction) {
-  current_chunk().write(instruction, current_location());
+void Compiler::emit(Instruction instruction) {
+  current_chunk().write(std::move(instruction), current_location());
 }
 
 void Compiler::emit(
-    const Instruction &instruction, const location::Location &location
+    Instruction instruction, const location::Location &location
 ) {
-  current_chunk().write(instruction, location);
+  current_chunk().write(std::move(instruction), location);
 }
 
 void Compiler::emit_nil() { emit(OpConstant{make_constant({})}); }
@@ -281,8 +281,8 @@ void Compiler::patch_jump_here(std::size_t jump_offset) {
   patch_jump(jump_offset, last_instruction_offset() + 1);
 }
 
-std::size_t Compiler::emit_jump(const Instruction &instruction) {
-  current_chunk().write(instruction, current_location());
+std::size_t Compiler::emit_jump(Instruction instruction) {
+  current_chunk().write(std::move(instruction), current_location());
   return last_instruction_offset();
 }
 

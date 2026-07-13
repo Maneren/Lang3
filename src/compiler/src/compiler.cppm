@@ -83,15 +83,15 @@ private:
   resolve_local(const ast::Identifier &name) const;
   std::optional<std::size_t> resolve_upvalue(const ast::Identifier &name);
 
-  void emit(const Instruction &instruction);
-  void emit(const Instruction &instruction, const location::Location &location);
+  void emit(Instruction instruction);
+  void emit(Instruction instruction, const location::Location &location);
   std::size_t make_constant(runtime::HeapData &&value = {});
   void emit_nil();
   void deduplicate_constants();
   void emit_loop(std::size_t loop_start);
   void patch_jump(std::size_t jump_offset, std::size_t target);
   void patch_jump_here(std::size_t jump_offset);
-  std::size_t emit_jump(const Instruction &instruction);
+  std::size_t emit_jump(Instruction instruction);
 
   void compile_statements(std::ranges::input_range auto &statements);
   CompiledFunctionBody compile_function_body(const ast::FunctionBody &body);

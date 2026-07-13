@@ -8,10 +8,10 @@ import l3.runtime;
 namespace l3::bytecode {
 
 void Chunk::write(
-    const Instruction &instruction, const location::Location &location
+    Instruction instruction, location::Location location
 ) {
-  code.push_back(instruction);
-  locations.push_back(location);
+  code.push_back(std::move(instruction));
+  locations.push_back(std::move(location));
 }
 
 std::string format_instruction(

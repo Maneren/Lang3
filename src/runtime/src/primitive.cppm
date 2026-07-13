@@ -13,7 +13,6 @@ public:
   explicit Primitive(bool value);
   explicit Primitive(std::int64_t value);
   explicit Primitive(double value);
-  explicit Primitive(const std::string &value);
 
   [[nodiscard]] bool is_bool() const;
   [[nodiscard]] bool is_integer() const;
