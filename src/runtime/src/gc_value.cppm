@@ -21,6 +21,10 @@ public:
 
   [[nodiscard]] bool is_marked() const { return marked; }
 
+  auto visit(this auto &&self, auto &&...visitor) {
+    return self.value.visit(visitor...);
+  }
+
   DEFINE_ACCESSOR_X(value);
 };
 

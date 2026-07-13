@@ -91,25 +91,45 @@ template <typename T> bool is_impl(const HeapData &v) {
 
 template <typename... Vis>
 decltype(auto) visit_flat(const StackValue &sv, Vis &&...vis) {
-  auto overloaded = match::Overloaded{std::forward<Vis>(vis)...};
-  return sv.visit(overloaded, [&](HeapCell *gcv) {
-    return gcv->get_value().visit(overloaded);
+  return sv.visit(std::forward<Vis>(vis)..., [&](HeapCell *gcv) {
+    return gcv->visit(std::forward<Vis>(vis)...);
   });
 }
 
 template <typename... Vis>
 decltype(auto) visit_flat(const HeapData &v, Vis &&...vis) {
-  return match::match(v.get_inner(), std::forward<Vis>(vis)...);
+  return v.visit(std::forward<Vis>(vis)...);
 }
 
 template <typename... Handlers>
-auto visit_pair(const auto &a, const auto &b, Handlers &&...handlers) {
-  auto visitor = match::Overloaded{std::forward<Handlers>(handlers)...};
-  return visit_flat(a, [&](const auto &flat_a) {
-    return visit_flat(b, [&](const auto &flat_b) {
-      return visitor(flat_a, flat_b);
-    });
-  });
+auto visit_pair(const HeapData &a, const HeapData &b, Handlers &&...handlers) {
+  return match::match(
+      std::forward_as_tuple(a.get_inner(), b.get_inner()),
+      std::forward<Handlers>(handlers)...
+  );
+}
+
+auto visit_pair(const StackValue &a, const StackValue &b, auto &&...handlers) {
+  auto visitor = match::Overloaded{handlers...};
+  return match::match(
+      std::forward_as_tuple(a.get_inner(), b.get_inner()),
+      [&](HeapCell *lhs, HeapCell *rhs) {
+        return std::visit(
+            visitor, lhs->get_value().get_inner(), rhs->get_value().get_inner()
+        );
+      },
+      [&](HeapCell *lhs, const auto &rhs) {
+        return lhs->visit([&](const auto &flat_lhs) {
+          return visitor(flat_lhs, rhs);
+        });
+      },
+      [&](const auto &lhs, HeapCell *rhs) {
+        return rhs->visit([&](const auto &flat_rhs) {
+          return visitor(lhs, flat_rhs);
+        });
+      },
+      [&](const auto &lhs, const auto &rhs) { return visitor(lhs, rhs); }
+  );
 }
 
 // Operation helpers — work with both HeapData and StackValue via visit_pair
