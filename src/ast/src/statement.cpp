@@ -10,9 +10,10 @@ Statement &Statement::operator=(Statement &&) noexcept = default;
 Statement::~Statement() = default;
 
 Statement::Statement(Assignment &&assignment) {
-  match::match(std::move(assignment), [this](auto &&assignment) {
-    inner = std::forward<decltype(assignment)>(assignment);
-  });
+  std::visit(
+      [this](auto &&value) { inner = std::forward<decltype(value)>(value); },
+      std::move(assignment)
+  );
 }
 
 Statement::Statement(Declaration &&declaration)
