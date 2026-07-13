@@ -65,6 +65,12 @@ private:
   resolve_global(std::string_view name) const;
   void define_global(std::string_view name, runtime::StackValue value);
 
+  runtime::StackValue call_function_impl(
+      const runtime::StackValue &function,
+      runtime::L3Args arguments,
+      const auto &&stack_setup
+  );
+
   [[nodiscard]] auto &&current_frame(this auto &&self);
   [[nodiscard]] std::size_t current_frame_pointer() const;
   [[nodiscard]] std::size_t frame_absolute_slot(std::size_t offset) const;
