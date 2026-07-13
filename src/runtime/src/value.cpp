@@ -90,7 +90,8 @@ template <typename T> bool is_impl(const HeapData &v) {
 template <typename... Vis>
 decltype(auto) visit_flat(const StackValue &sv, Vis &&...vis) {
   return sv.visit(std::forward<Vis>(vis)..., [&](HeapCell *gcv) {
-    return gcv->visit(std::forward<Vis>(vis)...);
+    const auto *const_gcv = gcv;
+    return const_gcv->visit(std::forward<Vis>(vis)...);
   });
 }
 
@@ -467,7 +468,7 @@ HeapData to_owned(const StackValue &sv) {
   return sv.visit(
       [](Nil) -> HeapData { return {}; },
       [](const Primitive &p) -> HeapData { return HeapData{p}; },
-      [](HeapCell *gcv) -> HeapData {
+      [](const HeapCell *gcv) -> HeapData {
         return gcv->get_value().visit(
             [](const std::unique_ptr<Function> &f) -> HeapData {
               return HeapData{*f};

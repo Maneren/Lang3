@@ -21,7 +21,7 @@ public:
 
   [[nodiscard]] bool is_marked() const { return marked; }
 
-  auto visit(this auto &&self, auto &&...visitor) {
+  decltype(auto) visit(this auto &&self, auto &&...visitor) {
     return self.value.visit(visitor...);
   }
 
