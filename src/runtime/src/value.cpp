@@ -270,8 +270,8 @@ template <typename T> std::partial_ordering compare_op(const T &a, const T &b) {
         if (lv.size() != rv.size()) {
           return lv.size() <=> rv.size();
         }
-        for (std::size_t i = 0; i < lv.size(); ++i) {
-          const auto elem_cmp = compare_op(lv[i], rv[i]);
+        for (const auto [el, er] : std::views::zip(lv, rv)) {
+          const auto elem_cmp = compare_op(el, er);
           if (elem_cmp != std::partial_ordering::equivalent) {
             return elem_cmp;
           }
