@@ -138,54 +138,70 @@ void BytecodeVM::debug_print(std::format_string<Args...> fmt, Args &&...args) {
   }
 }
 
-runtime::StackValue BytecodeVM::call_function(
+runtime::StackValue BytecodeVM::call_function_impl(
     const runtime::StackValue &function,
     runtime::L3Args arguments,
-    const location::Location &call_location
+    const auto &&stack_setup
 ) {
   if (!function.holds_heap_cell()) {
-    throw runtime::RuntimeError("call_function: not a function");
+    throw runtime::RuntimeError("Attempted to call a invalid function");
   }
-  auto *gcv = function.get_heap_ptr();
-  return gcv->get_value_mut().visit(
+
+  auto *func = function.get_heap_ptr();
+  return func->get_value_mut().visit(
       [&](runtime::HeapData::function_type &f) {
         return f->visit(
-            [&](const runtime::BuiltinFunction &func) {
-              return func.invoke(arguments);
+            [&](const runtime::BuiltinFunction &builtin_function) {
+              return builtin_function.invoke(arguments);
             },
             [&](runtime::BytecodeFunction &bc_func) {
               auto total_args = bc_func.curried_args.size() + arguments.size();
+
+              if (total_args > bc_func.arity) {
+                throw runtime::RuntimeError("call_function arity mismatch");
+              }
 
               if (total_args < bc_func.arity) {
                 auto new_func = bc_func;
                 new_func.curried_args.append_range(arguments);
                 return heap_store(runtime::Function{std::move(new_func)});
               }
-              if (total_args == bc_func.arity) {
-                auto previous_frames = frames.size();
-                auto fp = stack.size();
-                frames.emplace_back(
-                    bc_func.id,
-                    0,
-                    fp,
-                    call_location,
-                    std::pair{bc_func, function}
-                );
-                auto &new_frame = frames.back();
-                new_frame.upvalues = bc_func.captured_upvalue_refs;
-                stack.reserve(stack.size() + total_args);
-                stack.append_range(bc_func.curried_args);
-                stack.append_range(arguments);
-                execute_loop(previous_frames);
-                return stack_pop();
-              }
 
-              throw runtime::RuntimeError("call_function arity mismatch");
+              auto previous_frames = frames.size();
+              stack_setup(bc_func);
+              execute_loop(previous_frames);
+              return stack_pop();
             }
         );
       },
       [&](auto &) -> runtime::StackValue {
-        throw runtime::RuntimeError("call_function: not a function");
+        throw runtime::RuntimeError(
+            "Attempted to call a non-function value: {}", function.type_name()
+        );
+      }
+  );
+}
+
+runtime::StackValue BytecodeVM::call_function(
+    const runtime::StackValue &function,
+    runtime::L3Args arguments,
+    const location::Location &call_location
+) {
+  return call_function_impl(
+      function, arguments, [&](const runtime::BytecodeFunction &bc_func) {
+        auto &new_frame = frames.emplace_back(
+            bc_func.id,
+            0,
+            stack.size(),
+            call_location,
+            std::pair{bc_func, function}
+        );
+        new_frame.upvalues = bc_func.captured_upvalue_refs;
+        stack.reserve(
+            stack.size() + bc_func.curried_args.size() + arguments.size()
+        );
+        stack.append_range(bc_func.curried_args);
+        stack.append_range(arguments);
       }
   );
 }
@@ -579,85 +595,54 @@ void BytecodeVM::
 }
 
 void BytecodeVM::execute_op(const bytecode::OpCall &op, CallFrame & /*frame*/) {
-  const auto func_pos = stack.size() - op.arg_count - 1;
-  auto func_sv = stack[func_pos];
-  stack.erase(stack.begin() + static_cast<std::ptrdiff_t>(func_pos));
-
-  debug_print("CALL func={} argc={}", func_sv, op.arg_count);
-
   const auto base = stack.size() - op.arg_count;
+  auto function = stack[base - 1];
   const auto args_span = std::span(
-      stack.end() - static_cast<std::ptrdiff_t>(op.arg_count), op.arg_count
+      stack.begin() + static_cast<std::ptrdiff_t>(base), op.arg_count
   );
 
-  const auto clean_args = [&]() {
-    stack.erase(stack.begin() + static_cast<std::ptrdiff_t>(base), stack.end());
+  debug_print("CALL func={} argc={}", function, op.arg_count);
+
+  const auto cleanup = [this, base]() {
+    stack.erase(
+        stack.begin() + static_cast<std::ptrdiff_t>(base - 1), stack.end()
+    );
   };
 
-  if (!func_sv.holds_heap_cell()) {
-    clean_args();
-    throw runtime::RuntimeError("Attempted to call a non-function value");
+  runtime::StackValue result;
+  try {
+    result = call_function_impl(
+        function, args_span, [&](const runtime::BytecodeFunction &bc_func) {
+          auto &new_frame = frames.emplace_back(
+              bc_func.id,
+              0,
+              base,
+              current_instruction_location(),
+              std::pair{bc_func, function}
+          );
+          new_frame.upvalues = bc_func.captured_upvalue_refs;
+
+          if (!bc_func.curried_args.empty()) {
+            const auto curried_count = bc_func.curried_args.size();
+            stack.resize(stack.size() + curried_count);
+
+            for (std::size_t i = op.arg_count; i > 0; i--) {
+              stack[base + i - 1 + curried_count] = stack[base + i - 1];
+            }
+
+            for (const auto &[i, arg] :
+                 utils::ranges::enumerate(bc_func.curried_args)) {
+              stack[base + i] = arg;
+            }
+          }
+        }
+    );
+  } catch (...) {
+    cleanup();
+    throw;
   }
 
-  auto *gcv = func_sv.get_heap_ptr();
-  auto result = gcv->get_value_mut().visit(
-      [&](runtime::HeapData::function_type &f) {
-        return f->visit(
-            [&](const runtime::BuiltinFunction &bf) {
-              return bf.invoke(args_span);
-            },
-            [&](runtime::BytecodeFunction &bc_func) {
-              auto total_args = bc_func.curried_args.size() + op.arg_count;
-
-              if (total_args > bc_func.arity) {
-                throw runtime::RuntimeError("call_function arity mismatch");
-              }
-
-              if (total_args < bc_func.arity) {
-                auto new_func = bc_func;
-                new_func.curried_args.append_range(args_span);
-                return heap_store(runtime::Function{std::move(new_func)});
-              }
-
-              auto previous_frames = frames.size();
-              auto &new_frame = frames.emplace_back(
-                  bc_func.id,
-                  0,
-                  base,
-                  current_instruction_location(),
-                  std::pair{bc_func, func_sv}
-              );
-              new_frame.upvalues = bc_func.captured_upvalue_refs;
-
-              if (!bc_func.curried_args.empty()) {
-                const auto curried_count = bc_func.curried_args.size();
-                stack.resize(stack.size() + curried_count);
-
-                for (std::size_t i = op.arg_count; i > 0; i--) {
-                  stack[base + i - 1 + curried_count] = stack[base + i - 1];
-                }
-
-                for (const auto &[i, arg] :
-                     utils::ranges::enumerate(bc_func.curried_args)) {
-                  stack[base + i] = arg;
-                }
-              }
-
-              execute_loop(previous_frames);
-              return stack_pop();
-            }
-        );
-      },
-      [&](auto &) -> runtime::StackValue {
-        clean_args();
-        throw runtime::RuntimeError(
-            "Attempted to call a non-function value: {}",
-            gcv->get_value().type_name()
-        );
-      }
-  );
-
-  clean_args();
+  cleanup();
 
   if (op.keep_return_value) {
     stack_push(result);
