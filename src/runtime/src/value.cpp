@@ -545,7 +545,7 @@ StackValue &index_mut(StackValue &container, const StackValue &index_sv) {
   if (gcv == nullptr) {
     throw TypeError("cannot index a {} value", container.type_name());
   }
-  return gcv->get_value_mut().visit(
+  return gcv->get_value().visit(
       [&](std::vector<StackValue> &vec) -> StackValue & {
         if (idx >= vec.size()) {
           throw ValueError("index out of bounds");
