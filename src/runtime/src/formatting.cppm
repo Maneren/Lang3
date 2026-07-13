@@ -74,7 +74,7 @@ export {
           [&ctx](const l3::runtime::Nil &) {
             return std::format_to(ctx.out(), "nil");
           },
-          [&ctx](l3::runtime::HeapCell *gcv) -> decltype(auto) {
+          [&ctx](const l3::runtime::HeapCell *gcv) -> decltype(auto) {
             return gcv->get_value().visit(
                 [&ctx](const l3::runtime::HeapData::function_type &f) {
                   return std::format_to(ctx.out(), "{}", *f);

@@ -307,7 +307,7 @@ void BytecodeVM::
   chunk_val.get_value().visit(
       [&](runtime::Nil) { stack.emplace_back(); },
       [&](runtime::Primitive p) { stack.emplace_back(p); },
-      [&](auto &) { stack.emplace_back(&chunk_val); }
+      [&](const auto &) { stack.emplace_back(&chunk_val); }
   );
   debug_print("CONSTANT index={} value={}", op.index, stack_top());
 }
@@ -658,7 +658,7 @@ void BytecodeVM::execute_op(const bytecode::OpClosure &op, CallFrame &frame) {
         }
         return nullptr;
       },
-      [](auto &) -> runtime::BytecodeFunction * { return nullptr; }
+      [](const auto &) -> runtime::BytecodeFunction * { return nullptr; }
   );
 
   if (func_ptr == nullptr) {
