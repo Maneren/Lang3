@@ -12,7 +12,7 @@ auto handle_bin_op(
     std::string_view name, const Primitive &lhs, const Primitive &rhs, Fn &&fn
 ) {
   using Result = std::invoke_result_t<
-      match::Overloaded<std::decay_t<Fn>>,
+      std::decay_t<Fn>,
       const std::int64_t &,
       const std::int64_t &>;
   return match::match(

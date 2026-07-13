@@ -289,9 +289,9 @@ void BytecodeVM::execute_loop(std::size_t target_frames) {
 
     const auto &instruction = chunk.code[frame.ip++];
 
-    match::match(instruction, [&, this](const auto &op) {
-      execute_op(op, frame);
-    });
+    std::visit(
+        [&, this](const auto &op) { execute_op(op, frame); }, instruction
+    );
   }
 }
 

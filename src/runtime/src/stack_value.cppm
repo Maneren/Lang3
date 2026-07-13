@@ -35,9 +35,9 @@ public:
   ~StackValue() = default;
 
   auto visit(this auto &&self, auto &&...visitor) -> decltype(auto) {
-    return std::visit(
-        match::Overloaded{std::forward<decltype(visitor)>(visitor)...},
-        self.inner
+    return match::match(
+        self.inner,
+        std::forward<decltype(visitor)>(visitor)...
     );
   }
 

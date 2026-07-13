@@ -84,9 +84,7 @@ template <typename T> utils::optional_ref<T> as_mut_impl(HeapData &v) {
 }
 
 template <typename T> bool is_impl(const HeapData &v) {
-  return v.visit(
-      [](const T &) { return true; }, [](const auto &) { return false; }
-  );
+  return std::holds_alternative<T>(v.get_inner());
 }
 
 template <typename... Vis>
@@ -114,8 +112,11 @@ auto visit_pair(const StackValue &a, const StackValue &b, auto &&...handlers) {
   return match::match(
       std::forward_as_tuple(a.get_inner(), b.get_inner()),
       [&](HeapCell *lhs, HeapCell *rhs) {
-        return std::visit(
-            visitor, lhs->get_value().get_inner(), rhs->get_value().get_inner()
+        return match::match(
+            std::forward_as_tuple(
+                lhs->get_value().get_inner(), rhs->get_value().get_inner()
+            ),
+            handlers...
         );
       },
       [&](HeapCell *lhs, const auto &rhs) {
