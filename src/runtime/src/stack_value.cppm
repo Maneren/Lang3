@@ -36,8 +36,7 @@ public:
 
   auto visit(this auto &&self, auto &&...visitor) -> decltype(auto) {
     return match::match(
-        self.inner,
-        std::forward<decltype(visitor)>(visitor)...
+        self.inner, std::forward<decltype(visitor)>(visitor)...
     );
   }
 
@@ -54,14 +53,16 @@ public:
     return std::holds_alternative<HeapCell *>(inner);
   }
 
-  [[nodiscard]] HeapCell *get_heap_ptr() const noexcept {
-    if (const auto *ptr = std::get_if<HeapCell *>(&inner)) {
+  [[nodiscard]] constexpr auto get_heap_ptr(this auto &&self) noexcept
+      -> std::conditional_t<
+          std::is_const_v<std::remove_reference_t<decltype(self)>>,
+          const HeapCell *,
+          HeapCell *> {
+    if (auto *ptr = std::get_if<HeapCell *>(&self.inner)) {
       return *ptr;
     }
     return nullptr;
   }
-
-  HeapCell *get_heap_ptr_mut() { return std::get<HeapCell *>(inner); }
 
   [[nodiscard]] bool is_string() const;
   [[nodiscard]] bool is_vector() const;

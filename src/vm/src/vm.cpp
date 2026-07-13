@@ -141,7 +141,7 @@ void BytecodeVM::debug_print(std::format_string<Args...> fmt, Args &&...args) {
 runtime::StackValue BytecodeVM::call_function_impl(
     const runtime::StackValue &function,
     runtime::L3Args arguments,
-    const auto &&stack_setup
+    auto &&stack_setup
 ) {
   if (!function.holds_heap_cell()) {
     throw runtime::RuntimeError("Attempted to call a invalid function");
@@ -149,12 +149,12 @@ runtime::StackValue BytecodeVM::call_function_impl(
 
   auto *func = function.get_heap_ptr();
   return func->get_value().visit(
-      [&](runtime::HeapData::function_type &f) {
+      [&](const runtime::HeapData::function_type &f) {
         return f->visit(
             [&](const runtime::BuiltinFunction &builtin_function) {
               return builtin_function.invoke(arguments);
             },
-            [&](runtime::BytecodeFunction &bc_func) {
+            [&](const runtime::BytecodeFunction &bc_func) {
               auto total_args = bc_func.curried_args.size() + arguments.size();
 
               if (total_args > bc_func.arity) {
@@ -223,7 +223,7 @@ std::size_t BytecodeVM::run_gc() {
   }
   for (auto &frame : frames) {
     if (frame.closure && frame.closure->second.holds_heap_cell()) {
-      frame.closure->second.get_heap_ptr_mut()->mark();
+      frame.closure->second.get_heap_ptr()->mark();
     }
     for (auto *uv : frame.upvalues) {
       uv->mark();

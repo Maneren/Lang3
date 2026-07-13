@@ -68,7 +68,7 @@ private:
   runtime::StackValue call_function_impl(
       const runtime::StackValue &function,
       runtime::L3Args arguments,
-      const auto &&stack_setup
+      auto &&stack_setup
   );
 
   [[nodiscard]] auto &&current_frame(this auto &&self);
