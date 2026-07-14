@@ -55,8 +55,7 @@ public:
 
   auto visit(this auto &&self, auto &&...visitor) -> decltype(auto) {
     return match::match(
-        self.inner,
-        std::forward<decltype(visitor)>(visitor)...
+        self.inner, std::forward<decltype(visitor)>(visitor)...
     );
   }
 

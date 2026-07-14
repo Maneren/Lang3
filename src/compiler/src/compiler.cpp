@@ -462,7 +462,9 @@ void Compiler::compile_comparison(const ast::Comparison &comparison) {
   for (auto jump : short_circuit_jumps) {
     patch_jump_here(jump);
     emit(OpPop{2});
-    emit(OpConstant{make_constant(runtime::HeapData{runtime::Primitive{false}})});
+    emit(
+        OpConstant{make_constant(runtime::HeapData{runtime::Primitive{false}})}
+    );
     cleanup_jumps.push_back(emit_jump(OpJump{}));
   }
 

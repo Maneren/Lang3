@@ -150,8 +150,7 @@ public:
   std::vector<Instruction> code;
   std::vector<location::Location> locations;
 
-  void
-  write(Instruction instruction, location::Location location);
+  void write(Instruction instruction, location::Location location);
 };
 
 struct ProgramBytecode {
