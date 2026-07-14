@@ -12,10 +12,6 @@ using namespace l3::bytecode;
 using namespace l3::runtime;
 using namespace l3::location;
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
 bool is_primitive_constant(std::size_t idx, const ProgramBytecode &program) {
   return program.constants[idx].get_value().is_primitive();
 }
@@ -78,10 +74,6 @@ OpConstant add_constant(ProgramBytecode &program, HeapData &&value) {
   return {program.constants.size() - 1};
 }
 
-// ---------------------------------------------------------------------------
-// Jump offset adjustment
-// ---------------------------------------------------------------------------
-
 void adjust_offsets(
     Instruction &inst, const std::vector<std::size_t> &old_to_new
 ) {
@@ -94,10 +86,6 @@ void adjust_offsets(
   );
 }
 
-// ---------------------------------------------------------------------------
-// Pattern matching
-// ---------------------------------------------------------------------------
-
 // Result of a pattern match: how many old instructions consumed, and
 // what (if any) replacement instruction to emit.
 struct Match {
@@ -107,7 +95,6 @@ struct Match {
 
 constexpr auto no_match = [](const auto &) -> Match { return {}; };
 
-// OpPop{0} → remove
 Match match_pop_zero(
     std::size_t i,
     const std::vector<Instruction> &code,
@@ -125,7 +112,6 @@ Match match_pop_zero(
   );
 }
 
-// OpJump{next_instruction} → remove
 Match match_zero_jump(
     std::size_t i,
     const std::vector<Instruction> &code,
@@ -149,7 +135,6 @@ Match match_zero_jump(
   );
 }
 
-// OpConstant{idx} + OpNegate/OpNot → OpConstant{folded}
 Match match_unary_fold(
     std::size_t i,
     const std::vector<Instruction> &code,
@@ -195,9 +180,6 @@ Match match_unary_fold(
   );
 }
 
-// OpConstant{x} + OpJumpIf{expected, keep=false, stay=false}
-//   x.is_truthy() == expected → OpJump
-//   x.is_truthy() != expected → remove both
 Match match_const_jumpif(
     std::size_t i,
     const std::vector<Instruction> &code,
@@ -234,7 +216,6 @@ Match match_const_jumpif(
   );
 }
 
-// OpConstant{a} + OpConstant{b} + arithmetic/comparison → OpConstant{folded}
 Match match_binary_fold(
     std::size_t i,
     const std::vector<Instruction> &code,
@@ -273,7 +254,6 @@ Match match_binary_fold(
   );
 }
 
-// Follow a chain of unconditional jumps to find the final target
 std::size_t
 follow_jump_chain(std::size_t offset, const std::vector<Instruction> &code) {
   for (;;) {
@@ -294,8 +274,6 @@ follow_jump_chain(std::size_t offset, const std::vector<Instruction> &code) {
   return offset;
 }
 
-// OpJump{target} → OpJump{target_final} where code[target] jumps to final
-// OpJumpIf{target} → OpJumpIf{target_final} where code[target] jumps to final
 Match match_jump_chaining(
     std::size_t i,
     const std::vector<Instruction> &code,
@@ -343,10 +321,6 @@ Match try_match(
   }
   return {};
 }
-
-// ---------------------------------------------------------------------------
-// Single pass over chunk.code: returns true if any pattern matched
-// ---------------------------------------------------------------------------
 
 bool run_pass(Chunk &chunk, ProgramBytecode &program) {
   if (chunk.code.empty()) {
@@ -403,7 +377,6 @@ namespace l3::compiler {
 void optimize(bytecode::ProgramBytecode &program) {
   for (auto &chunk : program.chunks) {
     while (run_pass(chunk, program)) {
-      // Continue until no more patterns match
     }
   }
 }

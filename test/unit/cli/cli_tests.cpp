@@ -24,8 +24,6 @@ protected:
   Parser parser;
 };
 
-// Basic flags
-
 TEST_F(CliParserTest, ShortFlagRecognized) {
   parser.short_flag("d");
   ArgvHelper args{"prog", "-d"};
@@ -82,8 +80,6 @@ TEST_F(CliParserTest, MultipleFlagsPresent) {
   EXPECT_TRUE(result->has_flag("debug-parser"));
 }
 
-// Combined short flags
-
 TEST_F(CliParserTest, CombinedShortFlags) {
   parser.short_flag("a").short_flag("b").short_flag("c");
   ArgvHelper args{"prog", "-abc"};
@@ -107,8 +103,6 @@ TEST_F(CliParserTest, CombinedFlagsWithLongNames) {
   EXPECT_TRUE(result->has_flag("beta"));
   EXPECT_TRUE(result->has_flag("gamma"));
 }
-
-// Options
 
 TEST_F(CliParserTest, ShortOptionWithValue) {
   parser.short_option("o");
@@ -167,8 +161,6 @@ TEST_F(CliParserTest, OptionNotPresent) {
   ASSERT_TRUE(result.has_value());
   EXPECT_FALSE(result->get_value("output").has_value());
 }
-
-// Positional arguments
 
 TEST_F(CliParserTest, SinglePositionalArgument) {
   ArgvHelper args{"prog", "input.txt"};
@@ -233,8 +225,6 @@ TEST_F(CliParserTest, SingleDashAsPositional) {
   EXPECT_EQ(positional[0], "-");
 }
 
-// Error cases
-
 TEST_F(CliParserTest, UnknownShortFlag) {
   parser.short_flag("d");
   ArgvHelper args{"prog", "-x"};
@@ -297,8 +287,6 @@ TEST_F(CliParserTest, LongFlagWithUnexpectedValue) {
       std::string::npos
   );
 }
-
-// Complex scenarios
 
 TEST_F(CliParserTest, RealWorldUsageScenario) {
   parser.flag("d", "debug")

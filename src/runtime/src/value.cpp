@@ -134,8 +134,6 @@ auto visit_pair(const StackValue &a, const StackValue &b, auto &&...handlers) {
   );
 }
 
-// Operation helpers — work with both HeapData and StackValue via visit_pair
-
 template <typename T> HeapData add_op(const T &a, const T &b) {
   return visit_pair(
       a,
@@ -459,10 +457,6 @@ std::string_view HeapData::type_name() const { return type_name_op(*this); }
 bool StackValue::is_truthy() const { return is_truthy_op(*this); }
 
 std::string_view StackValue::type_name() const { return type_name_op(*this); }
-
-// ---------------------------------------------------------------------------
-// StackValue operations — using unified visitor
-// ---------------------------------------------------------------------------
 
 HeapData to_owned(const StackValue &sv) {
   return sv.visit(
