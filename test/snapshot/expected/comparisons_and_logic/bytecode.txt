@@ -5,45 +5,47 @@
 0003 | GET_GLOBAL    2 '"println"'
 0004 | CONSTANT      3 (0)
 0005 | GET_LOCAL     0
-0006 | LESS
+0006 | LESS keep rhs
 0007 | JUMP_IF      11 false keep after jump
-0008 | GET_LOCAL     0
-0009 | GET_LOCAL     1
-0010 | LESS
-0011 | CALL          1 false
-0012 | GET_GLOBAL    2 '"println"'
-0013 | GET_LOCAL     0
-0014 | GET_LOCAL     1
-0015 | EQUAL
-0016 | CALL          1 false
-0017 | GET_GLOBAL    2 '"println"'
-0018 | GET_LOCAL     1
-0019 | GET_LOCAL     2
-0020 | EQUAL
-0021 | CALL          1 false
-0022 | GET_GLOBAL    2 '"println"'
-0023 | GET_LOCAL     0
-0024 | GET_LOCAL     1
-0025 | EQUAL
-0026 | NOT
-0027 | JUMP_IF      35 false keep after jump
-0028 | GET_LOCAL     1
-0029 | GET_LOCAL     2
-0030 | EQUAL
-0031 | JUMP_IF      35 true keep after jump
-0032 | GET_LOCAL     0
-0033 | GET_LOCAL     1
-0034 | GREATER
-0035 | CALL          1 false
-0036 | GET_LOCAL     0
-0037 | GET_LOCAL     1
-0038 | LESS
-0039 | JUMP_IF      42 false
-0040 | CONSTANT      4 ("ok")
-0041 | JUMP         43
-0042 | CONSTANT      5 ("bad")
-0043 | GET_GLOBAL    2 '"println"'
-0044 | GET_LOCAL     3
-0045 | CALL          1 false
-0046 | CONSTANT      6 (nil)
-0047 | RETURN
+0008 | GET_LOCAL     1
+0009 | LESS
+0010 | JUMP         13
+0011 | POP           2
+0012 | CONSTANT      4 (false)
+0013 | CALL          1 false
+0014 | GET_GLOBAL    2 '"println"'
+0015 | GET_LOCAL     0
+0016 | GET_LOCAL     1
+0017 | EQUAL
+0018 | CALL          1 false
+0019 | GET_GLOBAL    2 '"println"'
+0020 | GET_LOCAL     1
+0021 | GET_LOCAL     2
+0022 | EQUAL
+0023 | CALL          1 false
+0024 | GET_GLOBAL    2 '"println"'
+0025 | GET_LOCAL     0
+0026 | GET_LOCAL     1
+0027 | EQUAL
+0028 | NOT
+0029 | JUMP_IF      37 false keep after jump
+0030 | GET_LOCAL     1
+0031 | GET_LOCAL     2
+0032 | EQUAL
+0033 | JUMP_IF      37 true keep after jump
+0034 | GET_LOCAL     0
+0035 | GET_LOCAL     1
+0036 | GREATER
+0037 | CALL          1 false
+0038 | GET_LOCAL     0
+0039 | GET_LOCAL     1
+0040 | LESS
+0041 | JUMP_IF      44 false
+0042 | CONSTANT      5 ("ok")
+0043 | JUMP         45
+0044 | CONSTANT      6 ("bad")
+0045 | GET_GLOBAL    2 '"println"'
+0046 | GET_LOCAL     3
+0047 | CALL          1 false
+0048 | CONSTANT      7 (nil)
+0049 | RETURN

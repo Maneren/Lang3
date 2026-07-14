@@ -29,12 +29,24 @@ struct OpModulo {};
 struct OpPower {};
 struct OpNegate {};
 
-struct OpEqual {};
-struct OpNotEqual {};
-struct OpGreater {};
-struct OpGreaterEqual {};
-struct OpLess {};
-struct OpLessEqual {};
+struct OpEqual {
+  bool keep_rhs = false;
+};
+struct OpNotEqual {
+  bool keep_rhs = false;
+};
+struct OpGreater {
+  bool keep_rhs = false;
+};
+struct OpGreaterEqual {
+  bool keep_rhs = false;
+};
+struct OpLess {
+  bool keep_rhs = false;
+};
+struct OpLessEqual {
+  bool keep_rhs = false;
+};
 struct OpNot {};
 
 struct OpGetGlobal {

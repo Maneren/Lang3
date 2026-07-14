@@ -64,6 +64,7 @@ private:
   Instruction emit_set_variable(const ast::Identifier &name);
 
   std::size_t add_local(const ast::Identifier &name);
+  ast::Identifier make_synthetic_name(std::string_view prefix);
 
   struct LoopContext {
     std::vector<std::size_t> break_jumps;

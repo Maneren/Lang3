@@ -104,6 +104,10 @@ std::size_t Compiler::add_local(const ast::Identifier &name) {
   return index;
 }
 
+ast::Identifier Compiler::make_synthetic_name(std::string_view prefix) {
+  return ast::Identifier{std::format("{}_{}", prefix, synthetic_counter++)};
+}
+
 namespace {
 
 std::optional<std::size_t>
@@ -412,47 +416,60 @@ void Compiler::compile_comparison(const ast::Comparison &comparison) {
     return;
   }
 
-  std::vector<std::size_t> jumps;
+  std::vector<std::size_t> short_circuit_jumps;
+
+  compile_expression(comparison.get_start());
 
   for (std::size_t i = 0; i < comps.size(); ++i) {
-    if (i == 0) {
-      compile_expression(comparison.get_start());
-    } else {
-      compile_expression(comps[i - 1].second);
-    }
-
     compile_expression(comps[i].second);
+
+    bool keep = i < comps.size() - 1;
 
     switch (comps[i].first) {
     case ast::ComparisonOperator::Equal:
-      emit(OpEqual{});
+      emit(OpEqual{.keep_rhs = keep});
       break;
     case ast::ComparisonOperator::NotEqual:
-      emit(OpNotEqual{});
+      emit(OpNotEqual{.keep_rhs = keep});
       break;
     case ast::ComparisonOperator::Greater:
-      emit(OpGreater{});
+      emit(OpGreater{.keep_rhs = keep});
       break;
     case ast::ComparisonOperator::GreaterEqual:
-      emit(OpGreaterEqual{});
+      emit(OpGreaterEqual{.keep_rhs = keep});
       break;
     case ast::ComparisonOperator::Less:
-      emit(OpLess{});
+      emit(OpLess{.keep_rhs = keep});
       break;
     case ast::ComparisonOperator::LessEqual:
-      emit(OpLessEqual{});
+      emit(OpLessEqual{.keep_rhs = keep});
       break;
     }
 
-    if (i < comps.size() - 1) {
-      jumps.push_back(
+    if (keep) {
+      short_circuit_jumps.push_back(
           emit_jump(OpJumpIf{.expected = false, .keep_jump = true})
       );
     }
   }
 
-  for (auto jump : jumps) {
+  // Skip cleanup stubs for the no-jump path
+  std::size_t end_jump = emit_jump(OpJump{});
+
+  // Cleanup stubs: for each short-circuit jump, pop the saved RHS and the
+  // false result, then push false so the stack has only one falsy value.
+  std::vector<std::size_t> cleanup_jumps;
+  for (auto jump : short_circuit_jumps) {
     patch_jump_here(jump);
+    emit(OpPop{2});
+    emit(OpConstant{make_constant(runtime::HeapData{runtime::Primitive{false}})});
+    cleanup_jumps.push_back(emit_jump(OpJump{}));
+  }
+
+  // Both no-jump and jumped paths converge here
+  patch_jump_here(end_jump);
+  for (auto cj : cleanup_jumps) {
+    patch_jump_here(cj);
   }
 }
 

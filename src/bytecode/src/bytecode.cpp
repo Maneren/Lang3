@@ -43,17 +43,41 @@ std::string format_instruction(
       [&](const OpModulo &) { return std::format("{}MODULO\n", header()); },
       [&](const OpPower &) { return std::format("{}POWER\n", header()); },
       [&](const OpNegate &) { return std::format("{}NEGATE\n", header()); },
-      [&](const OpEqual &) { return std::format("{}EQUAL\n", header()); },
-      [&](const OpNotEqual &) {
-        return std::format("{}NOT_EQUAL\n", header());
+      [&](const OpEqual &op) {
+        auto result = std::format("{}EQUAL", header());
+        if (op.keep_rhs) result += " keep rhs";
+        result += '\n';
+        return result;
       },
-      [&](const OpGreater &) { return std::format("{}GREATER\n", header()); },
-      [&](const OpGreaterEqual &) {
-        return std::format("{}GREATER_EQUAL\n", header());
+      [&](const OpNotEqual &op) {
+        auto result = std::format("{}NOT_EQUAL", header());
+        if (op.keep_rhs) result += " keep rhs";
+        result += '\n';
+        return result;
       },
-      [&](const OpLess &) { return std::format("{}LESS\n", header()); },
-      [&](const OpLessEqual &) {
-        return std::format("{}LESS_EQUAL\n", header());
+      [&](const OpGreater &op) {
+        auto result = std::format("{}GREATER", header());
+        if (op.keep_rhs) result += " keep rhs";
+        result += '\n';
+        return result;
+      },
+      [&](const OpGreaterEqual &op) {
+        auto result = std::format("{}GREATER_EQUAL", header());
+        if (op.keep_rhs) result += " keep rhs";
+        result += '\n';
+        return result;
+      },
+      [&](const OpLess &op) {
+        auto result = std::format("{}LESS", header());
+        if (op.keep_rhs) result += " keep rhs";
+        result += '\n';
+        return result;
+      },
+      [&](const OpLessEqual &op) {
+        auto result = std::format("{}LESS_EQUAL", header());
+        if (op.keep_rhs) result += " keep rhs";
+        result += '\n';
+        return result;
       },
       [&](const OpNot &) { return std::format("{}NOT\n", header()); },
       [&](const OpGetGlobal &op) {

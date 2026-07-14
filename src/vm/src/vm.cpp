@@ -37,11 +37,20 @@ void unary_op(
 }
 
 template <typename Pred>
-void compare_op(std::vector<runtime::StackValue> &stack, Pred &&pred) {
+void compare_op(
+    std::vector<runtime::StackValue> &stack, Pred &&pred, bool keep_rhs
+) {
   auto &a = stack[stack.size() - 2];
   auto &b = stack.back();
-  a = {runtime::Primitive{std::forward<Pred>(pred)(runtime::compare(a, b))}};
-  stack.pop_back();
+  auto result =
+      runtime::Primitive{std::forward<Pred>(pred)(runtime::compare(a, b))};
+  if (keep_rhs) {
+    a = b;
+    b = result;
+  } else {
+    a = result;
+    stack.pop_back();
+  }
 }
 
 } // namespace
@@ -147,7 +156,7 @@ runtime::StackValue BytecodeVM::call_function_impl(
     throw runtime::RuntimeError("Attempted to call a invalid function");
   }
 
-  auto *func = function.get_heap_ptr();
+  const auto *func = function.get_heap_ptr();
   return func->get_value().visit(
       [&](const runtime::HeapData::function_type &f) {
         return f->visit(
@@ -381,53 +390,68 @@ void BytecodeVM::
 }
 
 void BytecodeVM::
-    execute_op(const bytecode::OpEqual & /*op*/, CallFrame & /*frame*/) {
+    execute_op(const bytecode::OpEqual &op, CallFrame & /*frame*/) {
   debug_print("EQUAL a={} b={}", stack_top(1), stack_top());
-  compare_op(stack, [](auto cmp) {
-    return cmp == std::partial_ordering::equivalent;
-  });
+  compare_op(
+      stack,
+      [](auto cmp) { return cmp == std::partial_ordering::equivalent; },
+      op.keep_rhs
+  );
 }
 
 void BytecodeVM::
-    execute_op(const bytecode::OpNotEqual & /*op*/, CallFrame & /*frame*/) {
+    execute_op(const bytecode::OpNotEqual &op, CallFrame & /*frame*/) {
   debug_print("NOT_EQUAL a={} b={}", stack_top(1), stack_top());
-  compare_op(stack, [](auto cmp) {
-    return cmp != std::partial_ordering::equivalent;
-  });
+  compare_op(
+      stack,
+      [](auto cmp) { return cmp != std::partial_ordering::equivalent; },
+      op.keep_rhs
+  );
 }
 
 void BytecodeVM::
-    execute_op(const bytecode::OpGreater & /*op*/, CallFrame & /*frame*/) {
+    execute_op(const bytecode::OpGreater &op, CallFrame & /*frame*/) {
   debug_print("GREATER a={} b={}", stack_top(1), stack_top());
-  compare_op(stack, [](auto cmp) {
-    return cmp == std::partial_ordering::greater;
-  });
+  compare_op(
+      stack,
+      [](auto cmp) { return cmp == std::partial_ordering::greater; },
+      op.keep_rhs
+  );
 }
 
 void BytecodeVM::
-    execute_op(const bytecode::OpGreaterEqual & /*op*/, CallFrame & /*frame*/) {
+    execute_op(const bytecode::OpGreaterEqual &op, CallFrame & /*frame*/) {
   debug_print("GREATER_EQUAL a={} b={}", stack_top(1), stack_top());
-  compare_op(stack, [](auto cmp) {
-    return cmp == std::partial_ordering::greater ||
-           cmp == std::partial_ordering::equivalent;
-  });
+  compare_op(
+      stack,
+      [](auto cmp) {
+        return cmp == std::partial_ordering::greater ||
+               cmp == std::partial_ordering::equivalent;
+      },
+      op.keep_rhs
+  );
 }
 
-void BytecodeVM::
-    execute_op(const bytecode::OpLess & /*op*/, CallFrame & /*frame*/) {
+void BytecodeVM::execute_op(const bytecode::OpLess &op, CallFrame & /*frame*/) {
   debug_print("LESS a={} b={}", stack_top(1), stack_top());
-  compare_op(stack, [](auto cmp) {
-    return cmp == std::partial_ordering::less;
-  });
+  compare_op(
+      stack,
+      [](auto cmp) { return cmp == std::partial_ordering::less; },
+      op.keep_rhs
+  );
 }
 
 void BytecodeVM::
-    execute_op(const bytecode::OpLessEqual & /*op*/, CallFrame & /*frame*/) {
+    execute_op(const bytecode::OpLessEqual &op, CallFrame & /*frame*/) {
   debug_print("LESS_EQUAL a={} b={}", stack_top(1), stack_top());
-  compare_op(stack, [](auto cmp) {
-    return cmp == std::partial_ordering::less ||
-           cmp == std::partial_ordering::equivalent;
-  });
+  compare_op(
+      stack,
+      [](auto cmp) {
+        return cmp == std::partial_ordering::less ||
+               cmp == std::partial_ordering::equivalent;
+      },
+      op.keep_rhs
+  );
 }
 
 void BytecodeVM::execute_op(const bytecode::OpJump &op, CallFrame & /*frame*/) {
