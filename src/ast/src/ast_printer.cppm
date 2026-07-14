@@ -1,4 +1,4 @@
-export module l3.ast.printer;
+export module l3.ast.ast_printer;
 
 import l3.ast;
 import std;

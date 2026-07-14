@@ -2,7 +2,7 @@ module l3.compiler;
 
 import std;
 import l3.ast;
-import l3.ast.printer;
+import l3.ast.ast_printer;
 import l3.bytecode;
 import l3.runtime;
 import utils;

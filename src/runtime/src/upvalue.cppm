@@ -1,7 +1,7 @@
 export module l3.runtime:upvalue;
 
 import :stack_value;
-import :chunk_list;
+import :chunked_allocator;
 import std;
 
 export namespace l3::runtime {

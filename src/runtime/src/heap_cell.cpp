@@ -1,6 +1,6 @@
 module l3.runtime;
 
-import :gc_value;
+import :heap_cell;
 import :upvalue;
 
 namespace l3::runtime {

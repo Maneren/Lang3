@@ -1,10 +1,10 @@
 module l3.runtime;
 
 import utils;
-import :gc_value;
-import :value;
+import :heap_cell;
+import :heap_data;
 import :formatting;
-import :chunk_list;
+import :chunked_allocator;
 
 namespace l3::runtime {
 

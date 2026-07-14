@@ -1,10 +1,10 @@
 export module l3.runtime:formatting;
 
 import utils;
-import :value;
+import :heap_data;
 import :stack_value;
-import :gc_value;
-import :storage;
+import :heap_cell;
+import :heap;
 
 export namespace l3::runtime {} // namespace l3::runtime
 

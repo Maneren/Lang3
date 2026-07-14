@@ -1,6 +1,6 @@
-export module l3.runtime:gc_value;
+export module l3.runtime:heap_cell;
 
-import :value;
+import :heap_data;
 
 export namespace l3::runtime {
 

@@ -1,6 +1,6 @@
 module l3.runtime;
 
-import :value;
+import :heap_data;
 
 namespace l3::runtime {
 

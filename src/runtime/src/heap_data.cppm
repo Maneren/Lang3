@@ -1,4 +1,4 @@
-export module l3.runtime:value;
+export module l3.runtime:heap_data;
 
 import utils;
 import :primitive;

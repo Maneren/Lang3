@@ -1,6 +1,6 @@
-export module l3.runtime:storage;
+export module l3.runtime:heap;
 
-import :chunk_list;
+import :chunked_allocator;
 
 export namespace l3::runtime {
 

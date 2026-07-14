@@ -3,8 +3,8 @@ module l3.runtime;
 import utils;
 import :error;
 import :primitive;
-import :gc_value;
-import :storage;
+import :heap_cell;
+import :heap;
 
 namespace l3::runtime {
 

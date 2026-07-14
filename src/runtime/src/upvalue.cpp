@@ -1,8 +1,8 @@
 module l3.runtime;
 
 import :upvalue;
-import :chunk_list;
-import :gc_value;
+import :chunked_allocator;
+import :heap_cell;
 
 namespace l3::runtime {
 

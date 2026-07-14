@@ -1,4 +1,4 @@
-export module l3.runtime:chunk_list;
+export module l3.runtime:chunked_allocator;
 
 import std;
 
