@@ -1,9 +1,12 @@
 export module l3.runtime:function;
 
-import utils;
-import l3.ast;
-import :stack_value;
 import std;
+
+import utils;
+
+import l3.ast;
+
+import :stack_value;
 
 export namespace l3::runtime {
 

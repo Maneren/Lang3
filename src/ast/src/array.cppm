@@ -1,8 +1,10 @@
 export module l3.ast:array;
 
-import :expression_list;
 import std;
+
 import l3.location;
+
+import :expression_list;
 
 export namespace l3::ast {
 

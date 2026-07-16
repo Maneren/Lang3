@@ -1,11 +1,13 @@
 export module l3.ast:assignment;
 
+import std;
+
+import l3.location;
+
 import :expression;
 import :name_list;
 import :operators;
 import :variable;
-import std;
-import l3.location;
 
 export namespace l3::ast {
 

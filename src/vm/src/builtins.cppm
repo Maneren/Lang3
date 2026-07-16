@@ -1,7 +1,8 @@
 export module l3.vm:builtins;
 
-import l3.runtime;
 import std;
+
+import l3.runtime;
 
 export namespace l3::vm {
 class BytecodeVM;

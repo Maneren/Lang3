@@ -1,16 +1,19 @@
 export module l3.ast:statement;
 
+import std;
+
+import utils;
+
+import l3.location;
+
 import :assignment;
 import :declaration;
-import :function_call;
-import :function;
-import :if_else;
-import :while_loop;
 import :for_loop;
+import :function;
+import :function_call;
+import :if_else;
 import :range_for_loop;
-import utils;
-import std;
-import l3.location;
+import :while_loop;
 
 export namespace l3::ast {
 

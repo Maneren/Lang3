@@ -1,10 +1,12 @@
 export module l3.ast:function;
 
 import utils;
+
+import l3.location;
+
 import :block;
 import :identifier;
 import :name_list;
-import l3.location;
 
 export namespace l3::ast {
 

@@ -1,9 +1,12 @@
 export module l3.ast:literal;
 
-import utils;
 import std;
-export import :array;
+
+import utils;
+
 import l3.location;
+
+export import :array;
 
 export namespace l3::ast {
 

@@ -1,10 +1,11 @@
 export module l3.ast:for_loop;
 
-import :block;
-import :identifier;
-import :expression;
-import :declaration;
 import l3.location;
+
+import :block;
+import :declaration;
+import :expression;
+import :identifier;
 
 export namespace l3::ast {
 

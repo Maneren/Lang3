@@ -1,10 +1,12 @@
 module l3.compiler;
 
 import std;
+
+import utils;
+
 import l3.bytecode;
 import l3.location;
 import l3.runtime;
-import utils;
 
 namespace {
 

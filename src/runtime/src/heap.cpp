@@ -1,10 +1,11 @@
 module l3.runtime;
 
 import utils;
+
+import :chunked_allocator;
+import :formatting;
 import :heap_cell;
 import :heap_data;
-import :formatting;
-import :chunked_allocator;
 
 namespace l3::runtime {
 

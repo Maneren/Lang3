@@ -1,8 +1,9 @@
 export module l3.ast:expression_parts;
 
+import l3.location;
+
 import :identifier;
 import :operators;
-import l3.location;
 
 export namespace l3::ast {
 

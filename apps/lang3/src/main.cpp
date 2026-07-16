@@ -1,11 +1,12 @@
 #include <lexer/lexer.hpp>
 
 import std;
-import l3.cli;
+
 import l3.ast;
 import l3.ast.ast_printer;
 import l3.ast.dot_printer;
 import l3.bytecode;
+import l3.cli;
 import l3.compiler;
 import l3.runtime;
 import l3.vm;

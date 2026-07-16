@@ -1,7 +1,8 @@
 export module l3.ast:operators;
 
-import utils;
 import std;
+
+import utils;
 
 export {
   namespace l3::ast {

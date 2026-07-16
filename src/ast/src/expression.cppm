@@ -1,14 +1,15 @@
 export module l3.ast:expression;
 
+import l3.location;
+
 export import :expression_list;
 export import :expression_parts;
-export import :function_call;
 import :function;
+export import :function_call;
 import :identifier;
 import :if_else;
 import :literal;
 import :variable;
-import l3.location;
 
 export namespace l3::ast {
 

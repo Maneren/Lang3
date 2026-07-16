@@ -2,6 +2,7 @@ module l3.runtime;
 
 import l3.ast;
 import l3.location;
+
 namespace l3::runtime {
 
 UndefinedVariableError::UndefinedVariableError(const ast::Identifier &id)

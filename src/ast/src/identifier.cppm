@@ -1,7 +1,9 @@
 export module l3.ast:identifier;
 
-import utils;
 import std;
+
+import utils;
+
 import l3.location;
 
 export namespace l3::ast {

@@ -1,8 +1,10 @@
 export module l3.ast:variable;
 
-import :identifier;
 import std;
+
 import l3.location;
+
+import :identifier;
 
 export namespace l3::ast {
 

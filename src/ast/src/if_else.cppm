@@ -2,8 +2,9 @@ export module l3.ast:if_else;
 
 import utils;
 
-import :block;
 import l3.location;
+
+import :block;
 
 export namespace l3::ast {
 

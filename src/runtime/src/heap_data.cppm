@@ -1,8 +1,9 @@
 export module l3.runtime:heap_data;
 
 import utils;
-import :primitive;
+
 import :function;
+import :primitive;
 import :stack_value;
 
 export namespace l3::runtime {

@@ -1,10 +1,12 @@
 module l3.vm;
 
 import std;
+
+import utils;
+
 import l3.ast;
 import l3.bytecode;
 import l3.runtime;
-import utils;
 
 namespace l3::vm {
 

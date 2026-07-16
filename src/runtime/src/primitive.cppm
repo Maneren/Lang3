@@ -1,7 +1,8 @@
 export module l3.runtime:primitive;
 
-import utils;
 import std;
+
+import utils;
 
 export namespace l3::runtime {
 

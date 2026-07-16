@@ -1,7 +1,8 @@
 export module l3.ast.ast_printer;
 
-import l3.ast;
 import std;
+
+import l3.ast;
 
 export namespace l3::ast {
 

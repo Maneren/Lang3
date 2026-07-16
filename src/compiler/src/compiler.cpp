@@ -1,11 +1,14 @@
 module l3.compiler;
 
 import std;
+
+import utils;
+
 import l3.ast;
 import l3.ast.ast_printer;
 import l3.bytecode;
 import l3.runtime;
-import utils;
+
 import :peephole;
 
 namespace l3::compiler {

@@ -2,8 +2,9 @@ export module l3.ast:last_statement;
 
 import utils;
 
-import :expression;
 import l3.location;
+
+import :expression;
 
 export namespace l3::ast {
 

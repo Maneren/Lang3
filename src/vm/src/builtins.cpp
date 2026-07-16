@@ -1,7 +1,8 @@
 module l3.vm;
 
-import l3.ast;
 import utils;
+
+import l3.ast;
 import l3.runtime;
 
 namespace l3::builtins {

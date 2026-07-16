@@ -1,10 +1,13 @@
 export module l3.ast:declaration;
 
+import std;
+
+import utils;
+
+import l3.location;
+
 import :expression;
 import :name_list;
-import utils;
-import std;
-import l3.location;
 
 export {
   namespace l3::ast {
