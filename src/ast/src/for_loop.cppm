@@ -3,7 +3,7 @@ export module l3.ast:for_loop;
 import :block;
 import :identifier;
 import :expression;
-import :mutability;
+import :declaration;
 import l3.location;
 
 export namespace l3::ast {
