@@ -1,8 +1,5 @@
 module l3.runtime;
 
-import :heap_cell;
-import :upvalue;
-
 namespace l3::runtime {
 
 HeapCell::HeapCell(HeapData &&value) : value{std::move(value)} {}

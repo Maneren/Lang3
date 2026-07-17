@@ -1,7 +1,5 @@
 module l3.ast;
 
-import :assignment;
-
 namespace l3::ast {
 
 Statement::Statement() = default;

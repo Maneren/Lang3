@@ -1,7 +1,5 @@
 module l3.runtime;
 
-import :heap_data;
-
 namespace l3::runtime {
 
 StackValue BuiltinFunction::invoke(L3Args args) const { return body(args); }

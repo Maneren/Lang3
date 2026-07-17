@@ -1,7 +1,5 @@
 module l3.ast;
 
-import :expression;
-
 char decode_escape(char c) {
   switch (c) {
   case '\\':

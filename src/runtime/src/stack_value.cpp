@@ -1,7 +1,5 @@
 module l3.runtime;
 
-import :heap_cell;
-
 namespace l3::runtime {
 
 StackValue::StackValue() : inner{Nil{}} {}

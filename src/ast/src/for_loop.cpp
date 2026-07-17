@@ -1,9 +1,5 @@
 module l3.ast;
 
-import :block;
-import :expression;
-import :identifier;
-
 namespace l3::ast {
 
 ForLoop::ForLoop(location::Location location) : location_(location) {}

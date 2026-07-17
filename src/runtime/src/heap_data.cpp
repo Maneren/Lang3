@@ -2,11 +2,6 @@ module l3.runtime;
 
 import utils;
 
-import :error;
-import :heap;
-import :heap_cell;
-import :primitive;
-
 namespace l3::runtime {
 
 namespace {

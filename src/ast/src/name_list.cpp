@@ -1,7 +1,5 @@
 module l3.ast;
 
-import :identifier;
-
 namespace l3::ast {
 
 NameList::NameList() = default;

@@ -1,8 +1,5 @@
 module l3.ast;
 
-import :block;
-import :expression;
-
 namespace l3::ast {
 
 While::While(location::Location location) : location_(location) {}

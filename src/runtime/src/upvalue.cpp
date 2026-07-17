@@ -1,9 +1,5 @@
 module l3.runtime;
 
-import :chunked_allocator;
-import :heap_cell;
-import :upvalue;
-
 namespace l3::runtime {
 
 UpvalueCell::UpvalueCell(StackValue &&value) : value{std::move(value)} {}

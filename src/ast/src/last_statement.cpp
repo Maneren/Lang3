@@ -1,7 +1,5 @@
 module l3.ast;
 
-import :expression;
-
 namespace l3::ast {
 
 ReturnStatement::ReturnStatement(location::Location location)

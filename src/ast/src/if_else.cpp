@@ -2,8 +2,6 @@ module l3.ast;
 
 import utils;
 
-import :expression;
-
 namespace l3::ast {
 
 IfBase::IfBase(
