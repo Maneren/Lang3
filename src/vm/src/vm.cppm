@@ -2,8 +2,6 @@ export module l3.vm;
 
 import std;
 
-import utils;
-
 import l3.bytecode;
 import l3.location;
 import l3.runtime;

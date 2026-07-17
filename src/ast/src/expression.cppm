@@ -6,7 +6,6 @@ export import :expression_list;
 export import :expression_parts;
 import :function;
 export import :function_call;
-import :identifier;
 import :if_else;
 import :literal;
 import :variable;

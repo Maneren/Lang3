@@ -2,8 +2,6 @@ export module l3.compiler;
 
 import std;
 
-import utils;
-
 import l3.ast;
 import l3.bytecode;
 import l3.location;

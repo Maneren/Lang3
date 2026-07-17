@@ -1,7 +1,5 @@
 export module l3.ast:array;
 
-import std;
-
 import l3.location;
 
 import :expression_list;
