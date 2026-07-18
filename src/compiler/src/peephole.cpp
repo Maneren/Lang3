@@ -95,7 +95,7 @@ struct Match {
   std::optional<Instruction> replacement;
 };
 
-constexpr auto no_match = [](const auto &) -> Match { return {}; };
+constexpr auto no_match = [](const auto &...) -> Match { return {}; };
 
 Match match_pop_zero(
     std::size_t i,
@@ -132,6 +132,26 @@ Match match_zero_jump(
           return {.consumed = 1, .replacement = std::nullopt};
         }
         return {};
+      },
+      no_match
+  );
+}
+
+Match match_merge_pops(
+    std::size_t i,
+    const std::vector<Instruction> &code,
+    ProgramBytecode & /*unused*/
+) {
+  if (i + 1 >= code.size()) {
+    return {};
+  }
+  return match::match<Match>(
+      std::forward_as_tuple(code[i], code[i + 1]),
+      [&](const OpPop &first, const OpPop &second) -> Match {
+        return Match{
+            .consumed = 2,
+            .replacement = OpPop{.count = first.count + second.count}
+        };
       },
       no_match
   );
@@ -313,6 +333,7 @@ Match try_match(
   for (const auto &pattern :
        {match_pop_zero,
         match_zero_jump,
+        match_merge_pops,
         match_unary_fold,
         match_const_jumpif,
         match_binary_fold,
