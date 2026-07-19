@@ -306,7 +306,7 @@ Match match_jump_chaining(
         if (target != jump.offset) {
           auto replacement = jump;
           replacement.offset = target;
-          return {.consumed = 1, .replacement = std::move(replacement)};
+          return {.consumed = 1, .replacement = replacement};
         }
         return Match{};
       },
@@ -315,7 +315,7 @@ Match match_jump_chaining(
         if (target != jump.offset) {
           auto replacement = jump;
           replacement.offset = target;
-          return {.consumed = 1, .replacement = std::move(replacement)};
+          return {.consumed = 1, .replacement = replacement};
         }
         return Match{};
       },
