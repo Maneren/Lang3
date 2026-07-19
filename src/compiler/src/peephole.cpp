@@ -118,7 +118,7 @@ Match match_pop_zero(
     const std::vector<Instruction> &code,
     ProgramBytecode & /*unused*/
 ) {
-  return match::match<Match>(
+  return match::match(
       code[i],
       [](const OpPop &pop) -> Match {
         if (pop.count != 0) {
@@ -135,7 +135,7 @@ Match match_zero_jump(
     const std::vector<Instruction> &code,
     ProgramBytecode & /*unused*/
 ) {
-  return match::match<Match>(
+  return match::match(
       code[i],
       [i](const OpJump &jump) -> Match {
         if (jump.offset == i + 1) {
@@ -161,7 +161,7 @@ Match match_merge_pops(
   if (i + 1 >= code.size()) {
     return {};
   }
-  return match::match<Match>(
+  return match::match(
       std::forward_as_tuple(code[i], code[i + 1]),
       [&](const OpPop &first, const OpPop &second) -> Match {
         return Match{
@@ -181,7 +181,7 @@ Match match_unary_fold(
   if (i + 1 >= code.size()) {
     return {};
   }
-  return match::match<Match>(
+  return match::match(
       std::forward_as_tuple(code[i], code[i + 1]),
       [&](const OpConstant &cnst, const OpNegate &) -> Match {
         if (!is_primitive_constant(cnst.index, program)) {
@@ -223,7 +223,7 @@ Match match_const_jumpif(
   if (i + 1 >= code.size()) {
     return {};
   }
-  return match::match<Match>(
+  return match::match(
       std::forward_as_tuple(code[i], code[i + 1]),
       [&](const OpConstant &cnst, const OpJumpIf &jump) -> Match {
         if (cnst.index >= program.constants.size()) {
@@ -253,7 +253,7 @@ Match match_binary_fold(
   if (i + 2 >= code.size()) {
     return {};
   }
-  return match::match<Match>(
+  return match::match(
       std::forward_as_tuple(code[i], code[i + 1]),
       [&](const OpConstant &cnst, const OpConstant &cnst2) -> Match {
         if (!is_foldable_constant(cnst.index, program) ||
@@ -299,7 +299,7 @@ Match match_jump_chaining(
     const std::vector<Instruction> &code,
     ProgramBytecode & /*unused*/
 ) {
-  return match::match<Match>(
+  return match::match(
       code[i],
       [&](const OpJump &jump) -> Match {
         auto target = follow_jump_chain(jump.offset, code);
