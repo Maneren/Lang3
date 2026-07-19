@@ -18,6 +18,15 @@ bool is_primitive_constant(std::size_t idx, const ProgramBytecode &program) {
   return program.constants[idx].get_value().is_primitive();
 }
 
+bool is_foldable_constant(std::size_t idx, const ProgramBytecode &program) {
+  const auto &val = program.constants[idx].get_value();
+  return val.is_primitive() || val.is_string();
+}
+
+HeapData read_constant(std::size_t idx, const ProgramBytecode &program) {
+  return program.constants[idx].get_value();
+}
+
 HeapData
 read_primitive_constant(std::size_t idx, const ProgramBytecode &program) {
   return program.constants[idx].get_value();
@@ -34,15 +43,22 @@ std::optional<HeapData> fold_unary(const Instruction &op, const HeapData &val) {
 
 std::optional<HeapData>
 fold_binary(const Instruction &op, const HeapData &lhs, const HeapData &rhs) {
+  const auto safe = [&](auto &&fn) -> std::optional<HeapData> {
+    try {
+      return fn();
+    } catch (const UnsupportedOperation &) {
+      return std::nullopt;
+    }
+  };
   const auto cmp = lhs.compare(rhs);
   return match::match<std::optional<HeapData>>(
       op,
-      [&](const OpAdd &) { return lhs.add(rhs); },
-      [&](const OpSubtract &) { return lhs.sub(rhs); },
-      [&](const OpMultiply &) { return lhs.mul(rhs); },
-      [&](const OpDivide &) { return lhs.div(rhs); },
-      [&](const OpModulo &) { return lhs.mod(rhs); },
-      [&](const OpPower &) { return lhs.pow(rhs); },
+      [&](const OpAdd &) { return safe([&] { return lhs.add(rhs); }); },
+      [&](const OpSubtract &) { return safe([&] { return lhs.sub(rhs); }); },
+      [&](const OpMultiply &) { return safe([&] { return lhs.mul(rhs); }); },
+      [&](const OpDivide &) { return safe([&] { return lhs.div(rhs); }); },
+      [&](const OpModulo &) { return safe([&] { return lhs.mod(rhs); }); },
+      [&](const OpPower &) { return safe([&] { return lhs.pow(rhs); }); },
       [&](const OpEqual &) {
         return HeapData{Primitive{cmp == std::partial_ordering::equivalent}};
       },
@@ -249,18 +265,18 @@ Match match_binary_fold(
   return match::match<Match>(
       code[i],
       [&](const OpConstant &cnst) -> Match {
-        if (!is_primitive_constant(cnst.index, program)) {
+        if (!is_foldable_constant(cnst.index, program)) {
           return {};
         }
         return match::match<Match>(
             code[i + 1],
             [&](const OpConstant &cnst2) -> Match {
-              if (!is_primitive_constant(cnst2.index, program)) {
+              if (!is_foldable_constant(cnst2.index, program)) {
                 return {};
               }
               const auto &third = code[i + 2];
-              auto lhs = read_primitive_constant(cnst.index, program);
-              auto rhs = read_primitive_constant(cnst2.index, program);
+              auto lhs = read_constant(cnst.index, program);
+              auto rhs = read_constant(cnst2.index, program);
               if (auto folded = fold_binary(third, lhs, rhs); folded) {
                 return {
                     .consumed = 3,
