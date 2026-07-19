@@ -45,37 +45,43 @@ std::string format_instruction(
       [&](const OpNegate &) { return std::format("{}NEGATE\n", header()); },
       [&](const OpEqual &op) {
         auto result = std::format("{}EQUAL", header());
-        if (op.keep_rhs) result += " keep rhs";
+        if (op.keep_rhs)
+          result += " keep rhs";
         result += '\n';
         return result;
       },
       [&](const OpNotEqual &op) {
         auto result = std::format("{}NOT_EQUAL", header());
-        if (op.keep_rhs) result += " keep rhs";
+        if (op.keep_rhs)
+          result += " keep rhs";
         result += '\n';
         return result;
       },
       [&](const OpGreater &op) {
         auto result = std::format("{}GREATER", header());
-        if (op.keep_rhs) result += " keep rhs";
+        if (op.keep_rhs)
+          result += " keep rhs";
         result += '\n';
         return result;
       },
       [&](const OpGreaterEqual &op) {
         auto result = std::format("{}GREATER_EQUAL", header());
-        if (op.keep_rhs) result += " keep rhs";
+        if (op.keep_rhs)
+          result += " keep rhs";
         result += '\n';
         return result;
       },
       [&](const OpLess &op) {
         auto result = std::format("{}LESS", header());
-        if (op.keep_rhs) result += " keep rhs";
+        if (op.keep_rhs)
+          result += " keep rhs";
         result += '\n';
         return result;
       },
       [&](const OpLessEqual &op) {
         auto result = std::format("{}LESS_EQUAL", header());
-        if (op.keep_rhs) result += " keep rhs";
+        if (op.keep_rhs)
+          result += " keep rhs";
         result += '\n';
         return result;
       },
