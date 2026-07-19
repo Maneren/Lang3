@@ -182,37 +182,34 @@ Match match_unary_fold(
     return {};
   }
   return match::match<Match>(
-      code[i],
-      [&](const OpConstant &cnst) -> Match {
+      std::forward_as_tuple(code[i], code[i + 1]),
+      [&](const OpConstant &cnst, const OpNegate &) -> Match {
         if (!is_primitive_constant(cnst.index, program)) {
           return {};
         }
-        return match::match<Match>(
-            code[i + 1],
-            [&](const OpNegate &) -> Match {
-              auto val = read_primitive_constant(cnst.index, program);
-              auto folded = fold_unary(code[i + 1], val);
-              if (!folded) {
-                return {};
-              }
-              return {
-                  .consumed = 2,
-                  .replacement = add_constant(program, std::move(*folded))
-              };
-            },
-            [&](const OpNot &) -> Match {
-              auto val = read_primitive_constant(cnst.index, program);
-              auto folded = fold_unary(code[i + 1], val);
-              if (!folded) {
-                return {};
-              }
-              return {
-                  .consumed = 2,
-                  .replacement = add_constant(program, std::move(*folded))
-              };
-            },
-            no_match
-        );
+        auto val = read_primitive_constant(cnst.index, program);
+        auto folded = fold_unary(code[i + 1], val);
+        if (!folded) {
+          return {};
+        }
+        return {
+            .consumed = 2,
+            .replacement = add_constant(program, std::move(*folded))
+        };
+      },
+      [&](const OpConstant &cnst, const OpNot &) -> Match {
+        if (!is_primitive_constant(cnst.index, program)) {
+          return {};
+        }
+        auto val = read_primitive_constant(cnst.index, program);
+        auto folded = fold_unary(code[i + 1], val);
+        if (!folded) {
+          return {};
+        }
+        return {
+            .consumed = 2,
+            .replacement = add_constant(program, std::move(*folded))
+        };
       },
       no_match
   );
@@ -227,8 +224,8 @@ Match match_const_jumpif(
     return {};
   }
   return match::match<Match>(
-      code[i],
-      [&](const OpConstant &cnst) -> Match {
+      std::forward_as_tuple(code[i], code[i + 1]),
+      [&](const OpConstant &cnst, const OpJumpIf &jump) -> Match {
         if (cnst.index >= program.constants.size()) {
           return {};
         }
@@ -236,19 +233,13 @@ Match match_const_jumpif(
         if (!val.is_primitive() && !val.is_nil()) {
           return {};
         }
-        return match::match<Match>(
-            code[i + 1],
-            [&](const OpJumpIf &jump) -> Match {
-              if (jump.keep_jump || jump.keep_stay) {
-                return {};
-              }
-              if (val.is_truthy() == jump.expected) {
-                return {.consumed = 2, .replacement = OpJump{jump.offset}};
-              }
-              return {.consumed = 2, .replacement = std::nullopt};
-            },
-            no_match
-        );
+        if (jump.keep_jump || jump.keep_stay) {
+          return {};
+        }
+        if (val.is_truthy() == jump.expected) {
+          return {.consumed = 2, .replacement = OpJump{jump.offset}};
+        }
+        return {.consumed = 2, .replacement = std::nullopt};
       },
       no_match
   );
@@ -263,30 +254,21 @@ Match match_binary_fold(
     return {};
   }
   return match::match<Match>(
-      code[i],
-      [&](const OpConstant &cnst) -> Match {
-        if (!is_foldable_constant(cnst.index, program)) {
+      std::forward_as_tuple(code[i], code[i + 1]),
+      [&](const OpConstant &cnst, const OpConstant &cnst2) -> Match {
+        if (!is_foldable_constant(cnst.index, program) ||
+            !is_foldable_constant(cnst2.index, program)) {
           return {};
         }
-        return match::match<Match>(
-            code[i + 1],
-            [&](const OpConstant &cnst2) -> Match {
-              if (!is_foldable_constant(cnst2.index, program)) {
-                return {};
-              }
-              const auto &third = code[i + 2];
-              auto lhs = read_constant(cnst.index, program);
-              auto rhs = read_constant(cnst2.index, program);
-              if (auto folded = fold_binary(third, lhs, rhs); folded) {
-                return {
-                    .consumed = 3,
-                    .replacement = add_constant(program, std::move(*folded))
-                };
-              }
-              return {};
-            },
-            no_match
-        );
+        auto lhs = read_constant(cnst.index, program);
+        auto rhs = read_constant(cnst2.index, program);
+        if (auto folded = fold_binary(code[i + 2], lhs, rhs); folded) {
+          return {
+              .consumed = 3,
+              .replacement = add_constant(program, std::move(*folded))
+          };
+        }
+        return {};
       },
       no_match
   );
