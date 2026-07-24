@@ -15,24 +15,38 @@ function(set_compiler_and_linker_flags TARGET)
         set_target_properties(${TARGET} PROPERTIES CXX_STANDARD ${ARGS_CXX_STD})
     endif()
 
-    set(CXX_GNU_DEBUG_INFO -g3 -gdwarf-5 -fno-omit-frame-pointer)
+    if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+        set(CXX_GNU_DEBUG_INFO -g3 -gdwarf-5 -fno-omit-frame-pointer)
+        set(CXX_DEBUG_FLAGS -Og)
+        set(CXX_OPTIMIZATION_FLAGS -O3)
+    elseif(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+        set(CXX_GNU_DEBUG_INFO /Zi)
+        set(CXX_DEBUG_FLAGS /Od)
+        set(CXX_OPTIMIZATION_FLAGS /O2)
+    endif()
+
+    if (USE_LTO)
+        if (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+            set(LTO_FLAG "-flto")
+        elseif (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+            set(LTO_FLAG "-flto=thin")
+        elseif (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+            set(LTO_FLAG "/LTCG")
+        endif()
+        list(APPEND CXX_OPTIMIZATION_FLAGS "${LTO_FLAG}")
+    endif()
+
+    set(USE_DEBUG_INFO $<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>)
+    set(USE_OPTIMIZATION $<OR:$<CONFIG:Release>,$<CONFIG:RelWithDebInfo>>)
 
     target_compile_options(${TARGET} PRIVATE
-        $<$<CONFIG:Debug>:$<$<CXX_COMPILER_ID:GNU,Clang>:-Og>>
-        $<$<CONFIG:Debug>:$<$<CXX_COMPILER_ID:GNU,Clang>:${CXX_GNU_DEBUG_INFO}>>
+        $<$<CONFIG:Debug>:${CXX_DEBUG_FLAGS}>
 
-        $<$<CONFIG:Release>:$<$<CXX_COMPILER_ID:GNU,Clang>:-flto>>
-
-        $<$<CONFIG:RelWithDebInfo>:$<$<CXX_COMPILER_ID:GNU,Clang>:${CXX_GNU_DEBUG_INFO}>>
-        $<$<CONFIG:RelWithDebInfo>:$<$<CXX_COMPILER_ID:GNU,Clang>:-flto>>
-
-        $<$<CONFIG:Debug>:$<$<CXX_COMPILER_ID:MSVC>:/Od /Zi>>
-        $<$<CONFIG:Release>:$<$<CXX_COMPILER_ID:MSVC>:/O2 /DNDEBUG>>
+        $<${USE_DEBUG_INFO}:${CXX_DEBUG_INFO}>
+        $<${USE_OPTIMIZATION}:${CXX_OPTIMIZATION_FLAGS}>
     )
     target_link_options(${TARGET} PRIVATE
-        $<$<CONFIG:RelWithDebInfo>:$<$<CXX_COMPILER_ID:GNU,Clang>:-flto>>
-
-        $<$<CONFIG:Release>:$<$<CXX_COMPILER_ID:GNU,Clang>:-flto>>
+        $<${USE_OPTIMIZATION}:${LTO_FLAG}>
     )
     get_property(THIN_ARCHIVE GLOBAL PROPERTY THIN_ARCHIVE)
     if(THIN_ARCHIVE)

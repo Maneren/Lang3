@@ -23,6 +23,8 @@ endif()
 option(THIN_ARCHIVE "Create thin archive" ON)
 set_property(GLOBAL PROPERTY THIN_ARCHIVE ${THIN_ARCHIVE})
 
+option(USE_LTO "Enable LTO" ON)
+
 option(USE_CCACHE "Use ccache" OFF)
 if (USE_CCACHE)
     find_program(CCACHE ccache)
