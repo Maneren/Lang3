@@ -14,7 +14,7 @@ function(create_library TARGET)
     endif()
 
     if(NOT LIB_CXX_STD)
-        set(LIB_CXX_STD ${DEFAULT_CXX_STD})
+        set(LIB_CXX_STD ${CMAKE_CXX_STANDARD})
     endif()
 
     if(LIB_INTERFACE)
@@ -29,6 +29,8 @@ function(create_library TARGET)
     else()
         add_library(${TARGET} ${LIB_SOURCES})
     endif()
+
+    target_compile_features(${TARGET} INTERFACE cxx_std_${LIB_CXX_STD})
 
     if(LIB_MODULES)
         target_sources(${TARGET} PUBLIC
@@ -53,7 +55,6 @@ function(create_library TARGET)
                 "Header-only '${TARGET}' may only have interface dependencies")
         endif()
         target_link_libraries(${TARGET} INTERFACE "${LIB_INTERFACE_DEPS}")
-        target_compile_features(${TARGET} INTERFACE cxx_std_${LIB_CXX_STD})
     else()
         target_link_libraries(${TARGET}
             PUBLIC "${LIB_PUBLIC_DEPS}"
