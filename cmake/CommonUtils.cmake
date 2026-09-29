@@ -25,17 +25,6 @@ function(set_compiler_and_linker_flags TARGET)
         set(CXX_OPTIMIZATION_FLAGS /O2)
     endif()
 
-    if (USE_LTO)
-        if (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
-            set(LTO_FLAG "-flto")
-        elseif (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-            set(LTO_FLAG "-flto=thin")
-        elseif (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
-            set(LTO_FLAG "/LTCG")
-        endif()
-        list(APPEND CXX_OPTIMIZATION_FLAGS "${LTO_FLAG}")
-    endif()
-
     set(USE_DEBUG_INFO $<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>)
     set(USE_OPTIMIZATION $<OR:$<CONFIG:Release>,$<CONFIG:RelWithDebInfo>>)
 
@@ -44,9 +33,6 @@ function(set_compiler_and_linker_flags TARGET)
 
         $<${USE_DEBUG_INFO}:${CXX_DEBUG_INFO}>
         $<${USE_OPTIMIZATION}:${CXX_OPTIMIZATION_FLAGS}>
-    )
-    target_link_options(${TARGET} PRIVATE
-        $<${USE_OPTIMIZATION}:${LTO_FLAG}>
     )
     get_property(THIN_ARCHIVE GLOBAL PROPERTY THIN_ARCHIVE)
     if(THIN_ARCHIVE)

@@ -23,7 +23,21 @@ endif()
 option(THIN_ARCHIVE "Create thin archive" ON)
 set_property(GLOBAL PROPERTY THIN_ARCHIVE ${THIN_ARCHIVE})
 
-option(USE_LTO "Enable LTO" ON)
+option(USE_IPO "Enable IPO" ON)
+if (USE_IPO)
+    include(CheckIPOSupported)
+
+    check_ipo_supported(
+        RESULT ipo_supported
+        OUTPUT ipo_error
+        LANGUAGES CXX
+    )
+    if (NOT ipo_supported)
+        message(SEND_ERROR "IPO is not supported: ${ipo_error}")
+    endif()
+
+    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION ON)
+endif()
 
 option(USE_CCACHE "Use ccache" OFF)
 if (USE_CCACHE)
