@@ -1,5 +1,7 @@
-auto_create_executable(lang3
+auto_create_executable(
+    lang3
     DEPENDS ast cli parser compiler bytecode vm
     CONSOLE
     OUTPUT_NAME "lang3"
+    CXX_STD 26
 )

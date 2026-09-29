@@ -20,7 +20,7 @@ default:
     @just --list
 
 configure build_system="Ninja Multi-Config" +args="":
-    cmake -B {{ builddir }} -G "{{ build_system }}" {{ args }}
+    cmake -B {{ builddir }} -G "{{ build_system }}" -Wno-experimental {{ args }}
 
 build config="Debug" target="all":
     cmake --build {{ builddir }} --config {{ config }} --target {{ target }}
@@ -42,3 +42,4 @@ lint:
 
 format:
     clang-format -i $(find src test -type f -name "*.cppm" -or -name "*.cpp" -or -name "*.h" -and -path "*/utils/*" -and -not -path "*/external/*")
+    gersemi -i . --definitions cmake --no-cache

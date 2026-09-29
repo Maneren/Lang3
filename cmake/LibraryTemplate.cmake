@@ -1,20 +1,19 @@
 include(${CMAKE_CURRENT_LIST_DIR}/CommonUtils.cmake)
 
 function(create_library TARGET)
-    cmake_parse_arguments(LIB
+    cmake_parse_arguments(
+        LIB
         "STATIC;SHARED;OBJECT;INTERFACE"
         "VERSION;CXX_STD;HEADER_BASE_DIR"
         "PRIVATE_DEPS;PUBLIC_DEPS;INTERFACE_DEPS;HEADERS;MODULES;SOURCES"
         ${ARGN}
     )
 
-    if (NOT LIB_INTERFACE AND NOT LIB_SOURCES AND NOT LIB_MODULES)
-        message(FATAL_ERROR
-            "Library ${TARGET} has no sources but is not header-only")
-    endif()
-
-    if(NOT LIB_CXX_STD)
-        set(LIB_CXX_STD ${CMAKE_CXX_STANDARD})
+    if(NOT LIB_INTERFACE AND NOT LIB_SOURCES AND NOT LIB_MODULES)
+        message(
+            FATAL_ERROR
+            "Library ${TARGET} has no sources but is not header-only"
+        )
     endif()
 
     if(LIB_INTERFACE)
@@ -30,12 +29,11 @@ function(create_library TARGET)
         add_library(${TARGET} ${LIB_SOURCES})
     endif()
 
-    target_compile_features(${TARGET} INTERFACE cxx_std_${LIB_CXX_STD})
-
     if(LIB_MODULES)
-        target_sources(${TARGET} PUBLIC
-            FILE_SET CXX_MODULES
-            FILES ${LIB_MODULES})
+        target_sources(
+            ${TARGET}
+            PUBLIC FILE_SET CXX_MODULES FILES ${LIB_MODULES}
+        )
     endif()
 
     if(LIB_HEADERS)
@@ -43,25 +41,32 @@ function(create_library TARGET)
             set(LIB_HEADER_BASE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include)
         endif()
 
-        target_sources(${TARGET} PUBLIC
-            FILE_SET HEADERS
-            BASE_DIRS ${LIB_HEADER_BASE_DIR}
-            FILES ${LIB_HEADERS})
+        target_sources(
+            ${TARGET}
+            PUBLIC
+                FILE_SET HEADERS
+                    BASE_DIRS ${LIB_HEADER_BASE_DIR}
+                    FILES ${LIB_HEADERS}
+        )
     endif()
 
     if(LIB_INTERFACE)
-        if (LIB_PRIVATE_DEPS OR LIB_PUBLIC_DEPS)
-            message(FATAL_ERROR
-                "Header-only '${TARGET}' may only have interface dependencies")
+        if(LIB_PRIVATE_DEPS OR LIB_PUBLIC_DEPS)
+            message(
+                FATAL_ERROR
+                "Header-only '${TARGET}' may only have interface dependencies"
+            )
         endif()
         target_link_libraries(${TARGET} INTERFACE "${LIB_INTERFACE_DEPS}")
     else()
-        target_link_libraries(${TARGET}
+        target_link_libraries(
+            ${TARGET}
             PUBLIC "${LIB_PUBLIC_DEPS}"
             INTERFACE "${LIB_INTERFACE_DEPS}"
-            PRIVATE "${LIB_PRIVATE_DEPS}")
+            PRIVATE "${LIB_PRIVATE_DEPS}"
+        )
 
-        set_compiler_and_linker_flags(${TARGET} ${LIB_CXX_STD})
+        set_compiler_and_linker_flags(${TARGET} CXX_STD ${LIB_CXX_STD})
 
         set_target_properties(${TARGET} PROPERTIES OUTPUT_NAME ${TARGET})
         set_output_directories(${TARGET} LIBRARY)
@@ -70,13 +75,32 @@ function(create_library TARGET)
 endfunction()
 
 function(auto_create_library TARGET)
+    cmake_parse_arguments(
+        LIB
+        "STATIC;SHARED;OBJECT;INTERFACE"
+        "VERSION;CXX_STD;HEADER_BASE_DIR"
+        "PRIVATE_DEPS;PUBLIC_DEPS;INTERFACE_DEPS;HEADERS;MODULES;SOURCES"
+        ${ARGN}
+    )
+
     file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS src/*.cpp src/*.cxx src/*.cc)
     file(GLOB_RECURSE MODULES CONFIGURE_DEPENDS src/*.cppm)
     file(GLOB_RECURSE HEADERS CONFIGURE_DEPENDS include/*.h include/*.hpp)
 
-    create_library(${TARGET} ${ARGN}
-        SOURCES "${SOURCES}"
-        MODULES "${MODULES}"
-        HEADERS "${HEADERS}"
+    create_library(
+        ${TARGET}
+        ${LIB_STATIC}
+        ${LIB_SHARED}
+        ${LIB_OBJECT}
+        ${LIB_INTERFACE}
+        VERSION "${LIB_VERSION}"
+        CXX_STD "${LIB_CXX_STD}"
+        HEADER_BASE_DIR "${LIB_HEADER_BASE_DIR}"
+        PRIVATE_DEPS "${LIB_PRIVATE_DEPS}"
+        PUBLIC_DEPS "${LIB_PUBLIC_DEPS}"
+        INTERFACE_DEPS "${LIB_INTERFACE_DEPS}"
+        SOURCES "${SOURCES}" "${LIB_SOURCES}"
+        MODULES "${MODULES}" "${LIB_MODULES}"
+        HEADERS "${HEADERS}" "${LIB_HEADERS}"
     )
 endfunction()

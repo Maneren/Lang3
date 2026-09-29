@@ -3,7 +3,8 @@ include(${CMAKE_CURRENT_LIST_DIR}/ExecutableTemplate.cmake)
 include(GoogleTest)
 
 function(create_test_executable TARGET)
-    cmake_parse_arguments(TEST
+    cmake_parse_arguments(
+        TEST
         ""
         "CXX_STD"
         "SOURCES;DEPENDS;COMPILE_DEFS;INCLUDE_DIRS"
@@ -17,13 +18,16 @@ function(create_test_executable TARGET)
         endif()
     endif()
 
-    create_executable(${TARGET}
+    create_executable(
+        ${TARGET}
         "${TEST_SOURCES}"
         TEST
         CXX_STD ${TEST_CXX_STD}
         DEPENDS GTest::gtest GTest::gtest_main ${TEST_DEPENDS}
-        COMPILE_DEFS ${TEST_COMPILE_DEFS}
-            TESTING_ENABLED=1 $<$<CONFIG:Debug>:DEBUG_TESTS=1>
+        COMPILE_DEFS
+            ${TEST_COMPILE_DEFS}
+            TESTING_ENABLED=1
+            $<$<CONFIG:Debug>:DEBUG_TESTS=1>
         INCLUDE_DIRS ${TEST_INCLUDE_DIRS}
     )
 

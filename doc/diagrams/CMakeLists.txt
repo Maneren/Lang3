@@ -17,7 +17,8 @@ foreach(DOT_FILE ${DOT_FILES})
     list(APPEND GRAPH_PDFS ${PDF_FILE})
 endforeach()
 
-add_custom_target(diagrams
+add_custom_target(
+    diagrams
     DEPENDS ${GRAPH_PDFS}
     COMMENT "Generating diagrams for documentation"
     VERBATIM

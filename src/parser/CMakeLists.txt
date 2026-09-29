@@ -19,39 +19,37 @@ set(PARSER_CPP ${GENERATED_SRC}/parser.tab.cpp)
 set(PARSER_HEADER ${GENERATED_INCLUDE}/parser.tab.hpp)
 
 add_custom_command(
-  OUTPUT ${LEXER_CPP}
-  COMMAND ${FLEX}
-          --align --full --ecs
-          -o ${LEXER_CPP}
-          ${LEXER_FILE}
-  DEPENDS ${LEXER_FILE}
-  COMMENT "Generating lexer with flex"
-  VERBATIM
-  CODEGEN
+    OUTPUT ${LEXER_CPP}
+    COMMAND ${FLEX} --align --full --ecs -o ${LEXER_CPP} ${LEXER_FILE}
+    DEPENDS ${LEXER_FILE}
+    COMMENT "Generating lexer with flex"
+    VERBATIM
+    CODEGEN
 )
 
 add_custom_command(
-  OUTPUT ${PARSER_CPP} ${PARSER_HEADER}
-  COMMAND ${BISON}
-          -Wcounterexamples
-          --report=all
-          --defines=${PARSER_HEADER}
-          -o ${PARSER_CPP}
-          ${PARSER_FILE}
-  DEPENDS ${PARSER_FILE}
-  COMMENT "Generating parser with bison"
-  VERBATIM
-  CODEGEN
+    OUTPUT ${PARSER_CPP} ${PARSER_HEADER}
+    COMMAND
+        ${BISON} -Wcounterexamples --report=all --defines=${PARSER_HEADER} -o
+        ${PARSER_CPP} ${PARSER_FILE}
+    DEPENDS ${PARSER_FILE}
+    COMMENT "Generating parser with bison"
+    VERBATIM
+    CODEGEN
 )
 
-auto_create_library(${LIB_NAME}
-  SOURCES ${PARSER_CPP} ${LEXER_CPP}
-  PRIVATE_DEPS ast utils
+auto_create_library(
+    ${LIB_NAME}
+    SOURCES ${PARSER_CPP} ${LEXER_CPP}
+    PRIVATE_DEPS ast utils
+    CXX_STD 26
 )
 
-target_sources(${LIB_NAME} PUBLIC
-  FILE_SET parser_header
-    TYPE HEADERS
-    BASE_DIRS ${GENERATED_INCLUDE}
-    FILES ${PARSER_HEADER} ${LOCATION_HEADER}
+target_sources(
+    ${LIB_NAME}
+    PUBLIC
+        FILE_SET parser_header
+            TYPE HEADERS
+            BASE_DIRS ${GENERATED_INCLUDE}
+            FILES ${PARSER_HEADER} ${LOCATION_HEADER}
 )

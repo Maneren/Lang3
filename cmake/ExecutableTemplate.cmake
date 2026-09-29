@@ -1,7 +1,8 @@
 include(${CMAKE_CURRENT_LIST_DIR}/CommonUtils.cmake)
 
 function(create_executable TARGET SOURCES)
-    cmake_parse_arguments(EXE
+    cmake_parse_arguments(
+        EXE
         "CONSOLE;GUI;TEST"
         "VERSION;OUTPUT_NAME;CXX_STD"
         "DEPENDS;COMPILE_DEFS;INCLUDE_DIRS"
@@ -9,7 +10,7 @@ function(create_executable TARGET SOURCES)
     )
 
     if(SOURCES)
-        if (EXE_TEST)
+        if(EXE_TEST)
             add_executable(${TARGET} EXCLUDE_FROM_ALL "${SOURCES}")
         else()
             add_executable(${TARGET} "${SOURCES}")
@@ -19,7 +20,7 @@ function(create_executable TARGET SOURCES)
     endif()
 
     add_include_directories(${TARGET} PRIVATE "${EXE_INCLUDE_DIRS}")
-    set_compiler_and_linker_flags(${TARGET} ${EXE_TEST} ${EXE_CXX_STD})
+    set_compiler_and_linker_flags(${TARGET} ${EXE_TEST} CXX_STD ${EXE_CXX_STD})
     target_compile_definitions(${TARGET} PRIVATE "${EXE_COMPILE_DEFS}")
     target_link_libraries(${TARGET} PRIVATE "${EXE_DEPENDS}")
 
@@ -30,7 +31,10 @@ function(create_executable TARGET SOURCES)
     endif()
 
     if(EXE_OUTPUT_NAME)
-        set_target_properties(${TARGET} PROPERTIES OUTPUT_NAME ${EXE_OUTPUT_NAME})
+        set_target_properties(
+            ${TARGET}
+            PROPERTIES OUTPUT_NAME ${EXE_OUTPUT_NAME}
+        )
     endif()
 
     set_version_properties(${TARGET} "${EXE_VERSION}")
@@ -45,6 +49,36 @@ function(create_executable TARGET SOURCES)
 endfunction()
 
 function(auto_create_executable TARGET)
-    file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS src/*.cpp src/*.c src/*.cxx src/*.cc src/*.h src/*.hpp src/*.hxx)
-    create_executable(${TARGET} "${SOURCES}" ${ARGN})
+    cmake_parse_arguments(
+        EXE
+        "CONSOLE;GUI;TEST"
+        "VERSION;OUTPUT_NAME;CXX_STD"
+        "DEPENDS;COMPILE_DEFS;INCLUDE_DIRS"
+        ${ARGN}
+    )
+
+    file(
+        GLOB_RECURSE SOURCES
+        CONFIGURE_DEPENDS
+        src/*.cpp
+        src/*.c
+        src/*.cxx
+        src/*.cc
+        src/*.h
+        src/*.hpp
+        src/*.hxx
+    )
+    create_executable(
+        ${TARGET}
+        "${SOURCES}"
+        ${EXE_CONSOLE}
+        ${EXE_GUI}
+        ${EXE_TEST}
+        VERSION "${EXE_VERSION}"
+        OUTPUT_NAME "${EXE_OUTPUT_NAME}"
+        CXX_STD "${EXE_CXX_STD}"
+        DEPENDS "${EXE_DEPENDS}"
+        COMPILE_DEFS "${EXE_COMPILE_DEFS}"
+        INCLUDE_DIRS "${EXE_INCLUDE_DIRS}"
+    )
 endfunction()

@@ -1,15 +1,12 @@
-cmake_minimum_required(VERSION 3.31..4.2)
+cmake_minimum_required(VERSION 3.31..4.4)
 
 set(CMAKE_CXX_EXTENSIONS OFF)
-set(CMAKE_CXX_SCAN_FOR_MODULES ON)
 
 set(CMAKE_INSTALL_PREFIX ${PROJECT_SOURCE_DIR})
 set(CMAKE_INSTALL_MESSAGE LAZY)
 
-set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "f35a9ac6-8463-4d38-8eec-5d6008153e7d")
 set(CMAKE_CXX_MODULE_STD ON)
-set(CMAKE_CXX_STDLIB_MODULES_JSON "${CMAKE_CURRENT_LIST_DIR}/cmake/libstdc++.modules.json")
 
 set(PROJECT "Lang3")
 project(${PROJECT} LANGUAGES CXX)
@@ -24,15 +21,11 @@ option(THIN_ARCHIVE "Create thin archive" ON)
 set_property(GLOBAL PROPERTY THIN_ARCHIVE ${THIN_ARCHIVE})
 
 option(USE_IPO "Enable IPO" ON)
-if (USE_IPO)
+if(USE_IPO)
     include(CheckIPOSupported)
 
-    check_ipo_supported(
-        RESULT ipo_supported
-        OUTPUT ipo_error
-        LANGUAGES CXX
-    )
-    if (NOT ipo_supported)
+    check_ipo_supported(RESULT ipo_supported OUTPUT ipo_error LANGUAGES CXX)
+    if(NOT ipo_supported)
         message(SEND_ERROR "IPO is not supported: ${ipo_error}")
     endif()
 
@@ -40,14 +33,14 @@ if (USE_IPO)
 endif()
 
 option(USE_CCACHE "Use ccache" OFF)
-if (USE_CCACHE)
+if(USE_CCACHE)
     find_program(CCACHE ccache)
     find_program(SCCACHE sccache)
-    if (CCACHE)
+    if(CCACHE)
         message(STATUS "Found ccache: ${CCACHE}")
         set(CMAKE_C_COMPILER_LAUNCHER ${CCACHE})
         set(CMAKE_CXX_COMPILER_LAUNCHER ${CCACHE})
-    elseif (SCCACHE)
+    elseif(SCCACHE)
         message(STATUS "Found sccache: ${SCCACHE}")
         set(CMAKE_C_COMPILER_LAUNCHER ${SCCACHE})
         set(CMAKE_CXX_COMPILER_LAUNCHER ${SCCACHE})
@@ -72,19 +65,22 @@ if(IS_READABLE test)
 endif()
 
 # Install configuration
-install(TARGETS lang3
-    RUNTIME DESTINATION bin
-    COMPONENT runtime
-)
+install(TARGETS lang3 RUNTIME DESTINATION bin COMPONENT runtime)
 
 # Packaging
 set(PACKAGE_NAME "${PROJECT}-$<CONFIG>")
 set(PACKAGE_DIR "${CMAKE_BINARY_DIR}/package/${PACKAGE_NAME}")
 
-file(GLOB_RECURSE SOURCES
-    src/*.cpp src/*.cppm src/*.hpp src/*.h
-    src/*.y src/*.l
-    apps/*.cpp apps/*.hpp
+file(
+    GLOB_RECURSE SOURCES
+    src/*.cpp
+    src/*.cppm
+    src/*.hpp
+    src/*.h
+    src/*.y
+    src/*.l
+    apps/*.cpp
+    apps/*.hpp
     cmake/*.cmake
     CMakeLists.txt
 )
@@ -106,16 +102,14 @@ file(GLOB EXAMPLES examples/*.l3)
 add_custom_command(
     OUTPUT "${CMAKE_BINARY_DIR}/${PACKAGE_NAME}.tgz"
     COMMAND ${CMAKE_COMMAND} -E make_directory "${PACKAGE_DIR}/examples"
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "$<TARGET_FILE:lang3>"
-        "${SOURCE_ARCHIVE}" "${DOC_PDF}"
-        "${PACKAGE_DIR}/"
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        ${EXAMPLES}
+    COMMAND
+        ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_FILE:lang3>"
+        "${SOURCE_ARCHIVE}" "${DOC_PDF}" "${PACKAGE_DIR}/"
+    COMMAND
+        ${CMAKE_COMMAND} -E copy_if_different "${EXAMPLES}"
         "${PACKAGE_DIR}/examples"
-    COMMAND ${CMAKE_COMMAND} -E tar cf
-        "${CMAKE_BINARY_DIR}/${PACKAGE_NAME}.tgz"
-         "."
+    COMMAND
+        ${CMAKE_COMMAND} -E tar cf "${CMAKE_BINARY_DIR}/${PACKAGE_NAME}.tgz" "."
     COMMENT "Creating package ${PACKAGE_NAME}.tgz"
     DEPENDS ${SOURCE_ARCHIVE} ${EXAMPLES} ${DOC_PDF}
     BYPRODUCTS ${PACKAGE_DIR}
@@ -123,7 +117,8 @@ add_custom_command(
     VERBATIM
 )
 
-add_custom_target(package
+add_custom_target(
+    package
     DEPENDS ${CMAKE_BINARY_DIR}/${PACKAGE_NAME}.tgz
     COMMENT "Packaging ${PACKAGE_NAME}"
     VERBATIM

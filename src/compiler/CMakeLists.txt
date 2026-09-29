@@ -1,5 +1,7 @@
 get_filename_component(LIB_NAME ${CMAKE_CURRENT_SOURCE_DIR} NAME)
 
-auto_create_library(${LIB_NAME}
-  PRIVATE_DEPS bytecode runtime ast utils
+auto_create_library(
+    ${LIB_NAME}
+    PRIVATE_DEPS bytecode runtime ast utils
+    CXX_STD 26
 )
