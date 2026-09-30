@@ -75,6 +75,9 @@ function(create_library TARGET)
 endfunction()
 
 function(auto_create_library TARGET)
+    # NOTE: all arguments are forwarded to create_library() verbatim via ARGN.
+    # This parse only declares the accepted keywords (for reference and for
+    # formatters); its results are intentionally unused.
     cmake_parse_arguments(
         LIB
         "STATIC;SHARED;OBJECT;INTERFACE"
@@ -89,18 +92,9 @@ function(auto_create_library TARGET)
 
     create_library(
         ${TARGET}
-        ${LIB_STATIC}
-        ${LIB_SHARED}
-        ${LIB_OBJECT}
-        ${LIB_INTERFACE}
-        VERSION "${LIB_VERSION}"
-        CXX_STD "${LIB_CXX_STD}"
-        HEADER_BASE_DIR "${LIB_HEADER_BASE_DIR}"
-        PRIVATE_DEPS "${LIB_PRIVATE_DEPS}"
-        PUBLIC_DEPS "${LIB_PUBLIC_DEPS}"
-        INTERFACE_DEPS "${LIB_INTERFACE_DEPS}"
-        SOURCES "${SOURCES}" "${LIB_SOURCES}"
-        MODULES "${MODULES}" "${LIB_MODULES}"
-        HEADERS "${HEADERS}" "${LIB_HEADERS}"
+        ${ARGN}
+        SOURCES "${SOURCES}"
+        MODULES "${MODULES}"
+        HEADERS "${HEADERS}"
     )
 endfunction()

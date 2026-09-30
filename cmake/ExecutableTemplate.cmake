@@ -49,6 +49,9 @@ function(create_executable TARGET SOURCES)
 endfunction()
 
 function(auto_create_executable TARGET)
+    # NOTE: all arguments are forwarded to create_executable() verbatim via
+    # ARGN. This parse only declares the accepted keywords (for reference and
+    # for formatters); its results are intentionally unused.
     cmake_parse_arguments(
         EXE
         "CONSOLE;GUI;TEST"
@@ -68,17 +71,6 @@ function(auto_create_executable TARGET)
         src/*.hpp
         src/*.hxx
     )
-    create_executable(
-        ${TARGET}
-        "${SOURCES}"
-        ${EXE_CONSOLE}
-        ${EXE_GUI}
-        ${EXE_TEST}
-        VERSION "${EXE_VERSION}"
-        OUTPUT_NAME "${EXE_OUTPUT_NAME}"
-        CXX_STD "${EXE_CXX_STD}"
-        DEPENDS "${EXE_DEPENDS}"
-        COMPILE_DEFS "${EXE_COMPILE_DEFS}"
-        INCLUDE_DIRS "${EXE_INCLUDE_DIRS}"
-    )
+
+    create_executable(${TARGET} "${SOURCES}" ${ARGN})
 endfunction()
