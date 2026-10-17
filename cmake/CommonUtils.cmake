@@ -11,6 +11,8 @@ function(set_compiler_and_linker_flags TARGET)
             $<$<CXX_COMPILER_ID:MSVC>:/W4>
     )
 
+    set_target_properties(${TARGET} PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
     if(ARGS_CXX_STD)
         set_target_properties(${TARGET} PROPERTIES CXX_STANDARD ${ARGS_CXX_STD})
     endif()
